@@ -5,7 +5,14 @@ import sys
 
 from statistic_table.config import ZAPASY_DATA_START_ROW, ZAPASY_SHEET, load_config
 from statistic_table.drive import list_pdf_files
-from statistic_table.importer import import_folder, import_pdf, print_outcomes, print_plan
+from statistic_table.importer import (
+    IMPORT_ERRORS,
+    import_folder,
+    import_pdf,
+    print_outcomes,
+    print_plan,
+)
+from statistic_table.logging_config import setup_logging
 from statistic_table.sheets import check_headers, read_checks, read_player_registry, read_range
 from statistic_table.standings import (
     arithmetic_issues,
@@ -51,7 +58,11 @@ def cmd_import(args: argparse.Namespace) -> int:
     club_roster = read_player_registry(config)
 
     if args.pdf:
-        plan = import_pdf(args.pdf, config, club_roster, dry_run=args.dry_run)
+        try:
+            plan = import_pdf(args.pdf, config, club_roster, dry_run=args.dry_run)
+        except IMPORT_ERRORS as exc:
+            print(f"Import se nezdařil: {exc}")
+            return 1
         print_plan(plan)
         if args.dry_run:
             print("(--dry-run: nic se nezapsalo)")
@@ -164,6 +175,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
+    setup_logging()
     parser = build_parser()
     args = parser.parse_args(argv)
     return args.func(args)

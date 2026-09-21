@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 import tempfile
 from collections import Counter
 from dataclasses import dataclass
@@ -8,6 +9,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from statistic_table import stats
+from statistic_table.backup import backup_row
 from statistic_table.config import (
     SESTAVY_COLUMNS,
     SESTAVY_SHEET,
@@ -36,6 +38,7 @@ from statistic_table.sheets import (
 )
 
 BIRTH_YEARS = range(2005, 2011)
+logger = logging.getLogger("statistic_table")
 
 # Chyby, které se mají vztahovat jen k jednomu zápasu/souboru – ostatní
 # soubory ve složce se mají importovat dál (viz PLAN.MD Krok 6, bod 6).
@@ -173,7 +176,9 @@ def import_pdf(
     game = parse_game(path)
     plan = build_import(game, config, club_roster)
     if not dry_run:
+        backup_row(config, plan.row)
         write_batch(config, plan.cells)
+        logger.info("Zápas %s zapsán na řádek %s (%s)", plan.game_number, plan.row, path)
     return plan
 
 
@@ -245,6 +250,7 @@ def import_folder(
             try:
                 game = parse_game(local_path)
             except IMPORT_ERRORS as exc:
+                logger.error("Nelze načíst PDF %s: %s", f["name"], exc)
                 outcomes.append(FileOutcome(f["name"], "error", f"Nelze načíst PDF: {exc}"))
                 continue
             candidates.append((game, f, file_checksum(local_path)))
@@ -253,6 +259,8 @@ def import_folder(
 
         for game, f, checksum in candidates:
             status, detail = _classify(game.number, f["id"], checksum, log_by_game_number)
+            if status == "warning":
+                logger.warning("%s: %s", f["name"], detail)
             if status != "new":
                 outcomes.append(FileOutcome(f["name"], status, detail))
                 continue
@@ -260,11 +268,16 @@ def import_folder(
             try:
                 plan = build_import(game, config, club_roster)
             except IMPORT_ERRORS as exc:
+                logger.error("Zápas %s (%s): %s", game.number, f["name"], exc)
                 outcomes.append(FileOutcome(f["name"], "error", str(exc)))
                 continue
 
             if not dry_run:
+                backup_row(config, plan.row)
                 write_batch(config, plan.cells)
+                logger.info(
+                    "Zápas %s zapsán na řádek %s (%s)", plan.game_number, plan.row, f["name"]
+                )
                 new_log_entries.append(
                     ImportLogEntry(
                         file_id=f["id"],
