@@ -67,6 +67,18 @@ celé sdílecí odkazy – např. z `.../folders/1k364.../` jen `1k364...`.
 `import` bez zápisu vyžaduje `--dry-run`, aby šlo předem zkontrolovat, co by
 se zapsalo, beze změny tabulky.
 
+### Textové menu
+
+Pro spouštění bez pamatování si příkazů a přepínačů (např. na produkčním
+počítači) stačí:
+
+```powershell
+.venv\Scripts\python.exe main.py
+```
+
+Nabídne stejné čtyři akce (`check`, import jednoho PDF, import celé složky,
+`standings`), u zápisu se vždy nejdřív zeptá na dry-run a pak na potvrzení.
+
 ## Co skript dělá a co ne
 
 - Skript zapisuje **jen vstupní buňky** (soupisky, góly, přihrávky, tresty,
