@@ -101,24 +101,37 @@ Tyto dva zápasy (PDF + očekávané hodnoty) jsou základ regresních testů: i
 - Kotman a Nádemlenjský nemají číslo registrace (nelze párovat přes registraci).
 - Ročníky 2005–2010 jsou v tabulce pevně dané, pro novou sezónu se musí rozšířit.
 
-## Struktura repozitáře (cílový stav)
+## Struktura repozitáře
+
+Stav k 21. 9. 2026 (Kroky 0–8 z PLAN.MD hotové, viz tam sekce „Stav“):
 
 ```
 statistic_table/
   PROJECT.MD          účel a pravidla (tento soubor)
-  PLAN.MD             plán migrace
+  PLAN.MD             plán migrace + průběžný stav
+  README.md           instalace, přístupy, příkazy, řešení chyb
+  main.py             textové menu nad cli.py (pro běžné používání)
   .env.example        vzor konfigurace
   src/statistic_table/
-    config.py         načtení .env, mapa sloupců tabulky
-    drive.py          Google Drive: složka Zápisy, stahování PDF
-    sheets.py         Google Sheets: čtení číselníků, zápis vstupních buněk
+    config.py         načtení .env, mapa sloupců tabulky, aliasy soupeřů
+    drive.py          Google Drive: složka Zápisy, výpis + stahování PDF
+    sheets.py         Google Sheets: čtení/zápis, kontrola záhlaví, Import log
     pdf_parser.py     PDF -> datový model zápasu
-    model.py          datové třídy (Game, Player, Goal, Penalty)
-    players.py        párování hráčů na příjmení z listu Seznam hráčů
+    model.py          datové třídy (Game, TeamSheet, GamePlayer, Goal, Penalty,
+                       RosterPlayer, ImportLogEntry)
+    players.py        párování hráčů, určení týmu LIT/soupeře
     stats.py          přesilovky, góly PP/SH, tresty, ročníky, věk
-    importer.py       orchestrace: nové soubory -> zápis do tabulky
+    importer.py       orchestrace: PDF (jeden nebo celá složka) -> zápis
     standings.py      pořadí po kole z ceskyhokej.cz (volitelné)
-    cli.py            spuštění skriptu
+    backup.py         záloha řádku před přepsáním (backups/, mimo git)
+    logging_config.py logování do logs/ (mimo git)
+    cli.py            check / import / standings
   tests/
-    fixtures/         PDF zápisy a očekávané hodnoty
+    fixtures/         PDF zápisy, uložené kopie hlaviček a stránky Ligy
+                       juniorů, očekávané hodnoty
+    test_*.py         jednotkové testy (bez sítě) + skippable integrační
+                       test na kopii tabulky
 ```
+
+Adresáře `secrets/`, `backups/`, `logs/`, `.venv/` a soubor `.env` jsou
+mimo git (obsahují klíče/citlivá data nebo se generují za běhu).

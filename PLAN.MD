@@ -2,6 +2,48 @@
 
 Popis cíle a pravidel je v [PROJECT.MD](PROJECT.MD). Tento plán rozděluje práci na kroky, které lze dělat a ověřovat postupně v IDE. Každý krok má výstup a kritérium hotovo.
 
+## Stav k 21. 9. 2026
+
+**Kroky 0–8 hotové a pushnuté** na `origin/master` (poslední commit
+`3c6124d`, „Přidat main.py"). Oba referenční zápasy (4002 LIT–Příbram,
+4012 Chomutov–LIT) jsou reálně zapsané v ostré tabulce, list „Import log"
+založen a funguje (druhé spuštění `cli import` nic nezmění). Pořadí LIT
+(`Zápasy!I7`) nezávisle ověřeno proti stránce Ligy juniorů. `main.py`
+přidává textové menu nad `cli.py` pro běžné používání bez pamatování si
+přepínačů. 89 testů zelených (+ 1 skippable integrační bez
+`TEST_SPREADSHEET_ID`), ruff bez chyb.
+
+**Co zbývá:**
+- **Krok 9 – Přechod**: čeká se na další reálný zápas. Postup: naimportovat
+  skriptem (přes `main.py` nebo `cli import <pdf> --dry-run` → `cli import
+  <pdf>`), porovnat s ručním výsledkem, po pár úspěšných zápasech ukončit
+  ruční asistenci v konverzaci.
+- **Automatizace spouštění** (Krok 8, bod 5) vědomě odložena – appka se
+  zatím spouští ručně na vývojovém i produkčním PC. Zvažované možnosti:
+  Windows Task Scheduler, domácí server/NAS s cronem, GitHub Actions
+  (repo je na GitHubu, ale klíč servisního účtu by musel jako secret).
+  Rozhodnutí padne, až bude appka nějakou dobu v ručním provozu ověřená.
+
+**Poznatky z implementace (užitečné při dalším ladění):**
+- Písmena sloupců v tabulce (viz PROJECT.MD) se od 21. 9. 2026 neposunula,
+  ověřeno živě proti hlavičce – kontrola v `config.py`/`sheets.py` na
+  budoucí posun hlídá.
+- **Algoritmus přesilovek** (`stats.power_plays`): přesilovka = 2min trest,
+  který nemá soupeřův trest se stejným časem začátku (`Od`). Časové úseky
+  se NEslučují do jedné přesilovky, i když se v čase překrývají – první
+  verze to dělala a dávala o 1 méně, než je ve skutečné tabulce (ověřeno
+  na zápase 4002, kde oba týmy dostaly koincidenční trest ve stejný čas).
+- **Pořadí jmen v Sestavy H:N/O:AB** (obránci/útočníci) v živé tabulce
+  neodpovídá žádné odvoditelné konvenci z PDF (zkoušeno: pořadí v zápise,
+  pořadí v Seznamu hráčů, číslo dresu – žádné nesedí). `importer.py` proto
+  zapisuje v pořadí z PDF soupisky a testy porovnávají množinu jmen, ne
+  přesné pořadí.
+- **Brankář, který skutečně chytal**, se pozná podle „evidence brankářů"
+  v souhrnné tabulce na 1. straně zápisu (sloupce BA/BB), ne přeškrtnutím
+  v soupisce – to se ukázalo jednodušší a spolehlivější.
+- Seznam hráčů už má rozlišovače rovnou v příjmení („Novotný D", „Walter
+  V"), není potřeba je dopočítávat.
+
 ## Potvrzená rozhodnutí (21. 9. 2026)
 
 - Skript **pouze importuje** vstupní data, veškerá logika statistik zůstává ve vzorcích sešitu.
@@ -16,7 +58,7 @@ Zásady:
 - Referenční data: dva zápasy z tabulky (18. 9. LIT–Příbram 1:3, 20. 9. Chomutov–LIT 4:5). Import musí reprodukovat hodnoty v tabulce přesně.
 - Nejasnost = zastavit import daného zápasu a vypsat důvod, nikdy hádat.
 
-## Krok 0 – Příprava prostředí a přístupů
+## Krok 0 – Příprava prostředí a přístupů ✅
 
 Výstup: funkční kostra projektu a přístup k Disku/Tabulce.
 
@@ -38,7 +80,7 @@ Výstup: funkční kostra projektu a přístup k Disku/Tabulce.
 
 Hotovo: `python -m statistic_table.cli check` vypíše seznam PDF ve složce a hlavičku tabulky.
 
-## Krok 1 – Datový kontrakt tabulky a konfigurace
+## Krok 1 – Datový kontrakt tabulky a konfigurace ✅
 
 Výstup: `config.py` s mapou sloupců a kontrolou rozložení.
 
@@ -49,7 +91,7 @@ Výstup: `config.py` s mapou sloupců a kontrolou rozložení.
 
 Hotovo: test načte mapu, ověří záhlaví na živé tabulce (nebo na uložené kopii).
 
-## Krok 2 – Datový model a parser PDF
+## Krok 2 – Datový model a parser PDF ✅
 
 Výstup: `model.py`, `pdf_parser.py`, testy nad dvěma referenčními PDF.
 
@@ -60,7 +102,7 @@ Výstup: `model.py`, `pdf_parser.py`, testy nad dvěma referenčními PDF.
 
 Hotovo: `parse(pdf) -> Game` vrací pro oba zápisy kompletní data bez ručních zásahů.
 
-## Krok 3 – Párování hráčů
+## Krok 3 – Párování hráčů ✅
 
 Výstup: `players.py`.
 
@@ -71,7 +113,7 @@ Výstup: `players.py`.
 
 Hotovo: všichni hráči obou referenčních zápisů se spárují na stejná příjmení, jaká jsou v listu Sestavy.
 
-## Krok 4 – Statistiky (přesilovky, góly, tresty, ročníky)
+## Krok 4 – Statistiky (přesilovky, góly, tresty, ročníky) ✅
 
 Výstup: `stats.py` s čistými funkcemi a testy.
 
@@ -84,7 +126,7 @@ Výstup: `stats.py` s čistými funkcemi a testy.
 
 Hotovo: testy `stats` zelené na obou zápasech, včetně ručně vytvořených okrajových případů (dvojitý trest, vyrovnané tresty, trest odsedělý spoluhráčem).
 
-## Krok 5 – Zápis do Google Tabulky
+## Krok 5 – Zápis do Google Tabulky ✅
 
 Výstup: `sheets.py`, `importer.py` (bez Drive zatím, vstup z lokálního PDF).
 
@@ -96,7 +138,7 @@ Výstup: `sheets.py`, `importer.py` (bez Drive zatím, vstup z lokálního PDF).
 
 Hotovo: import z lokálního PDF do testovací kopie tabulky vytvoří stejný stav jako ručně naplněná tabulka.
 
-## Krok 6 – Napojení na Disk a detekce nových zápisů
+## Krok 6 – Napojení na Disk a detekce nových zápisů ✅
 
 Výstup: `drive.py`, orchestrace v `importer.py`, `cli.py`.
 
@@ -109,7 +151,7 @@ Výstup: `drive.py`, orchestrace v `importer.py`, `cli.py`.
 
 Hotovo: `python -m statistic_table.cli import` na složce s novým PDF zapíše zápas; druhé spuštění nic nezmění.
 
-## Krok 7 – Pořadí po kole (volitelný modul)
+## Krok 7 – Pořadí po kole (volitelný modul) ✅
 
 Výstup: `standings.py`.
 
@@ -120,7 +162,7 @@ Výstup: `standings.py`.
 
 Hotovo: příkaz `standings` vypíše pořadí a navrhne zápis, zapíše po potvrzení.
 
-## Krok 8 – Kvalita a provoz
+## Krok 8 – Kvalita a provoz ✅ (bod 5 vědomě odloženo)
 
 1. Testy: jednotkové (parser, párování, statistiky), integrační na kopii tabulky (může se přeskočit bez přístupů).
 2. Logování do souboru a srozumitelné chybové zprávy v češtině (které pole, který zápas, co udělat).
@@ -128,7 +170,7 @@ Hotovo: příkaz `standings` vypíše pořadí a navrhne zápis, zapíše po pot
 4. README s postupem spuštění, nastavením přístupů a řešením typických chyb (neznámý hráč, neshoda kontrol).
 5. Volitelně: plánované spouštění (cron nebo plánovač na domácím serveru), notifikace o výsledku importu.
 
-## Krok 9 – Přechod
+## Krok 9 – Přechod ⏳ (čeká se na další reálný zápas)
 
 1. Paralelní provoz: první dva až tři zápasy importovat skriptem do kopie a porovnat s ručním výsledkem.
 2. Přepnout ostrou tabulku na skript, ruční import a asistence v konverzaci ukončit.
