@@ -1,0 +1,37 @@
+[project]
+name = "statistic_table"
+version = "0.1.0"
+description = "Import zápisů o utkání ČSLH do evidenční tabulky HC Stadion Litoměřice U20"
+requires-python = ">=3.11"
+dependencies = [
+    "google-api-python-client",
+    "google-auth",
+    "google-auth-oauthlib",
+    "python-dotenv",
+    "pdfplumber",
+    "requests",
+    "beautifulsoup4",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "ruff",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+src = ["src"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
