@@ -3,10 +3,20 @@ from __future__ import annotations
 import argparse
 import sys
 
-from statistic_table.config import load_config
+from statistic_table.config import ZAPASY_DATA_START_ROW, ZAPASY_SHEET, load_config
 from statistic_table.drive import list_pdf_files
 from statistic_table.importer import import_folder, import_pdf, print_outcomes, print_plan
 from statistic_table.sheets import check_headers, read_checks, read_player_registry, read_range
+from statistic_table.standings import (
+    arithmetic_issues,
+    compute_record_from_rows,
+    cross_check_issues,
+    fetch_standings_html,
+    find_team,
+    last_played_row,
+    parse_standings,
+    write_position,
+)
 
 
 def cmd_check(_args: argparse.Namespace) -> int:
@@ -57,6 +67,66 @@ def cmd_import(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_standings(args: argparse.Namespace) -> int:
+    config = load_config()
+
+    try:
+        html = fetch_standings_html()
+    except Exception as exc:  # noqa: BLE001 – volitelný modul nesmí spadnout import
+        print(f"Stránku Ligy juniorů se nepodařilo stáhnout: {exc}")
+        return 1
+
+    standings = parse_standings(html)
+    standing = find_team(standings, config.team_name_in_pdf)
+    if standing is None:
+        print(f"{config.team_name_in_pdf} nebyl na stránce nalezen.")
+        return 1
+
+    print(
+        f"{standing.team}: pozice {standing.position}. "
+        f"(Z={standing.games} V={standing.wins} VP={standing.ot_wins} PP={standing.ot_losses} "
+        f"P={standing.losses} skóre {standing.goals_for}:{standing.goals_against} "
+        f"B={standing.points})"
+    )
+
+    issues = arithmetic_issues(standing)
+    rows = read_range(config, f"{ZAPASY_SHEET}!A{ZAPASY_DATA_START_ROW}:F1000")
+    record = compute_record_from_rows(rows, config.team_short)
+    issues += cross_check_issues(standing, record)
+
+    if issues:
+        print("Nevěrohodné – nesouhlasí s vlastní tabulkou, pořadí se nezapíše:")
+        for issue in issues:
+            print(f"  - {issue}")
+        return 1
+
+    row = last_played_row(config)
+    if row is None:
+        print("V tabulce zatím není žádný odehraný zápas.")
+        return 1
+
+    current = read_range(config, f"{ZAPASY_SHEET}!I{row}")
+    current_value = current[0][0] if current and current[0] else ""
+    print(
+        f"Navrhovaný zápis: {ZAPASY_SHEET}!I{row} = {standing.position} "
+        f"(nyní: {current_value!r})"
+    )
+
+    if args.dry_run:
+        print("(--dry-run: nic se nezapsalo)")
+        return 0
+
+    if not args.yes:
+        answer = input("Zapsat? [y/N] ").strip().lower()
+        if answer != "y":
+            print("Zrušeno.")
+            return 0
+
+    write_position(config, row, standing.position)
+    print("Zapsáno.")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="statistic_table")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -78,6 +148,17 @@ def build_parser() -> argparse.ArgumentParser:
         "--dry-run", action="store_true", help="Jen vypsat, co by se zapsalo"
     )
     import_cmd.set_defaults(func=cmd_import)
+
+    standings_cmd = subparsers.add_parser(
+        "standings", help="Zjistí pořadí LIT na stránce Ligy juniorů a nabídne zápis"
+    )
+    standings_cmd.add_argument(
+        "--dry-run", action="store_true", help="Jen vypsat, co by se zapsalo"
+    )
+    standings_cmd.add_argument(
+        "-y", "--yes", action="store_true", help="Nezobrazovat potvrzovací dotaz"
+    )
+    standings_cmd.set_defaults(func=cmd_standings)
 
     return parser
 
