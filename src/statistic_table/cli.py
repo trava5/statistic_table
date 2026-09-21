@@ -5,7 +5,7 @@ import sys
 
 from statistic_table.config import load_config
 from statistic_table.drive import list_pdf_files
-from statistic_table.importer import import_pdf, print_plan
+from statistic_table.importer import import_folder, import_pdf, print_outcomes, print_plan
 from statistic_table.sheets import check_headers, read_checks, read_player_registry, read_range
 
 
@@ -40,15 +40,20 @@ def cmd_import(args: argparse.Namespace) -> int:
     config = load_config()
     club_roster = read_player_registry(config)
 
-    plan = import_pdf(args.pdf, config, club_roster, dry_run=args.dry_run)
-    print_plan(plan)
-
-    if args.dry_run:
-        print("(--dry-run: nic se nezapsalo)")
+    if args.pdf:
+        plan = import_pdf(args.pdf, config, club_roster, dry_run=args.dry_run)
+        print_plan(plan)
+        if args.dry_run:
+            print("(--dry-run: nic se nezapsalo)")
+            return 0
+        for label, value in read_checks(config, plan.row).items():
+            print(f"{label}: {value!r}")
         return 0
 
-    for label, value in read_checks(config, plan.row).items():
-        print(f"{label}: {value!r}")
+    outcomes = import_folder(config, club_roster, dry_run=args.dry_run)
+    print_outcomes(outcomes)
+    if args.dry_run:
+        print("(--dry-run: nic se nezapsalo)")
     return 0
 
 
@@ -59,8 +64,16 @@ def build_parser() -> argparse.ArgumentParser:
     check = subparsers.add_parser("check", help="Ověří přístup k Disku a Tabulce")
     check.set_defaults(func=cmd_check)
 
-    import_cmd = subparsers.add_parser("import", help="Naimportuje zápas z lokálního PDF")
-    import_cmd.add_argument("pdf", help="Cesta k PDF zápisu o utkání")
+    import_cmd = subparsers.add_parser(
+        "import",
+        help="Naimportuje zápas(y) – z lokálního PDF, nebo (bez cesty) celou složku Zápisy",
+    )
+    import_cmd.add_argument(
+        "pdf",
+        nargs="?",
+        default=None,
+        help="Cesta k PDF zápisu (bez ní se projde celá složka Zápisy)",
+    )
     import_cmd.add_argument(
         "--dry-run", action="store_true", help="Jen vypsat, co by se zapsalo"
     )

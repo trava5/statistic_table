@@ -4,8 +4,8 @@ from pathlib import Path
 import pytest
 
 from statistic_table.config import Config
-from statistic_table.importer import build_import
-from statistic_table.model import RosterPlayer
+from statistic_table.importer import _classify, _date_sort_key, build_import, file_checksum
+from statistic_table.model import ImportLogEntry, RosterPlayer
 from statistic_table.pdf_parser import parse_game
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -112,3 +112,56 @@ def test_build_import_pads_unused_slots_with_empty_strings(club_roster):
     branky = plan.cells["Zápasy!J6:T6"]
     assert len(branky) == 11
     assert branky.count("") == 10
+
+
+# --- file_checksum / _classify / _date_sort_key (Krok 6) -------------------
+
+
+def test_file_checksum_is_stable_and_content_sensitive(tmp_path):
+    file_a = tmp_path / "a.pdf"
+    file_b = tmp_path / "b.pdf"
+    file_a.write_bytes(b"stejny obsah")
+    file_b.write_bytes(b"stejny obsah")
+    file_c = tmp_path / "c.pdf"
+    file_c.write_bytes(b"jiny obsah")
+
+    assert file_checksum(file_a) == file_checksum(file_b)
+    assert file_checksum(file_a) != file_checksum(file_c)
+
+
+def test_date_sort_key_orders_chronologically():
+    dates = ["20.9.2026", "18.9.2026", "1.10.2026"]
+    assert sorted(dates, key=_date_sort_key) == ["18.9.2026", "20.9.2026", "1.10.2026"]
+
+
+def _log_entry(file_id: str, checksum: str, game_number: str = "4002") -> ImportLogEntry:
+    return ImportLogEntry(
+        file_id=file_id, checksum=checksum, game_number=game_number,
+        imported_at="2026-09-21 10:00:00", result="řádek 6",
+    )
+
+
+def test_classify_new_game_not_in_log():
+    status, _ = _classify("4002", "file1", "abc", {})
+    assert status == "new"
+
+
+def test_classify_unchanged_file_is_skipped():
+    log = {"4002": _log_entry("file1", "abc")}
+    status, _ = _classify("4002", "file1", "abc", log)
+    assert status == "skipped"
+
+
+def test_classify_same_file_changed_checksum_is_warning():
+    log = {"4002": _log_entry("file1", "abc")}
+    status, detail = _classify("4002", "file1", "xyz", log)
+    assert status == "warning"
+    assert "4002" in detail
+
+
+def test_classify_same_game_number_different_file_is_error():
+    log = {"4002": _log_entry("file1", "abc")}
+    status, detail = _classify("4002", "file2", "abc", log)
+    assert status == "error"
+    assert "duplicitní" in detail
+    assert "file1" in detail

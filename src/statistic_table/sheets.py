@@ -3,6 +3,10 @@ from __future__ import annotations
 from googleapiclient.discovery import build
 
 from statistic_table.config import (
+    IMPORT_LOG_DATA_START_ROW,
+    IMPORT_LOG_HEADER,
+    IMPORT_LOG_HEADER_ROW,
+    IMPORT_LOG_SHEET,
     SESTAVY_COLUMNS,
     SESTAVY_HEADER_ROW,
     SESTAVY_SHEET,
@@ -17,7 +21,7 @@ from statistic_table.config import (
     col_to_index,
     get_credentials,
 )
-from statistic_table.model import RosterPlayer
+from statistic_table.model import ImportLogEntry, RosterPlayer
 
 # Kontrolní sloupce, které se po zápisu čtou a hlásí ve výpisu (PLAN.MD Krok 5).
 CHECK_CELLS = {
@@ -110,6 +114,58 @@ def read_checks(config: Config, row: int) -> dict[str, str]:
         values = read_range(config, f"{sheet}!{col}{row}")
         results[label] = values[0][0] if values and values[0] else ""
     return results
+
+
+def ensure_import_log_sheet(config: Config) -> None:
+    """Založí skrytý list Import log (s hlavičkou), pokud ještě neexistuje."""
+    service = build("sheets", "v4", credentials=get_credentials(config))
+    meta = service.spreadsheets().get(spreadsheetId=config.spreadsheet_id).execute()
+    titles = {s["properties"]["title"] for s in meta["sheets"]}
+    if IMPORT_LOG_SHEET in titles:
+        return
+    body = {
+        "requests": [
+            {"addSheet": {"properties": {"title": IMPORT_LOG_SHEET, "hidden": True}}}
+        ]
+    }
+    service.spreadsheets().batchUpdate(spreadsheetId=config.spreadsheet_id, body=body).execute()
+    header_range = f"{IMPORT_LOG_SHEET}!A{IMPORT_LOG_HEADER_ROW}:E{IMPORT_LOG_HEADER_ROW}"
+    write_batch(config, {header_range: IMPORT_LOG_HEADER})
+
+
+def read_import_log(config: Config) -> list[ImportLogEntry]:
+    values = read_range(config, f"{IMPORT_LOG_SHEET}!A{IMPORT_LOG_DATA_START_ROW}:E1000000")
+    entries = []
+    for row in values:
+        file_id = row[0] if len(row) > 0 else ""
+        if not file_id:
+            continue
+        entries.append(
+            ImportLogEntry(
+                file_id=file_id,
+                checksum=row[1] if len(row) > 1 else "",
+                game_number=row[2] if len(row) > 2 else "",
+                imported_at=row[3] if len(row) > 3 else "",
+                result=row[4] if len(row) > 4 else "",
+            )
+        )
+    return entries
+
+
+def append_import_log(config: Config, entries: list[ImportLogEntry]) -> None:
+    if not entries:
+        return
+    service = build("sheets", "v4", credentials=get_credentials(config))
+    values = [
+        [e.file_id, e.checksum, e.game_number, e.imported_at, e.result] for e in entries
+    ]
+    service.spreadsheets().values().append(
+        spreadsheetId=config.spreadsheet_id,
+        range=f"{IMPORT_LOG_SHEET}!A{IMPORT_LOG_DATA_START_ROW}",
+        valueInputOption="USER_ENTERED",
+        insertDataOption="INSERT_ROWS",
+        body={"values": values},
+    ).execute()
 
 
 def read_player_registry(config: Config) -> list[RosterPlayer]:

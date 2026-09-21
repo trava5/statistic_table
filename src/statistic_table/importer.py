@@ -1,6 +1,10 @@
 from __future__ import annotations
 
+import hashlib
+import tempfile
+from collections import Counter
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 
 from statistic_table import stats
@@ -13,12 +17,29 @@ from statistic_table.config import (
     Config,
     check_capacity,
 )
-from statistic_table.model import Game, RosterPlayer, TeamSheet
-from statistic_table.pdf_parser import parse_game
-from statistic_table.players import identify_lit, match_lineup, opponent_alias
-from statistic_table.sheets import find_or_create_row, write_batch
+from statistic_table.drive import download_file, list_pdf_files
+from statistic_table.model import Game, ImportLogEntry, RosterPlayer, TeamSheet
+from statistic_table.pdf_parser import ParseError, parse_game
+from statistic_table.players import (
+    PlayerMatchError,
+    TeamIdentificationError,
+    identify_lit,
+    match_lineup,
+    opponent_alias,
+)
+from statistic_table.sheets import (
+    append_import_log,
+    ensure_import_log_sheet,
+    find_or_create_row,
+    read_import_log,
+    write_batch,
+)
 
 BIRTH_YEARS = range(2005, 2011)
+
+# Chyby, které se mají vztahovat jen k jednomu zápasu/souboru – ostatní
+# soubory ve složce se mají importovat dál (viz PLAN.MD Krok 6, bod 6).
+IMPORT_ERRORS = (ParseError, PlayerMatchError, TeamIdentificationError, ValueError, KeyError)
 
 
 @dataclass(frozen=True)
@@ -160,3 +181,114 @@ def print_plan(plan: ImportPlan) -> None:
     print(f"Zápas {plan.game_number} -> řádek {plan.row}")
     for range_, values in plan.cells.items():
         print(f"  {range_} = {values}")
+
+
+@dataclass(frozen=True)
+class FileOutcome:
+    file_name: str
+    status: str  # "imported", "skipped", "warning", "error"
+    detail: str
+
+
+def file_checksum(path: str | Path) -> str:
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+def _date_sort_key(pdf_date: str) -> tuple[int, int, int]:
+    day, month, year = pdf_date.split(".")
+    return (int(year), int(month), int(day))
+
+
+def _classify(
+    game_number: str,
+    file_id: str,
+    checksum: str,
+    log_by_game_number: dict[str, ImportLogEntry],
+) -> tuple[str, str]:
+    """Čistá funkce: rozhodne, jestli je soubor nový, už importovaný,
+    změněný (bod 3), nebo duplicitní zápis (bod 4)."""
+    existing = log_by_game_number.get(game_number)
+    if existing is None:
+        return "new", ""
+    if existing.file_id == file_id and existing.checksum == checksum:
+        return "skipped", "již importováno"
+    if existing.file_id == file_id and existing.checksum != checksum:
+        return (
+            "warning",
+            f"soubor s číslem zápisu {game_number} byl od importu změněn – "
+            "přepis spusť ručně (python -m statistic_table.cli import <pdf>)",
+        )
+    return (
+        "error",
+        f"duplicitní zápis: číslo utkání {game_number} už bylo importováno "
+        f"z jiného souboru (ID {existing.file_id})",
+    )
+
+
+def import_folder(
+    config: Config, club_roster: list[RosterPlayer], *, dry_run: bool = False
+) -> list[FileOutcome]:
+    """Projde PDF ve složce Zápisy, přeskočí už importované/duplicitní/změněné
+    a nové zapíše (pokud dry_run=False), v pořadí podle data zápasu."""
+    ensure_import_log_sheet(config)
+    log_by_game_number = {entry.game_number: entry for entry in read_import_log(config)}
+
+    files = list_pdf_files(config)
+    outcomes: list[FileOutcome] = []
+    new_log_entries: list[ImportLogEntry] = []
+
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        candidates: list[tuple[Game, dict, str]] = []
+        for f in files:
+            local_path = Path(tmp_dir) / f["name"]
+            download_file(config, f["id"], local_path)
+            try:
+                game = parse_game(local_path)
+            except IMPORT_ERRORS as exc:
+                outcomes.append(FileOutcome(f["name"], "error", f"Nelze načíst PDF: {exc}"))
+                continue
+            candidates.append((game, f, file_checksum(local_path)))
+
+        candidates.sort(key=lambda c: _date_sort_key(c[0].date))
+
+        for game, f, checksum in candidates:
+            status, detail = _classify(game.number, f["id"], checksum, log_by_game_number)
+            if status != "new":
+                outcomes.append(FileOutcome(f["name"], status, detail))
+                continue
+
+            try:
+                plan = build_import(game, config, club_roster)
+            except IMPORT_ERRORS as exc:
+                outcomes.append(FileOutcome(f["name"], "error", str(exc)))
+                continue
+
+            if not dry_run:
+                write_batch(config, plan.cells)
+                new_log_entries.append(
+                    ImportLogEntry(
+                        file_id=f["id"],
+                        checksum=checksum,
+                        game_number=game.number,
+                        imported_at=datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S"),
+                        result=f"řádek {plan.row}",
+                    )
+                )
+            outcomes.append(FileOutcome(f["name"], "imported", f"řádek {plan.row}"))
+
+    if new_log_entries:
+        append_import_log(config, new_log_entries)
+
+    return outcomes
+
+
+def print_outcomes(outcomes: list[FileOutcome]) -> None:
+    for o in outcomes:
+        print(f"[{o.status}] {o.file_name}: {o.detail}")
+    counts = Counter(o.status for o in outcomes)
+    print(
+        f"Shrnutí: importováno {counts.get('imported', 0)}, "
+        f"přeskočeno {counts.get('skipped', 0)}, "
+        f"varování {counts.get('warning', 0)}, "
+        f"chyba {counts.get('error', 0)}"
+    )

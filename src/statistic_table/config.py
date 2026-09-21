@@ -130,3 +130,8 @@ TEAM_ALIASES = {
     "HC Příbram": "Příbram",
     "Piráti Chomutov": "Chomutov",
 }
+
+IMPORT_LOG_SHEET = "Import log"
+IMPORT_LOG_HEADER_ROW = 1
+IMPORT_LOG_DATA_START_ROW = 2
+IMPORT_LOG_HEADER = ["soubor_id", "kontrolní součet", "číslo zápisu", "datum importu", "výsledek"]

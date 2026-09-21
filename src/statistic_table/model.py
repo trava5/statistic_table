@@ -76,3 +76,14 @@ class Game:
     away_score: int
     period_scores: list[tuple[int, int]]
     ending: str | None = None  # "pp" (prodloužení), "sn" (nájezdy), nebo None
+
+
+@dataclass(frozen=True)
+class ImportLogEntry:
+    """Jeden záznam na skrytém listu Import log – evidence importovaných PDF."""
+
+    file_id: str
+    checksum: str
+    game_number: str
+    imported_at: str
+    result: str
