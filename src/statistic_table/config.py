@@ -122,3 +122,11 @@ SESTAVY_COLUMNS = {
 SEZNAM_HRACU_SHEET = "Seznam hráčů"
 SEZNAM_HRACU_HEADER_ROW = 2
 SEZNAM_HRACU_DATA_START_ROW = 3
+
+# Název soupeře, jak je uveden v PDF zápisu (Piráti Chomutov), na zkratku
+# používanou v tabulce Zápasy (Chomutov). Nový soupeř = nová položka zde,
+# nikdy se neodvozuje automaticky (různé kluby mají různé předpony).
+TEAM_ALIASES = {
+    "HC Příbram": "Příbram",
+    "Piráti Chomutov": "Chomutov",
+}
