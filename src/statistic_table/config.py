@@ -60,3 +60,65 @@ def get_credentials(config: Config):
     return service_account.Credentials.from_service_account_file(
         config.google_service_account_file, scopes=SCOPES
     )
+
+
+def col_to_index(letter: str) -> int:
+    """Převede písmeno sloupce (A, ..., Z, AA, ...) na index od 0."""
+    result = 0
+    for ch in letter:
+        result = result * 26 + (ord(ch.upper()) - ord("A") + 1)
+    return result - 1
+
+
+@dataclass(frozen=True)
+class ColumnGroup:
+    """Blok vstupních sloupců na listu, s volitelnou kontrolou záhlaví v `start`."""
+
+    name: str
+    start: str
+    end: str
+    header: str | None = None
+
+    @property
+    def capacity(self) -> int:
+        return col_to_index(self.end) - col_to_index(self.start) + 1
+
+
+def check_capacity(group: ColumnGroup, values: list, context: str) -> None:
+    if len(values) > group.capacity:
+        raise ValueError(
+            f"{context}: sloupec '{group.name}' přesahuje kapacitu {group.capacity} "
+            f"(zapisuje se {len(values)} hodnot)"
+        )
+
+
+# Písmena sloupců odpovídají stavu tabulky k 21. 9. 2026 (viz PROJECT.MD).
+ZAPASY_SHEET = "Zápasy"
+ZAPASY_HEADER_ROW = 5
+ZAPASY_DATA_START_ROW = 6
+
+ZAPASY_COLUMNS = {
+    "zaklad": ColumnGroup("zaklad", "A", "E"),  # datum, home, away, HG, AG
+    "poznamka": ColumnGroup("poznamka", "F", "F", header="pozn."),
+    "poradi_po_kole": ColumnGroup("poradi_po_kole", "I", "I", header="pořadí po kole"),
+    "branky": ColumnGroup("branky", "J", "T", header="Branky"),
+    "prihravky": ColumnGroup("prihravky", "U", "AM", header="Přihrávky"),
+    "specialni_cinnosti": ColumnGroup("specialni_cinnosti", "AR", "BA", header="přesilovky LIT"),
+    "vylouceni_jmena": ColumnGroup("vylouceni_jmena", "BC", "BN", header="Vyloučení"),
+    "vylouceni_minuty": ColumnGroup("vylouceni_minuty", "BO", "BZ", header="Minuty"),
+    "rocniky_souper": ColumnGroup("rocniky_souper", "CJ", "CO", header="2005"),
+}
+
+SESTAVY_SHEET = "Sestavy"
+SESTAVY_HEADER_ROW = 5
+SESTAVY_DATA_START_ROW = 6
+
+SESTAVY_COLUMNS = {
+    "info": ColumnGroup("info", "F", "G", header="goalies"),
+    "obranci": ColumnGroup("obranci", "H", "N", header="Defence"),
+    "utocnici": ColumnGroup("utocnici", "O", "AB", header="Attack"),
+}
+
+SEZNAM_HRACU_SHEET = "Seznam hráčů"
+SEZNAM_HRACU_HEADER_ROW = 2
+SEZNAM_HRACU_DATA_START_ROW = 3
