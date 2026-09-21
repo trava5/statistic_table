@@ -44,6 +44,29 @@ přepínačů. 89 testů zelených (+ 1 skippable integrační bez
 - Seznam hráčů už má rozlišovače rovnou v příjmení („Novotný D", „Walter
   V"), není potřeba je dopočítávat.
 
+**Ruční úpravy tabulky mimo skript (21. 9. 2026):** listy Bodování a
+Brankáři používají nativní Sheets „Tabulku" (Table), ne klasický filtr –
+proto `setBasicFilter` selže, pokud rozsah částečně protíná tabulku
+(potřeba `updateTable`, ne `setBasicFilter`).
+
+- Opraveno rozbité pravidlo ověření dat (vlastní vzorec doslova `=0`,
+  které je vždy nepravdivé bez ohledu na obsah buňky – proto hláška
+  „Neplatné" u správně načtených hodnot). Bylo na `Bodování!B2:C33`
+  a `Brankáři!C2:K5`, smazáno přes `setDataValidation` bez pravidla.
+- Bodování: sloupec „vyloučení" (COUNTIF, počet trestů) nahrazen sloupcem
+  **TM** (trestné minuty) – použit vzorec, který už dřív fakticky počítal
+  TM, jen byl schovaný pod špatným názvem „Jméno a"
+  (`SUMPRODUCT(('Zápasy'!$BC$6:$BN$500=$A{row})*('Zápasy'!$BO$6:$BZ$500))`).
+  Sloupec „Jméno a" smazán, tabulka zúžená zpět na `A1:I33`, takže
+  „Sloupec 1" a „odehrané zápasy" zůstávají mimo tabulku (mimo
+  řazení/filtr).
+- Nativní tabulka na listu Bodování/Brankáři dává řazení podle sloupce
+  přes malou ikonku v záhlaví (jiný mechanismus než klasický „Vytvořit
+  filtr", ale stejný výsledek).
+- **Otevřené:** `Bodování!C` (post) čte `'Seznam hráčů'!$G` (sloupec „Z"),
+  ne `$F` (sloupec „post") – vypadá to jako existující nesoulad v
+  původním vzorci, nesouvisí s naším skriptem, zatím neopraveno.
+
 ## Potvrzená rozhodnutí (21. 9. 2026)
 
 - Skript **pouze importuje** vstupní data, veškerá logika statistik zůstává ve vzorcích sešitu.
