@@ -1,0 +1,31 @@
+{
+  "number": "4012",
+  "date": "20.09.2026",
+  "home_name": "Piráti Chomutov",
+  "away_name": "HC Stadion Litoměřice",
+  "home_score": 4,
+  "away_score": 5,
+  "period_scores": [[2, 2], [1, 0], [1, 3]],
+  "ending": null,
+  "home_roster_count": 18,
+  "away_roster_count": 21,
+  "home_goalie": "1",
+  "away_goalie": "31",
+  "home_goals": [
+    {"time": "03:49", "scorer_number": "21", "assist1_number": "28", "assist2_number": "8", "situation": "5/4"},
+    {"time": "13:22", "scorer_number": "20", "assist1_number": "21", "assist2_number": "25", "situation": "5/5"},
+    {"time": "36:45", "scorer_number": "77", "assist1_number": "19", "assist2_number": "21", "situation": "5/4"},
+    {"time": "58:16", "scorer_number": "6", "assist1_number": "28", "assist2_number": "", "situation": "5/5"}
+  ],
+  "away_goals": [
+    {"time": "10:33", "scorer_number": "21", "assist1_number": "14", "assist2_number": "19", "situation": "5/5"},
+    {"time": "11:58", "scorer_number": "20", "assist1_number": "13", "assist2_number": "17", "situation": "5/5"},
+    {"time": "47:33", "scorer_number": "16", "assist1_number": "7", "assist2_number": "", "situation": "5/5"},
+    {"time": "48:21", "scorer_number": "14", "assist1_number": "", "assist2_number": "", "situation": "5/5"},
+    {"time": "51:27", "scorer_number": "6", "assist1_number": "12", "assist2_number": "9", "situation": "5/3"}
+  ],
+  "home_penalties_count": 7,
+  "home_penalties_minutes": 14,
+  "away_penalties_count": 9,
+  "away_penalties_minutes": 18
+}

@@ -1,0 +1,26 @@
+{
+  "number": "4002",
+  "date": "18.09.2026",
+  "home_name": "HC Stadion Litoměřice",
+  "away_name": "HC Příbram",
+  "home_score": 1,
+  "away_score": 3,
+  "period_scores": [[0, 2], [1, 0], [0, 1]],
+  "ending": null,
+  "home_roster_count": 20,
+  "away_roster_count": 20,
+  "home_goalie": "42",
+  "away_goalie": "1",
+  "home_goals": [
+    {"time": "39:58", "scorer_number": "9", "assist1_number": "6", "assist2_number": "", "situation": "5/3"}
+  ],
+  "away_goals": [
+    {"time": "00:32", "scorer_number": "25", "assist1_number": "19", "assist2_number": "73", "situation": "5/5"},
+    {"time": "01:33", "scorer_number": "23", "assist1_number": "15", "assist2_number": "27", "situation": "5/5"},
+    {"time": "40:14", "scorer_number": "19", "assist1_number": "4", "assist2_number": "", "situation": "4/5"}
+  ],
+  "home_penalties_count": 9,
+  "home_penalties_minutes": 26,
+  "away_penalties_count": 7,
+  "away_penalties_minutes": 14
+}
