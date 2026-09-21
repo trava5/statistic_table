@@ -30,6 +30,12 @@ class GamePlayer:
     is_goalkeeper: bool
     played: bool
 
+    @property
+    def birth_year(self) -> int | None:
+        if len(self.registration_number) < 4:
+            return None
+        return int(self.registration_number[-4:])
+
 
 @dataclass(frozen=True)
 class Goal:
