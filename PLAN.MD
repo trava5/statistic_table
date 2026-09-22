@@ -81,6 +81,16 @@ ověřený jen synteticky (testy s uměle sestavenou tabulkou) – žádný z
 referenčních zápasů do prodloužení nešel, chování na skutečném zápase
 s `pp`/`sn` je potřeba potvrdit, až nastane.
 
+**Skóre po třetinách promítnuto do listu Tým (22. 9. 2026, ruční úprava
+mimo skript):** protože `Zápasy!CT:CW` je text (`"0:2"`), ne číslo, přidány
+pomocné sloupce `Zápasy!CX:DE` (1.P/2.P/3.P/OT × LIT/soupeř, po řádcích
+6–100 stejně jako existující `AN`/`AO` pattern), které z textu vytáhnou
+číslo za LIT/soupeře podle toho, kdo byl `home` (`INDEX(SPLIT(CT6;":");
+IF(B6="LIT";1;2))`). List **Tým** dostal novou sekci „Skóre po třetinách"
+(A29:C34) se `SUM` přes tyto pomocné sloupce – součet přes všechny 4
+třetiny odpovídá řádku „Góly" výše (6:7), ověřeno. Skript se sloupců
+`CX:DE` ani sekce na Tým nedotýká, je to čistě vzorcová vrstva.
+
 ## Potvrzená rozhodnutí (21. 9. 2026)
 
 - Skript **pouze importuje** vstupní data, veškerá logika statistik zůstává ve vzorcích sešitu.
