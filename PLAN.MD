@@ -91,6 +91,32 @@ IF(B6="LIT";1;2))`). List **Tým** dostal novou sekci „Skóre po třetinách"
 třetiny odpovídá řádku „Góly" výše (6:7), ověřeno. Skript se sloupců
 `CX:DE` ani sekce na Tým nedotýká, je to čistě vzorcová vrstva.
 
+**Nový list Dashboard (22. 9. 2026, ruční úprava mimo skript):** první
+verze přehledového listu pro trenérský štáb, zařazený jako první tab.
+Čistě vzorcová vrstva (Python se dashboardu nedotýká, jen importuje data
+do Zápasy/Sestavy jako dřív). Obsah:
+
+- **Sezónní přehled** (A4:H5): odehráno, V/VP/PP/P (přes `COUNTIF` na
+  `Zápasy!G` – bodová hodnota 3/2/1/0 už kóduje výsledek), body, pořadí
+  v lize (`INDEX`+`COUNTA` na poslední vyplněnou hodnotu `Zápasy!I`),
+  skóre – většina odkazuje na už existující souhrny v listu **Tým**.
+- **Přesilovky/oslabení** a **Vyloučení a TM** (A8:F13): totéž, odkazy na Tým.
+- **Skóre po zápasech** (graf, řádek 15+) a **Skóre po třetinách** (graf,
+  řádek 32+, zdroj `Tým!A30:C34`).
+- **Top 5 – Bodování** (A50:F55): `SORT`+`FILTER` nad `Bodování` podle bodů.
+- **Brankáři** (A58:K62): buňka po buňce zkopírované vzorce z `Brankáři`
+  (přímé „přelití" rozsahu `='Brankáři'!A1:K5` dávalo `#VALUE!` –
+  nevysvětlené, ale rozepsání po jednotlivých buňkách funguje spolehlivě).
+- **Podkladová data pro grafy** (`N5:Z100`, skryté sloupce): jeden řádek =
+  jeden zápas (stejné řádkování jako `Zápasy`), zdroj pro grafy – datum,
+  soupeř, LIT/soupeř góly (z `Zápasy!AN`/`AO`), body, PP, vyloučení, TM.
+
+Otevřené (řešit při ladění): TOP 5 zatím řadí i hráče s 0 body (jen 2
+zápasy odehrané, běžné vyrovnání se srovná s dalšími zápasy). Trend
+přesilovek/vyloučení po zápasech zatím není jako graf, jen jako sezónní
+součet – lze doplnit stejným vzorem jako „Skóre po zápasech", pokud bude
+chtít.
+
 ## Potvrzená rozhodnutí (21. 9. 2026)
 
 - Skript **pouze importuje** vstupní data, veškerá logika statistik zůstává ve vzorcích sešitu.
