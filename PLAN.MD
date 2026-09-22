@@ -117,6 +117,23 @@ přesilovek/vyloučení po zápasech zatím není jako graf, jen jako sezónní
 součet – lze doplnit stejným vzorem jako „Skóre po zápasech", pokud bude
 chtít.
 
+**Oprava grafu „Skóre po zápasech" + nový graf „Pořadí v tabulce"
+(22. 9. 2026):** graf po vytvoření nešel vidět, protože zdrojová data
+(sloupce `N:Z`) jsou schválně skrytá a graf měl výchozí
+`hiddenDimensionStrategy: SKIP_HIDDEN_ROWS_AND_COLUMNS` – při uložení
+s touto strategií a plně skrytým zdrojem Sheets potichu zahodil i
+`series`/druhou osu ze specifikace (ne jen graficky nezobrazil). Oprava:
+`updateChartSpec` s `hiddenDimensionStrategy: SHOW_ALL` a znovu kompletní
+`series`+`axis`. **Při přidávání dalšího grafu se skrytým zdrojem dat
+vždy nastavit `SHOW_ALL` rovnou při vytváření, ne až dodatečně.**
+
+Nový graf „Pořadí v tabulce" vedle „Skóre po zápasech": osa X = číslo
+zápasu v sezóně (`Dashboard!AA`, `COUNTA` přes odehrané zápasy), osa Y =
+`Zápasy!I` (pořadí po kole), rozsah osy 1–8. Osa Y NENÍ obrácená (1 dole,
+8 nahoře je matematicky přirozené pořadí grafu) – Sheets API nemá pro
+`BasicChartAxis` přímou možnost obrácení přes API; v UI editoru grafu jde
+zaškrtnout „Obrátit pořadí osy", pokud bude chtít mít 1. místo nahoře.
+
 ## Potvrzená rozhodnutí (21. 9. 2026)
 
 - Skript **pouze importuje** vstupní data, veškerá logika statistik zůstává ve vzorcích sešitu.
