@@ -129,11 +129,22 @@ vždy nastavit `SHOW_ALL` rovnou při vytváření, ne až dodatečně.**
 
 Nový graf „Pořadí v tabulce" vedle „Skóre po zápasech": osa X = číslo
 zápasu v sezóně (`Dashboard!AA`, `COUNTA` přes odehrané zápasy), osa Y =
-`Zápasy!I` (pořadí po kole). Osa Y je obrácená (1. místo nahoře, 8. dole)
-– oprava předchozího odhadu: přes API `updateChartSpec` **jde** nastavit
-`viewWindowOptions.viewWindowMin` > `viewWindowMax` (zkusmo `min:8,
-max:1`), Sheets to uloží beze změny pořadí a interpretuje jako obrácenou
-osu (stejný mechanismus jako UI zaškrtávátko „Obrátit pořadí osy").
+`Zápasy!I` (pořadí po kole). **Osa Y NENÍ obrácená** (1 dole, 8 nahoře) –
+dva pokusy o obrácení přes API se nepovedly:
+1. `viewWindowOptions.viewWindowMin` > `viewWindowMax` (`min:8,max:1`) –
+   API to přijme a uloží beze změny, ale při vykreslení se to nijak
+   neprojeví (ověřeno vizuálně uživatelem, ne jen podle uložené hodnoty).
+2. Vykreslit obrácenou pomocnou hodnotu (`9 - pořadí`) a přes
+   `series.dataLabel.type=CUSTOM` + `customLabelData` zobrazit skutečné
+   pořadí jako popisek bodu – `updateChartSpec` na tuhle kombinaci
+   konzistentně (opakovaně) padá na `500 Internal error`. `dataLabel.
+   type=DATA` (popisek = vykreslovaná hodnota, žádný jiný zdroj) funguje
+   bez problémů.
+
+Graf teď vykresluje skutečné pořadí přímo (bez obrácení), s popiskem
+hodnoty u každého bodu (`dataLabel.type=DATA`). Obrácení osy jde jen přes
+UI editor grafu (zaškrtávátko „Obrátit pořadí osy" v Přizpůsobit → Svislá
+osa) – přes API se to spolehlivě udělat nepodařilo.
 
 ## Potvrzená rozhodnutí (21. 9. 2026)
 
