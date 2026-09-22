@@ -129,10 +129,11 @@ vždy nastavit `SHOW_ALL` rovnou při vytváření, ne až dodatečně.**
 
 Nový graf „Pořadí v tabulce" vedle „Skóre po zápasech": osa X = číslo
 zápasu v sezóně (`Dashboard!AA`, `COUNTA` přes odehrané zápasy), osa Y =
-`Zápasy!I` (pořadí po kole), rozsah osy 1–8. Osa Y NENÍ obrácená (1 dole,
-8 nahoře je matematicky přirozené pořadí grafu) – Sheets API nemá pro
-`BasicChartAxis` přímou možnost obrácení přes API; v UI editoru grafu jde
-zaškrtnout „Obrátit pořadí osy", pokud bude chtít mít 1. místo nahoře.
+`Zápasy!I` (pořadí po kole). Osa Y je obrácená (1. místo nahoře, 8. dole)
+– oprava předchozího odhadu: přes API `updateChartSpec` **jde** nastavit
+`viewWindowOptions.viewWindowMin` > `viewWindowMax` (zkusmo `min:8,
+max:1`), Sheets to uloží beze změny pořadí a interpretuje jako obrácenou
+osu (stejný mechanismus jako UI zaškrtávátko „Obrátit pořadí osy").
 
 ## Potvrzená rozhodnutí (21. 9. 2026)
 
