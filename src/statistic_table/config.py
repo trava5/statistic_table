@@ -107,6 +107,9 @@ ZAPASY_COLUMNS = {
     "vylouceni_jmena": ColumnGroup("vylouceni_jmena", "BC", "BN", header="Vyloučení"),
     "vylouceni_minuty": ColumnGroup("vylouceni_minuty", "BO", "BZ", header="Minuty"),
     "rocniky_souper": ColumnGroup("rocniky_souper", "CJ", "CO", header="2005"),
+    # Skóre po třetinách (home:away) + prodloužení; přidáno 22. 9. 2026 na konec
+    # tabulky (za CS), aby se neposunuly žádné stávající sloupce.
+    "skore_treti": ColumnGroup("skore_treti", "CT", "CW", header="1.P"),
 }
 
 SESTAVY_SHEET = "Sestavy"

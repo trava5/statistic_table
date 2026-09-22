@@ -67,6 +67,20 @@ proto `setBasicFilter` selže, pokud rozsah částečně protíná tabulku
   ne `$F` (sloupec „post") – vypadá to jako existující nesoulad v
   původním vzorci, nesouvisí s naším skriptem, zatím neopraveno.
 
+**Skóre po třetinách (22. 9. 2026):** doplněny sloupce `Zápasy!CT:CW`
+(`1.P`, `2.P`, `3.P`, `OT`) – přidáno na konec tabulky (za `CS`), aby se
+neposunuly žádné stávající sloupce (uživatel to vybral místo umístění
+hned za HG/AG, které by vyžadovalo přepsat písmena všech následujících
+sloupců). Mřížka listu Zápasy měla limit přesně 97 sloupců (= `CS`), takže
+bylo nejdřív potřeba rozšířit `gridProperties.columnCount` přes API, než
+šlo do nových sloupců zapisovat. Data (`Game.period_scores`, nově i
+`Game.ot_score`) se v PDF četla už od Kroku 2, jen se nezapisovala – parser
+uměl skóre po třetinách odjakživa. Formát `home:away`, stejná konvence
+jako `HG`/`AG` (ne LIT-relativní jako `AR:BA`). `OT` sloupec je zatím
+ověřený jen synteticky (testy s uměle sestavenou tabulkou) – žádný z
+referenčních zápasů do prodloužení nešel, chování na skutečném zápase
+s `pp`/`sn` je potřeba potvrdit, až nastane.
+
 ## Potvrzená rozhodnutí (21. 9. 2026)
 
 - Skript **pouze importuje** vstupní data, veškerá logika statistik zůstává ve vzorcích sešitu.

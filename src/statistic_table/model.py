@@ -76,6 +76,7 @@ class Game:
     away_score: int
     period_scores: list[tuple[int, int]]
     ending: str | None = None  # "pp" (prodloužení), "sn" (nájezdy), nebo None
+    ot_score: tuple[int, int] | None = None  # skóre v prodloužení (řádek "P" v souhrnu)
 
 
 @dataclass(frozen=True)

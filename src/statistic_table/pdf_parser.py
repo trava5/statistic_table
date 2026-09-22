@@ -150,6 +150,7 @@ def _parse_summary(table: list[list]) -> dict:
     )
 
     period_scores: list[tuple[int, int]] = []
+    ot_score: tuple[int, int] | None = None
     ending: str | None = None
     home_goalie = away_goalie = None
     home_score = away_score = None
@@ -161,6 +162,8 @@ def _parse_summary(table: list[list]) -> dict:
             period_scores.append((int(h), int(a)))
         elif label == "P" and row[goal_col]:
             ending = "pp"
+            h, a = row[goal_col].split(":")
+            ot_score = (int(h), int(a))
         elif label == "SN" and row[goal_col]:
             ending = "sn"
         elif label == "CELKEM" and row[goal_col]:
@@ -176,6 +179,7 @@ def _parse_summary(table: list[list]) -> dict:
 
     return {
         "period_scores": period_scores,
+        "ot_score": ot_score,
         "ending": ending,
         "home_goalie": home_goalie,
         "away_goalie": away_goalie,
@@ -214,4 +218,5 @@ def parse_game(path: str | Path) -> Game:
         away_score=summary["away_score"],
         period_scores=summary["period_scores"],
         ending=summary["ending"],
+        ot_score=summary["ot_score"],
     )

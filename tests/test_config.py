@@ -12,7 +12,7 @@ from statistic_table.config import (
 @pytest.mark.parametrize(
     ("letter", "index"),
     [("A", 0), ("F", 5), ("I", 8), ("J", 9), ("T", 19), ("U", 20), ("AM", 38), ("AR", 43),
-     ("BA", 52), ("BC", 54), ("BN", 65), ("CJ", 87), ("CO", 92)],
+     ("BA", 52), ("BC", 54), ("BN", 65), ("CJ", 87), ("CO", 92), ("CT", 97), ("CW", 100)],
 )
 def test_col_to_index(letter, index):
     assert col_to_index(letter) == index
@@ -25,6 +25,7 @@ def test_col_to_index(letter, index):
         ("prihravky", 19),
         ("vylouceni_jmena", 12),
         ("vylouceni_minuty", 12),
+        ("skore_treti", 4),
     ],
 )
 def test_zapasy_capacities(name, expected_capacity):

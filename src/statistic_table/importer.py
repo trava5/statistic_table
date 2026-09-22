@@ -83,6 +83,16 @@ def _lineup_names(lit: TeamSheet, club_roster: list[RosterPlayer], position: str
     return [lineup[p].last_name for p in lit.roster if p in lineup and p.position == position]
 
 
+def _score_str(score: tuple[int, int] | None) -> str:
+    return f"{score[0]}:{score[1]}" if score is not None else ""
+
+
+def _period_score_cells(game: Game) -> list[str]:
+    """1.P, 2.P, 3.P, OT jako 'home:away' (stejná konvence jako HG/AG)."""
+    periods = list(game.period_scores) + [None] * (3 - len(game.period_scores))
+    return [_score_str(p) for p in periods[:3]] + [_score_str(game.ot_score)]
+
+
 def build_import(
     game: Game,
     config: Config,
@@ -155,6 +165,7 @@ def build_import(
             [str(m) for m in penalty_minutes], ZAPASY_COLUMNS["vylouceni_minuty"], context
         ),
         f"{ZAPASY_SHEET}!CJ{row}:CO{row}": [str(c) for c in birth_year_counts],
+        f"{ZAPASY_SHEET}!CT{row}:CW{row}": _period_score_cells(game),
         f"{SESTAVY_SHEET}!F{row}:G{row}": [
             str(sum(1 for p in lit.roster if p.is_goalkeeper)),
             number_to_name.get(lit.goalie_number or "", ""),

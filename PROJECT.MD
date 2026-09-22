@@ -44,6 +44,7 @@ Písmena sloupců odpovídají stavu k 21. 9. 2026 (po vložení sloupce „poř
 | BC:BN | příjmení vyloučených hráčů LIT |
 | BO:BZ | trestné minuty těchto hráčů (stejné pořadí) |
 | CJ:CO | počty hráčů soupeře podle ročníku 2005–2010 |
+| CT:CW | skóre po třetinách a v prodloužení: `1.P`, `2.P`, `3.P`, `OT` (tvar `home:away`, stejná konvence jako HG/AG; `OT` prázdné mimo zápasy s prodloužením). Přidáno 22. 9. 2026 na konec tabulky (za CS), aby se neposunuly ostatní sloupce. |
 
 **Sestavy** (stejné řádky jako Zápasy): F = počet brankářů v soupisce, G = brankář, který skutečně chytal, H:N obránci, O:AB útočníci (příjmení).
 

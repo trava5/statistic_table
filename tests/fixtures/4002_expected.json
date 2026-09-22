@@ -7,6 +7,7 @@
   "away_score": 3,
   "period_scores": [[0, 2], [1, 0], [0, 1]],
   "ending": null,
+  "ot_score": null,
   "home_roster_count": 20,
   "away_roster_count": 20,
   "home_goalie": "42",

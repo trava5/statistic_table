@@ -4,8 +4,14 @@ from pathlib import Path
 import pytest
 
 from statistic_table.config import Config
-from statistic_table.importer import _classify, _date_sort_key, build_import, file_checksum
-from statistic_table.model import ImportLogEntry, RosterPlayer
+from statistic_table.importer import (
+    _classify,
+    _date_sort_key,
+    _period_score_cells,
+    build_import,
+    file_checksum,
+)
+from statistic_table.model import Game, ImportLogEntry, RosterPlayer, TeamSheet
 from statistic_table.pdf_parser import parse_game
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -27,6 +33,7 @@ EXPECTED_4002 = {
     ],
     "Zápasy!BO6:BZ6": ["2", "2", "2", "2", "2", "2", "2", "10", "2", "", "", ""],
     "Zápasy!CJ6:CO6": ["0", "1", "13", "5", "0", "0"],
+    "Zápasy!CT6:CW6": ["0:2", "1:0", "0:1", ""],
     "Sestavy!F6:G6": ["2", "Weber"],
 }
 
@@ -45,6 +52,7 @@ EXPECTED_4012 = {
     ],
     "Zápasy!BO7:BZ7": ["2", "2", "2", "2", "2", "2", "2", "2", "2", "", "", ""],
     "Zápasy!CJ7:CO7": ["0", "2", "4", "11", "0", "0"],
+    "Zápasy!CT7:CW7": ["2:2", "1:0", "1:3", ""],
     "Sestavy!F7:G7": ["2", "Krátký"],
 }
 
@@ -165,3 +173,32 @@ def test_classify_same_game_number_different_file_is_error():
     assert status == "error"
     assert "duplicitní" in detail
     assert "file1" in detail
+
+
+# --- _period_score_cells (1.P/2.P/3.P/OT) -----------------------------------
+
+
+def _empty_team(name: str = "X") -> TeamSheet:
+    return TeamSheet(name=name, roster=[], goals=[], penalties=[])
+
+
+def _game(period_scores, ot_score=None) -> Game:
+    return Game(
+        number="1", date="1.1.2026", home=_empty_team(), away=_empty_team(),
+        home_score=0, away_score=0, period_scores=period_scores, ot_score=ot_score,
+    )
+
+
+def test_period_score_cells_regulation_game_has_empty_ot():
+    cells = _period_score_cells(_game([(0, 2), (1, 0), (0, 1)]))
+    assert cells == ["0:2", "1:0", "0:1", ""]
+
+
+def test_period_score_cells_overtime_game():
+    cells = _period_score_cells(_game([(1, 0), (0, 0), (0, 0)], ot_score=(1, 0)))
+    assert cells == ["1:0", "0:0", "0:0", "1:0"]
+
+
+def test_period_score_cells_pads_missing_periods():
+    cells = _period_score_cells(_game([(1, 0)]))
+    assert cells == ["1:0", "", "", ""]
