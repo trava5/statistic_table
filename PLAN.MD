@@ -146,6 +146,75 @@ hodnoty u každého bodu (`dataLabel.type=DATA`). Obrácení osy jde jen přes
 UI editor grafu (zaškrtávátko „Obrátit pořadí osy" v Přizpůsobit → Svislá
 osa) – přes API se to spolehlivě udělat nepodařilo.
 
+## Liga: statistiky všech týmů (22.–24. 9. 2026)
+
+Nová větev vedle PDF importu LIT výše – statistiky **všech** týmů Ligy
+juniorů, scrapované z ceskyhokej.cz do samostatné Google Tabulky
+(`LEAGUE_SPREADSHEET_ID`, ne „Seznamy“). Princip a datový kontrakt jsou
+zdokumentované v PROJECT.MD, sekce „Statistiky všech týmů ligy“ a „Co je
+(záměrně) v Pythonu, co ve vzorcích“ – tady jen průběžný stav a co dál.
+
+**Hotovo a ověřeno proti živým datům (16 týmů, 2 odehraná kola):**
+- `league_scraper.py` – seznam zápasů (stránkování, číslo kola z nadpisu
+  „N. kolo“) a detail zápasu (soupisky, góly s HS, tresty, skóre po
+  třetinách, prodloužení) z `/game/detail/<id>`, bez JS/API.
+- `league_model.py` + `league_stats.py` – přesilovky/oslabení (stejný
+  algoritmus koincidenčních trestů jako `stats.py` pro LIT), výsledek/body
+  za zápas z pohledu libovolného týmu (`Zápasy - liga (tým)`).
+- `league_sheets.py` + `cli.py` (`league sync-games`, `league sync-teams`)
+  – zápis syrových dat a přepočet pořadí po kole
+  (`recompute_standings_history`: dopočet z vlastních výsledků + scrapnuté
+  členství ve skupině, protože web historii tabulky nezveřejňuje).
+- `scripts/build_league_team_template.py` – list „Tým – šablona“ (Sezónní
+  přehled, Přesilovky/oslabení, Vyloučení a TM, 3 grafy, dole vedle sebe
+  Odehrané zápasy/Bodování/Brankáři), klonovaný pro každý tým.
+- `scripts/build_league_aggregate_sheets.py` (24. 9.) – `Bruslaři - liga` /
+  `Brankáři - liga` jsou teď **vzorec** (`QUERY group by` nad syrovým
+  logem `*-liga (zápasy)`), Python do nich už nezapisuje.
+- Kontrola proti realitě: Kamil Drábek (Olomouc) 2Z/2G/3A/5B, LIT pořadí
+  kolo 1→8. místo, kolo 2→4. místo (shoda s ručním scrapem stránky Ligy).
+
+**Poznatky/pasti (Sheets API), užitečné při dalším ladění:**
+- `addChart` s víc sériemi nespolehlivě zahazuje druhou a další sérii bez
+  chybové hlášky – řešení: po vytvoření ověřit počet sérií, při neshodě
+  graf smazat a založit znovu (`create_chart_robust`).
+- `valueInputOption=USER_ENTERED` bere text začínající na `+-=@` jako
+  vzorec (hlavička „+/-“ končila jako `#ERROR!`) – řešeno vodicím
+  apostrofem (`league_sheets._protect`).
+- `values().clear()` maže obsah, ne formát buněk – nový sloupec může
+  zdědit starý formát (např. čas `mm:ss` u sloupce, co teď nese číslo).
+- Zbytkový Google Sheets „Table“ objekt na listu tiše přebíjí vzorec
+  vlastními hlavičkami „Sloupec N“ – nutné `deleteTable`, než jde na ten
+  rozsah znovu psát vzorec.
+- `QUERY` s `group by` nebo `headers:1` si vždy vygeneruje vlastní
+  záhlavní řádek (nejde potlačit) – vzorec ať začíná rovnou na řádku
+  záhlaví, ne vedle ručně psaného.
+
+**Rozhodnuto s uživatelem (24. 9., revize architektury „skript importuje,
+tabulka počítá“):**
+1. ✅ Sezónní bodování/brankářské statistiky → vzorec (hotovo, viz výše).
+2. Přesilovky/výsledek za zápas a pořadí po kole zůstávají v Pythonu
+   (zdůvodnění viz PROJECT.MD – composite pravidla, těžko čitelná jako
+   vzorec, testovaná v Pythonu).
+3. **Další krok – zatím jen navrženo, neimplementováno:** samostatný
+   Google Sheet jako „databázová“ vrstva – jediný zdroj pravdy, do kterého
+   Python importuje, a ze kterého si vzorcové/prezentační tabulky (Seznamy
+   i Liga, časem i další analytické nástroje) berou data přes
+   `IMPORTRANGE`. K rozmyšlení až se na to dojde:
+   - jaké tabulky/listy do DB sheetu patří a v jakém tvaru (syrová fakta
+     vs. co zůstane odvozené v Pythonu podle bodu 2 výše),
+   - jak/jestli zapojit LIT/Seznamy (Seznamy je produkční nástroj – návrh
+     byl pilotovat nejdřív jen na Lize, Seznamy až osvědčí-li se to),
+   - `IMPORTRANGE` omezení: jednorázová ruční autorizace přístupu mezi
+     tabulkami (nejde přes API), doporučeno v cílové tabulce mít jeden
+     „import“ list s `IMPORTRANGE` a ostatní vzorce ať čtou z něj, ne
+     opakovaně `IMPORTRANGE` přímo z mnoha míst.
+4. Až bude tvar DB sheetu domluvený: napsat plnicí skript, pak přepojit
+   listy v Lize (a případně Seznamech), aby data brala odtud.
+
+**Kam příště navázat:** bod 3 výše – návrh tvaru DB sheetu (jaké listy,
+jaký tvar dat, co se odkud čte), než se začne cokoliv psát.
+
 ## Potvrzená rozhodnutí (21. 9. 2026)
 
 - Skript **pouze importuje** vstupní data, veškerá logika statistik zůstává ve vzorcích sešitu.
