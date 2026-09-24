@@ -30,6 +30,7 @@ class Config:
     team_name_in_pdf: str
     team_short: str
     season_start_year: int
+    league_spreadsheet_id: str | None = None
 
 
 def load_config(env_file: str | Path = ".env") -> Config:
@@ -47,7 +48,14 @@ def load_config(env_file: str | Path = ".env") -> Config:
         team_name_in_pdf=os.environ["TEAM_NAME_IN_PDF"],
         team_short=os.environ["TEAM_SHORT"],
         season_start_year=int(os.environ["SEASON_START_YEAR"]),
+        league_spreadsheet_id=os.getenv("LEAGUE_SPREADSHEET_ID"),
     )
+
+
+def require_league_spreadsheet_id(config: Config) -> str:
+    if not config.league_spreadsheet_id:
+        raise RuntimeError("Chybí LEAGUE_SPREADSHEET_ID v .env (viz README, sekce Liga)")
+    return config.league_spreadsheet_id
 
 
 def get_credentials(config: Config):
@@ -141,3 +149,63 @@ IMPORT_LOG_HEADER = ["soubor_id", "kontrolní součet", "číslo zápisu", "datu
 
 STANDINGS_URL = "https://ceskyhokej.cz/souteze-juniori/liga-junioru"
 PORADI_PO_KOLE_COLUMN = "I"
+
+# Liga juniorů 2026/27, id soutěže z URL https://ceskyhokej.cz/competition/games/19
+LEAGUE_COMPETITION_ID = "19"
+
+# Listy v samostatné tabulce LEAGUE_SPREADSHEET_ID (syrová data, skript je zapisuje,
+# nikdo je needituje ručně – stejná filozofie jako vstupní buňky v tabulce Seznamy).
+LEAGUE_ZAPASY_SHEET = "Zápasy - liga"
+LEAGUE_ZAPASY_TYM_SHEET = "Zápasy - liga (tým)"
+LEAGUE_GOLY_SHEET = "Góly - liga"
+LEAGUE_VYLOUCENI_SHEET = "Vyloučení - liga"
+LEAGUE_PORADI_SHEET = "Pořadí - liga"
+
+# Syrový log (skript sem jen přidává řádky, jeden řádek = jeden hráč v jednom
+# zápase) – zdroj dat pro vzorce sezónních součtů níže.
+LEAGUE_SKATERS_LOG_SHEET = "Bruslaři - liga (zápasy)"
+LEAGUE_GOALIES_LOG_SHEET = "Brankáři - liga (zápasy)"
+
+# Sezónní bodování/brankářské statistiky celé ligy – jeden řádek na hráče.
+# Toto NEJSOU listy zapisované Pythonem – jsou to vzorce (QUERY group by nad
+# *_LOG_SHEET výše), jednorázově postavené scripts/build_league_aggregate_sheets.py.
+# Python do nich nikdy nezapisuje, jen čte (per-tým šablona je filtruje).
+LEAGUE_SKATERS_SHEET = "Bruslaři - liga"
+LEAGUE_GOALIES_SHEET = "Brankáři - liga"
+
+# Šablona per-tým prezentačního listu (vzorce QUERY/FILTER, skript ji jen kopíruje).
+LEAGUE_TEAM_TEMPLATE_SHEET = "Tým – šablona"
+LEAGUE_TEAM_NAME_CELL = "B1"
+
+LEAGUE_ZAPASY_HEADER = [
+    "game_id", "číslo utkání", "datum", "domácí", "hosté",
+    "skóre domácí", "skóre hosté", "1.P", "2.P", "3.P", "OT", "pozn.", "diváci", "rozhodčí",
+    "kolo",
+]
+LEAGUE_ZAPASY_TYM_HEADER = [
+    "game_id", "tým", "soupeř", "datum", "doma/venku", "skóre tým", "skóre soupeř",
+    "výsledek", "body", "1.P", "2.P", "3.P",
+    "přesilovky", "góly v přesilovce", "oslabení", "obdržené góly v oslabení",
+    "góly v oslabení (vstřelené)", "vyloučení", "trestné minuty", "kolo",
+]
+LEAGUE_GOLY_HEADER = [
+    "game_id", "tým", "třetina", "čas", "střelec", "asistence 1", "asistence 2", "situace",
+]
+LEAGUE_VYLOUCENI_HEADER = ["game_id", "tým", "třetina", "čas", "hráč", "minuty", "důvod"]
+
+LEAGUE_SKATERS_LOG_HEADER = [
+    "game_id", "tým", "číslo", "hráč", "post", "G", "A", "B", "TM", "+/-",
+]
+LEAGUE_GOALIES_LOG_HEADER = [
+    "game_id", "tým", "číslo", "hráč", "TOI", "zákroky", "obdržené góly", "%Z", "G", "A", "TM",
+    "výsledek týmu",
+]
+
+# Sezónní součty (jeden řádek na hráče) – viz LEAGUE_SKATERS_SHEET výše.
+LEAGUE_SKATERS_HEADER = ["tým", "číslo", "hráč", "post", "Z", "G", "A", "B", "TM", "+/-"]
+LEAGUE_GOALIES_HEADER = [
+    "tým", "číslo", "hráč", "Z", "obdržené góly", "obdržené góly/zápas",
+    "G", "A", "TM", "výhry", "shutouty",
+]
+
+LEAGUE_PORADI_HEADER = ["kolo", "datum", "tým", "pořadí"]

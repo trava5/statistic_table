@@ -57,11 +57,29 @@ def menu_standings() -> None:
     _run(["standings"])
 
 
+def menu_league_sync_games() -> None:
+    if _confirm("Nejdřív jen dry-run?", default_yes=True):
+        _run(["league", "sync-games", "--dry-run"])
+        if not _confirm("Pokračovat k zápisu?", default_yes=False):
+            return
+    _run(["league", "sync-games"])
+
+
+def menu_league_sync_teams() -> None:
+    if _confirm("Nejdřív jen dry-run?", default_yes=True):
+        _run(["league", "sync-teams", "--dry-run"])
+        if not _confirm("Pokračovat k zápisu?", default_yes=False):
+            return
+    _run(["league", "sync-teams"])
+
+
 MENU: dict[str, tuple[str, Callable[[], None] | None]] = {
     "1": ("Ověřit přístup k Disku a Tabulce", menu_check),
     "2": ("Naimportovat jeden lokální PDF", menu_import_single),
     "3": ("Naimportovat celou složku Zápisy", menu_import_folder),
     "4": ("Zjistit a zapsat pořadí po kole", menu_standings),
+    "5": ("Liga: stáhnout nové odehrané zápasy všech týmů", menu_league_sync_games),
+    "6": ("Liga: založit listy pro nové týmy", menu_league_sync_teams),
     "0": ("Konec", None),
 }
 

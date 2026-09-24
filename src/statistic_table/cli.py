@@ -3,7 +3,13 @@ from __future__ import annotations
 import argparse
 import sys
 
-from statistic_table.config import ZAPASY_DATA_START_ROW, ZAPASY_SHEET, load_config
+from statistic_table.config import (
+    LEAGUE_COMPETITION_ID,
+    ZAPASY_DATA_START_ROW,
+    ZAPASY_SHEET,
+    load_config,
+    require_league_spreadsheet_id,
+)
 from statistic_table.drive import list_pdf_files
 from statistic_table.importer import (
     IMPORT_ERRORS,
@@ -11,6 +17,22 @@ from statistic_table.importer import (
     import_pdf,
     print_outcomes,
     print_plan,
+)
+from statistic_table.league_scraper import (
+    fetch_game_detail_html,
+    fetch_games_list_html,
+    has_next_page,
+    parse_game_detail,
+    parse_played_games,
+)
+from statistic_table.league_sheets import (
+    append_game,
+    ensure_league_sheets,
+    ensure_team_sheet,
+    read_known_game_ids,
+    read_known_teams,
+    recompute_standings_history,
+    team_sheet_title,
 )
 from statistic_table.logging_config import setup_logging
 from statistic_table.sheets import check_headers, read_checks, read_player_registry, read_range
@@ -138,6 +160,80 @@ def cmd_standings(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_league_sync_games(args: argparse.Namespace) -> int:
+    config = load_config()
+    spreadsheet_id = require_league_spreadsheet_id(config)
+
+    if not args.dry_run:
+        ensure_league_sheets(config, spreadsheet_id)
+    try:
+        known_ids = read_known_game_ids(config, spreadsheet_id)
+    except Exception:  # noqa: BLE001 – list ještě nemusí existovat (první běh, --dry-run)
+        known_ids = set()
+
+    played_games: list[tuple[int, int]] = []  # (kolo, game_id)
+    page = 1
+    while True:
+        try:
+            html = fetch_games_list_html(LEAGUE_COMPETITION_ID, page=page)
+        except Exception as exc:  # noqa: BLE001
+            print(f"Seznam zápasů se nepodařilo stáhnout (stránka {page}): {exc}")
+            return 1
+        played_games.extend(parse_played_games(html))
+        if not has_next_page(html):
+            break
+        page += 1
+
+    played_games = list(dict.fromkeys(played_games))
+    new_games = [(kolo, gid) for kolo, gid in played_games if gid not in known_ids]
+    print(f"Odehraných zápasů na webu: {len(played_games)}, nových k zápisu: {len(new_games)}")
+
+    for round_number, game_id in new_games:
+        try:
+            detail_html = fetch_game_detail_html(game_id)
+            game, goals, penalties, skaters, goalies = parse_game_detail(
+                detail_html, game_id, round_number
+            )
+        except Exception as exc:  # noqa: BLE001 – jeden vadný zápas nesmí zastavit zbytek
+            print(f"  zápas {game_id}: chyba při zpracování – {exc}")
+            continue
+        print(
+            f"  kolo {round_number}: {game.date}  {game.home_team} "
+            f"{game.home_score}:{game.away_score} {game.away_team}  "
+            f"(#{game.game_number}, id {game_id})"
+        )
+        if not args.dry_run:
+            append_game(config, spreadsheet_id, game, goals, penalties, skaters, goalies)
+
+    if new_games and not args.dry_run:
+        # Sezónní bodování a brankářské statistiky se dopočítají samy vzorcem
+        # (viz Bruslaři/Brankáři - liga, postavené scripts/build_league_aggregate_sheets.py).
+        recompute_standings_history(config, spreadsheet_id)
+        print("Pořadí po kolech přepočítáno.")
+
+    if args.dry_run:
+        print("(--dry-run: nic se nezapsalo)")
+    return 0
+
+
+def cmd_league_sync_teams(args: argparse.Namespace) -> int:
+    config = load_config()
+    spreadsheet_id = require_league_spreadsheet_id(config)
+
+    teams = read_known_teams(config, spreadsheet_id)
+    print(f"Týmů v syrových datech: {len(teams)}")
+
+    for team in sorted(teams):
+        needs_sheet = ensure_team_sheet(config, spreadsheet_id, team, dry_run=args.dry_run)
+        if needs_sheet:
+            action = "chybí list" if args.dry_run else "založen list"
+            print(f"  {team}: {action} '{team_sheet_title(team)}'")
+
+    if args.dry_run:
+        print("(--dry-run: nic se nezapsalo)")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="statistic_table")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -170,6 +266,27 @@ def build_parser() -> argparse.ArgumentParser:
         "-y", "--yes", action="store_true", help="Nezobrazovat potvrzovací dotaz"
     )
     standings_cmd.set_defaults(func=cmd_standings)
+
+    league_cmd = subparsers.add_parser(
+        "league", help="Statistiky všech týmů Ligy juniorů (samostatná tabulka)"
+    )
+    league_sub = league_cmd.add_subparsers(dest="league_command", required=True)
+
+    sync_games_cmd = league_sub.add_parser(
+        "sync-games", help="Stáhne nové odehrané zápasy celé ligy a zapíše je do syrových listů"
+    )
+    sync_games_cmd.add_argument(
+        "--dry-run", action="store_true", help="Jen vypsat, co by se zapsalo"
+    )
+    sync_games_cmd.set_defaults(func=cmd_league_sync_games)
+
+    sync_teams_cmd = league_sub.add_parser(
+        "sync-teams", help="Založí list pro každý tým nalezený v syrových datech"
+    )
+    sync_teams_cmd.add_argument(
+        "--dry-run", action="store_true", help="Jen vypsat, které listy chybí"
+    )
+    sync_teams_cmd.set_defaults(func=cmd_league_sync_teams)
 
     return parser
 

@@ -27,6 +27,7 @@ class TeamStanding:
     goals_for: int
     goals_against: int
     points: int
+    group: int = 0  # pořadí tabulky (skupiny) na stránce, 1 = první, 2 = druhá…
 
 
 @dataclass(frozen=True)
@@ -54,7 +55,7 @@ def parse_standings(html: str) -> list[TeamStanding]:
     """Čistá funkce: rozparsuje tabulky pořadí (obě skupiny) ze stránky."""
     soup = BeautifulSoup(html, "html.parser")
     standings = []
-    for table in soup.select("table.table-count"):
+    for group_index, table in enumerate(soup.select("table.table-count"), start=1):
         for row in table.select("tbody tr"):
             cells = row.find_all("td")
             if len(cells) < 9:
@@ -80,6 +81,7 @@ def parse_standings(html: str) -> list[TeamStanding]:
                     goals_for=goals_for,
                     goals_against=goals_against,
                     points=points,
+                    group=group_index,
                 )
             )
     return standings

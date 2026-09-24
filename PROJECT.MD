@@ -102,6 +102,60 @@ Tyto dva zápasy (PDF + očekávané hodnoty) jsou základ regresních testů: i
 - Kotman a Nádemlenjský nemají číslo registrace (nelze párovat přes registraci).
 - Ročníky 2005–2010 jsou v tabulce pevně dané, pro novou sezónu se musí rozšířit.
 
+## Statistiky všech týmů ligy
+
+Kromě evidence LIT z PDF (výše) umí skript (`cli league sync-games` /
+`sync-teams`) stáhnout statistiky **všech** týmů Ligy juniorů přímo ze
+stránek jednotlivých zápasů na `ceskyhokej.cz` (`/game/detail/<id>`) – ty
+jsou server-renderované a obsahují pro oba týmy kompletní zápis o utkání
+(soupisky, střelce, asistence s časem a herní situací, vyloučení s
+minutáží a druhem trestu, skóre po třetinách). Data jdou do **samostatné**
+Google Tabulky (`LEAGUE_SPREADSHEET_ID`), ne do „Seznamy“, ve stejném duchu
+jako zbytek projektu: skript zapisuje jen syrová data. Listy `Zápasy - liga`,
+`Zápasy - liga (tým)`, `Góly - liga`, `Vyloučení - liga` jsou normalizované
+(jeden řádek = jedna událost). Bodování a brankářské statistiky mají navíc
+dvě vrstvy: syrový log `Bruslaři/Brankáři - liga (zápasy)` (jeden řádek =
+jeden hráč v jednom zápase, skript do něj jen přidává) a **sezónní součty**
+`Bruslaři - liga` / `Brankáři - liga` (jeden řádek na hráče za celou
+sezónu) – to už ale Python nezapisuje, je to `QUERY` vzorec nad logem,
+jednorázově postavený `scripts/build_league_aggregate_sheets.py` (viz níže
+„Co je (záměrně) v Pythonu, co ve vzorcích“). Prezentaci a součty za tým
+dělá list „Tým – šablona“ vzorci `QUERY`/`SUMIF` nad sezónními součty
+(Sezónní přehled,
+Přesilovky/oslabení, Vyloučení a TM, grafy, a dole vedle sebe Odehrané
+zápasy/Bodování s kompletní soupiskou/Brankáři), naklonovaný skriptem pro
+každý tým zvlášť (`league sync-teams`). Šablonu samotnou staví jednorázově
+`scripts/build_league_team_template.py`. Použití viz README, sekce „Liga:
+statistiky všech týmů“; moduly: `league_model.py`, `league_scraper.py`,
+`league_stats.py` (přesilovky/oslabení z pohledu libovolného týmu, stejné
+pravidlo jako `stats.py`), `league_sheets.py`.
+
+### Co je (záměrně) v Pythonu, co ve vzorcích
+
+Princip zůstává „skript zapisuje jen vstupní data, výpočty a prezentaci dělá
+tabulka vzorci“ – ale ne úplně bezvýjimečně. Tři místa v ligové části stojí
+za vysvětlení, protože počítají víc než jen přepis naškrábaných čísel:
+
+- **`Zápasy - liga (tým)`** (výsledek, body, přesilovky/oslabení za zápas) –
+  počítá se v Pythonu (`league_stats.py`), protože jde o pravidlo s časovým
+  párováním trestů (koincidenční menší tresty se ruší) a klasifikací herní
+  situace u gólu – stejné pravidlo a stejný důvod, proč to i pro LIT počítá
+  `stats.py` z PDF, ne vzorec v tabulce. Konzistentní s existujícím vzorem.
+- **`Bruslaři - liga` / `Brankáři - liga`** (sezónní součty) – **vzorec**
+  (`QUERY ... group by` nad `*_LOG_SHEET`), postavený jednorázově
+  `scripts/build_league_aggregate_sheets.py`. Python do těchto listů
+  nezapisuje vůbec nic, jen do syrového logu.
+- **`Pořadí - liga`** (pořadí po každém kole) – zůstává v Pythonu
+  (`league_sheets.recompute_standings_history`). Šlo by to postavit i
+  vzorcem (kumulativní `SUMIFS` do daného kola + `COUNTIFS`-based pořadí
+  v rámci skupiny), ale je to composite pravidlo se třemi úrovněmi
+  tie-breaku nad dynamicky filtrovanou skupinou – vědomě ponecháno
+  v testovaném Pythonu místo nepřehledného vzorce.
+
+Až se do dat budou napojovat další analytické nástroje, tohle rozdělení
+(syrová fakta vs. odvozené pohledy) je i důvod, proč zvažujeme samostatný
+Google Sheet jako „databázovou“ vrstvu – viz diskuze v historii projektu.
+
 ## Struktura repozitáře
 
 Stav k 21. 9. 2026 (Kroky 0–8 z PLAN.MD hotové, viz tam sekce „Stav“):
@@ -126,9 +180,18 @@ statistic_table/
     standings.py      pořadí po kole z ceskyhokej.cz (volitelné)
     backup.py         záloha řádku před přepsáním (backups/, mimo git)
     logging_config.py logování do logs/ (mimo git)
-    cli.py            check / import / standings
+    league_model.py   datové třídy pro statistiky celé ligy (LeagueGame,
+                       LeagueGoal, LeaguePenalty, LeagueSkaterStat, LeagueGoalieStat)
+    league_scraper.py rozparsování /game/detail/<id> a seznamu zápasů (ceskyhokej.cz)
+    league_stats.py   přesilovky/oslabení/výsledek z pohledu libovolného týmu
+    league_sheets.py  zápis do samostatné ligové tabulky, listy per tým
+    cli.py            check / import / standings / league sync-games / league sync-teams
+  scripts/
+    build_league_team_template.py     jednorázové postavení listu „Tým – šablona“
+    build_league_aggregate_sheets.py  jednorázové postavení Bruslaři/Brankáři - liga
   tests/
     fixtures/         PDF zápisy, uložené kopie hlaviček a stránky Ligy
+    fixtures/league/  uložené stránky ceskyhokej.cz pro testy league_scraper.py
                        juniorů, očekávané hodnoty
     test_*.py         jednotkové testy (bez sítě) + skippable integrační
                        test na kopii tabulky

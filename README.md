@@ -62,7 +62,51 @@ celé sdílecí odkazy – např. z `.../folders/1k364.../` jen `1k364...`.
 .venv\Scripts\python.exe -m statistic_table.cli standings
 .venv\Scripts\python.exe -m statistic_table.cli standings --dry-run
 .venv\Scripts\python.exe -m statistic_table.cli standings --yes   # bez dotazu
+
+# Liga: stáhne nové odehrané zápasy VŠECH týmů (ne jen LIT) do samostatné
+# tabulky LEAGUE_SPREADSHEET_ID a založí chybějící listy jednotlivých týmů
+.venv\Scripts\python.exe -m statistic_table.cli league sync-games --dry-run
+.venv\Scripts\python.exe -m statistic_table.cli league sync-games
+.venv\Scripts\python.exe -m statistic_table.cli league sync-teams --dry-run
+.venv\Scripts\python.exe -m statistic_table.cli league sync-teams
 ```
+
+### Liga: statistiky všech týmů
+
+Kromě evidence LIT z PDF zápisů umí skript stáhnout statistiky **všech**
+týmů Ligy juniorů přímo z `ceskyhokej.cz` (stránky jednotlivých zápasů mají
+kompletní zápis o utkání – soupisky, střelce, asistence, vyloučení – pro oba
+týmy, ne jen pro LIT). Data jdou do **samostatné** Google Tabulky
+(`LEAGUE_SPREADSHEET_ID` v `.env`), aby se to nemíchalo s produkční tabulkou
+„Seznamy“.
+
+Postup nastavení:
+
+1. Založ novou nativní Google Tabulku, nasdílej ji servisnímu účtu (role
+   Editor) a vlož její ID do `LEAGUE_SPREADSHEET_ID` v `.env`.
+2. Syrové listy (`Zápasy - liga`, `Zápasy - liga (tým)`, `Góly - liga`,
+   `Vyloučení - liga`, `Pořadí - liga`, `Bruslaři/Brankáři - liga (zápasy)` –
+   per-zápas log) založí skript sám při prvním `league sync-games`.
+3. `scripts/build_league_aggregate_sheets.py` (spustit jednou) postaví listy
+   **`Bruslaři - liga`** a **`Brankáři - liga`** – sezónní součty (jeden
+   řádek na hráče za celou ligu) jako `QUERY` vzorec nad `*-liga (zápasy)`.
+   Python do těchto dvou listů nikdy nezapisuje.
+4. `scripts/build_league_team_template.py` (spustit jednou) postaví list
+   **„Tým – šablona”** (Sezónní přehled, Přesilovky/oslabení, Vyloučení a TM,
+   grafy Skóre po zápasech/po třetinách/Pořadí v tabulce, a dole vedle sebe
+   Odehrané zápasy, Bodování a Brankáři – vše přes `QUERY`/`SUMIF`
+   parametrizované jménem týmu v buňce `B1`).
+5. `league sync-games` – projde stránkovaný seznam zápasů ligy, přeskočí
+   zápasy, které ještě neproběhly, i ty, které už jsou v tabulce, nové
+   zapíše a přepočítá `Pořadí - liga` (viz PROJECT.MD, „Co je záměrně
+   v Pythonu, co ve vzorcích“).
+6. `league sync-teams` – pro každý tým nalezený v syrových datech naklonuje
+   „Tým – šablona“ (list `<název klubu>`), pokud ještě neexistuje.
+
+Skript do listu „Tým – šablona“ ani do jeho kopií nikdy nezapisuje vzorce,
+jen buňku se jménem týmu – stejný princip jako u zbytku projektu (skript
+zapisuje syrová data, tabulka počítá a prezentuje vzorci; výjimky, kde
+Python počítá i něco navíc, jsou vysvětlené a zdůvodněné v PROJECT.MD).
 
 `import` bez zápisu vyžaduje `--dry-run`, aby šlo předem zkontrolovat, co by
 se zapsalo, beze změny tabulky.
