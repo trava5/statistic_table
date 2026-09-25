@@ -279,17 +279,19 @@ tabulka počítá“):**
      prázdným řetězcem selže potichu) – filtr na hodnotu skupiny (`F = 1`)
      stejně prázdné/nedoimportované řádky vyloučí sám, netřeba přidávat.
 
-**Příště pokračovat na sheetu „Liga juniorů 2026/27“ (Liga 2.0,
-`LEAGUE_V2_SPREADSHEET_ID`)** – uživatel si ji chce ještě projít/doladit
-dál, než se přejde na Seznamy. Zatím hotovo a ověřeno: IMPORTRANGE mirror
-z DB, sezónní agregáty, šablona + 16 týmových listů, oprava grafu „Pořadí
-v tabulce“, přehled Skupina 1/2 na listu „Pořadí - liga“ (vše výše).
+✅ **Liga 2.0 uzavřena (25. 9., odsouhlaseno uživatelem)** – IMPORTRANGE
+mirror z DB, sezónní agregáty, šablona + 16 týmových listů, graf „Pořadí
+v tabulce“ (směr osy i pevný rozsah 1–8) i přehled Skupina 1/2 na listu
+„Pořadí - liga“ jsou hotové a vizuálně ověřené uživatelem přímo v tabulce.
+Žádné další úpravy zatím nejsou naplánované.
 
-Až bude Liga 2.0 uzavřená, dalším velkým krokem (zadaným uživatelem) je
-založit **LIT Seznamy 2.0** a projít krok po kroku, co ze stávající
-„Seznamy“ migrovat, co vynechat a v jakém tvaru to v nové tabulce bude
-(Zápasy, Sestavy, Bodování, Brankáři, Tým, Dashboard, Seznam hráčů,
-Trenéři – viz PROJECT.MD). Otevřené otázky:
+**Další krok (probíhá): LIT Seznamy 2.0.** Postup zadaný uživatelem: nejdřív
+důkladně načíst strukturu stávající produkční tabulky „Seznamy“, pak projít
+list po listu (Zápasy, Sestavy, Bodování, Brankáři, Tým, Dashboard, Seznam
+hráčů, Trenéři – viz PROJECT.MD) a odsouhlasit, co se přenese do Seznamy 2.0
+napojené na DB, v jakém tvaru. Součástí je i zvážit, jestli PDF zápis nese
+informace, které web (`ceskyhokej.cz`) neposkytuje – pokud ano, PDF import
+pro LIT zůstává potřebný i po migraci na DB vzor. Otevřené otázky:
 - Seznamy je produkční nástroj (trenér ho používá v sezóně) – migrace má
   být opatrnější/postupnější než u Liga 2.0, ne „velký třesk“.
 - Osud staré tabulky Liga (`LEAGUE_SPREADSHEET_ID`) po přechodu na Liga 2.0
