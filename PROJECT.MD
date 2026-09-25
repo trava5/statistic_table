@@ -198,7 +198,12 @@ třesk“, viz PLAN.MD.
   (`scripts/build_seznamy_tym_sheet.py`) je sezónní přehled LIT:soupeř
   (`SUMIF`/`COUNTIF` nad `Zápasy (tým)`) + skóre po třetinách
   (`REGEXEXTRACT` nad `Zápasy`, rozpad podle domácí/hosté) – zatím bez
-  sekce Ročníky. `Dashboard` je další krok.
+  sekce Ročníky. `Dashboard` (`scripts/build_seznamy_dashboard.py`) je
+  přehled pro trenérský štáb nad `Tým`/`Bodování`/`Brankáři` (žádná
+  vlastní syrová data) – sezónní přehled, přesilovky/oslabení, vyloučení/
+  TM, grafy Skóre po zápasech/po třetinách, Top 5 Bodování, Brankáři.
+  Bez „Pořadí v lize“ (zapisuje ho jen `standings` do produkční tabulky,
+  rozšíření na Seznamy DB je otevřené).
 - Modul: `seznamy_sheets.py` (`build_seznamy_rows` – čistá funkce, žádná
   síť; `append_game` – I/O, dedup podle čísla zápisu).
 - `stats.third_and_relative_time` – PDF má čas gólu/trestu jako průběžný

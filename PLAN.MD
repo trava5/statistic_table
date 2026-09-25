@@ -453,9 +453,35 @@ sheet.py` (nový skript):
   obdržené v PK 2/2, úspěšnost PK 86,67%/83,33%, SH góly 0/1, vyloučení
   18/14, TM 44/28, TM/zápas 22/14, skóre po třetinách 2:4/1:1/3:2/0:0).
 
-**Další krok:** postavit `Dashboard` v Seznamy 2.0 (přehled + grafy + Top 5
-Bodování, nad `Tým`/`Bodování`/`Brankáři` už hotovými), doplnit Ročníky do
-`Tým` a výhry/shutout do `Brankáři`.
+✅ **List `Dashboard` postaven (25. 9.):** `scripts/build_seznamy_dashboard.py`
+(nový skript) – přehled pro trenérský štáb, čistě nad už hotovými listy
+(`Tým`, `Zápasy (tým)`, `Zápasy`, `Bodování`, `Brankáři`), Python nikdy
+nezapisuje syrová data, jen vzorce:
+- **Sezónní přehled / Přesilovky-oslabení / Vyloučení a TM** – přímé
+  odkazy na `Tým` (V/VP/PP/P dopočítané `COUNTIFS` nad `Zápasy (tým)`,
+  protože `Tým` sám nemá rozpad podle výsledku, jen body/skóre).
+  **Vědomě chybí „Pořadí v lize“** – to zapisuje samostatný příkaz
+  `standings` přímo do produkční tabulky, Seznamy DB tuhle hodnotu zatím
+  nemá (rozšíření `standings` na zápis do DB je samostatný krok).
+- **Skóre po zápasech** (graf) – skrytý datový blok `N:P` spojuje
+  `Zápasy (tým)` (LIT řádky přes `FILTER`) s `Zápasy` (datum přes
+  `VLOOKUP`). Skryté sloupce → graf musí mít `hiddenDimensionStrategy:
+  SHOW_ALL` rovnou při vytváření, jinak by API tiše zahodilo `series`
+  (stejná past jako u League Dashboardu, viz výše).
+- **Skóre po třetinách** (graf) – zdroj přímo `Tým!A19:C23`, žádná
+  duplikace dat na Dashboardu (na rozdíl od produkční tabulky, kde je
+  kopie v `N:Z`).
+- **Top 5 – Bodování** – `QUERY` nad `Bodování` (Hráč/Z/G/A/B, `limit 5`).
+- **Brankáři** – `QUERY … select *` nad celým listem `Brankáři` (přímá
+  kopie rozsahu `='Brankáři'!A1:...` dávala v produkční tabulce `#VALUE!`
+  z nevysvětlených důvodů – `QUERY select *` je spolehlivá náhrada).
+- Ověřeno živě proti produkční tabulce – sedí přesně (Odehráno 2, V/VP/
+  PP/P = 1/0/0/1, Body 3, skóre 6:7, PP 12/16,67%, PK 15/86,67%, Vyloučení
+  18/14, TM 44/28/22,0/14,0; oba grafy 2/2 sérií na první pokus).
+
+**Další krok:** doplnit Ročníky do `Tým`, výhry/shutout do `Brankáři` a
+rozšířit `standings` o zápis „Pořadí v lize“ do Seznamy DB (pak doplnit
+i do Dashboardu).
 
 Osud staré tabulky Liga (`LEAGUE_SPREADSHEET_ID`) po přechodu na Liga 2.0
 zatím neřešen (smazat / nechat ladem / archivovat) – rozhodnout až bude

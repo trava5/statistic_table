@@ -313,3 +313,7 @@ SEZNAMY_BRANKARI_SHEET = "Brankáři"
 # Týmový přehled (sezónní součty LIT:soupeř) – vzorec nad SEZNAMY_ZAPASY_TYM_SHEET
 # a SEZNAMY_ZAPASY_SHEET, postavený jednorázově scripts/build_seznamy_tym_sheet.py.
 SEZNAMY_TYM_SHEET = "Tým"
+
+# Přehledový list pro trenérský štáb – vzorec nad Tým/Zápasy (tým)/Zápasy/
+# Bodování/Brankáři, postavený jednorázově scripts/build_seznamy_dashboard.py.
+SEZNAMY_DASHBOARD_SHEET = "Dashboard"
