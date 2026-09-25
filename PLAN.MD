@@ -285,18 +285,75 @@ v tabulce“ (směr osy i pevný rozsah 1–8) i přehled Skupina 1/2 na listu
 „Pořadí - liga“ jsou hotové a vizuálně ověřené uživatelem přímo v tabulce.
 Žádné další úpravy zatím nejsou naplánované.
 
-**Další krok (probíhá): LIT Seznamy 2.0.** Postup zadaný uživatelem: nejdřív
-důkladně načíst strukturu stávající produkční tabulky „Seznamy“, pak projít
-list po listu (Zápasy, Sestavy, Bodování, Brankáři, Tým, Dashboard, Seznam
-hráčů, Trenéři – viz PROJECT.MD) a odsouhlasit, co se přenese do Seznamy 2.0
-napojené na DB, v jakém tvaru. Součástí je i zvážit, jestli PDF zápis nese
-informace, které web (`ceskyhokej.cz`) neposkytuje – pokud ano, PDF import
-pro LIT zůstává potřebný i po migraci na DB vzor. Otevřené otázky:
-- Seznamy je produkční nástroj (trenér ho používá v sezóně) – migrace má
-  být opatrnější/postupnější než u Liga 2.0, ne „velký třesk“.
-- Osud staré tabulky Liga (`LEAGUE_SPREADSHEET_ID`) po přechodu na Liga 2.0
-  zatím neřešen (smazat / nechat ladem / archivovat) – rozhodnout až bude
-  Liga 2.0 nějakou dobu v provozu ověřená uživatelem.
+**Probíhá: LIT Seznamy 2.0.** Živě načtena struktura produkční tabulky
+„Seznamy“ přes API (ne jen z dokumentace) – 8 listů (`Dashboard`, `Zápasy`,
+`Sestavy`, `Bodování`, `Brankáři`, `Tým`, `Seznam hráčů`, `Trenéři`, skrytý
+`Import log`), ověřeny živé vzorce v odvozených listech (`INDEX/MATCH` proti
+`Seznam hráčů`, `SUMPRODUCT`/`SUMIFS`/`COUNTIFS` proti `Zápasy`/`Sestavy`).
+
+**Rozhodnuto s uživatelem (25. 9.):**
+1. ✅ **PDF import pro LIT zůstává.** Web (`ceskyhokej.cz`) nemá registrační
+   čísla hráčů (jen číslo dresu + jméno) – **ročníky soupeře** (`Zápasy!
+   CJ:CO`, „celkem soupeř“, „věk Ø soupeř“) se dnes počítají výhradně
+   z registrací v PDF a nejdou z webu zrekonstruovat. PDF je navíc pro tuhle
+   část zralý, otestovaný pipeline s regresními fixtures – nahrazovat ho
+   web-scrapem stejně jako u ligy by bylo čistě horší (ztráta dat), ne
+   zjednodušení.
+2. ✅ **PDF už dnes parsuje víc, než se zapisuje – využijeme to.**
+   `model.Game.TeamSheet.goals/penalties` se parsují pro **oba** týmy
+   (`_parse_team_block` volané na „Domácí tým (A)“ i „Hostující tým (B)“,
+   včetně registračních čísel), ale do `Zápasy` se dnes zapisují jen
+   střelci/asistence/vyloučení LIT – soupeřova strana se po naparsování
+   zahazuje. Nová DB bude ukládat **oba týmy symetricky** (stejný vzor jako
+   `Zápasy - liga (tým)`/`Góly - liga`/`Vyloučení - liga` u Ligy) – Python
+   nezačíná scrapovat nic navíc, jen přestane zahazovat, co už umí
+   naparsovat. Identita soupeřova hráče (jméno/registrace/číslo) je
+   soběstačná v rámci jednoho PDF (`TeamSheet.roster` hostujícího týmu),
+   nepotřebuje žádný externí číselník.
+3. ✅ **Soupiska k zápasu se rozdělí na dva logy** (stejně jako
+   `Bruslaři/Brankáři - liga (zápasy)` u Ligy), ne jeden `Sestavy` list
+   s příznakem brankáře – umožní to postavit `Bodování`/`Brankáři` i
+   ročníky jako `QUERY group by` formuli nad logem (registrace → rok
+   narození vzorcem), místo dnešního INDEX/MATCH + SUMPRODUCT.
+4. ✅ **Tvar 5 syrových tabulek DB** (Python zapisuje z PDF, žádné vzorce,
+   žádné citlivé údaje – jen registrace jako identifikátor):
+   - `Zápasy`: číslo zápisu, datum, home, away, skóre home/away, pozn.
+     (pp/sn), 1.P/2.P/3.P/OT.
+   - `Góly` (oba týmy): číslo zápisu, tým, třetina, čas, střelec,
+     asistence 1/2, situace (HS).
+   - `Vyloučení` (oba týmy): číslo zápisu, tým, třetina, čas, hráč, minuty,
+     důvod, od, do (od/do navíc oproti Lize – PDF je má, použije se přímo,
+     ne jen k dopočtu přesilovek jako dnes).
+   - `Bruslaři (zápasy)` (oba týmy): číslo zápisu, tým, číslo, jméno,
+     registrace, post, nastoupil, G, A, B, TM.
+   - `Brankáři (zápasy)` (oba týmy): číslo zápisu, tým, číslo, jméno,
+     registrace, chytal, TOI, zákroky, obdržené góly, G, A, TM.
+5. ✅ **Architektura – tři tabulky vedle sebe, žádný „velký třesk“:**
+   - **Seznamy DB** (nová) – Python zapisuje jen těch 5 syrových tabulek.
+   - **Seznamy 2.0** (nová) – `IMPORTRANGE` zrcadlo syrových tabulek z DB
+     (jako `build_league_v2_mirrors.py`) + `Bodování`/`Brankáři`/`Tým`/
+     `Dashboard` jako formule nad nimi. Protože `Seznam hráčů`/`Trenéři`
+     zůstávají zatím v produkční `Seznamy` (bod níž), Seznamy 2.0 je
+     **dočasně** `IMPORTRANGE`uje odtud – až se později přesunou do
+     soukromé netabulky, přepne se jen zdroj `IMPORTRANGE`, formule nad
+     tím zůstanou stejné.
+   - **Produkční `Seznamy`** zůstává beze změny a v provozu (trenér ji
+     používá v sezóně), dokud Seznamy 2.0 není hotová a ověřená.
+6. **Odloženo na později (po odladění Seznamy 2.0):** `Seznam hráčů`
+   a `Trenéři` obsahují citlivé osobní údaje (rodné číslo, pojišťovna,
+   telefon, e-mail hráčů i rodičů; PIN a kontakty trenérů) – jiná kategorie
+   dat než cokoli v Liga 2.0. Přesunou se do samostatné **nesdílené**
+   tabulky, napojené jako DB (analogie k `LEAGUE_DB_SPREADSHEET_ID`), ne do
+   veřejně sdílené DB spolu se zápasovými daty.
+
+**Další krok:** uživatel založí `Seznamy DB` a `Seznamy 2.0` v účtu
+`hc.lit.juniori@gmail.com` a nasdílí je servisnímu účtu (stejný postup jako
+u Ligy) – teprve pak jde napsat `league`-style moduly
+(`seznamy_sheets.py`?) a přepracovat `importer.py`/`cli.py`.
+
+Osud staré tabulky Liga (`LEAGUE_SPREADSHEET_ID`) po přechodu na Liga 2.0
+zatím neřešen (smazat / nechat ladem / archivovat) – rozhodnout až bude
+Liga 2.0 nějakou dobu v provozu ověřená uživatelem.
 
 ## Potvrzená rozhodnutí (21. 9. 2026)
 
