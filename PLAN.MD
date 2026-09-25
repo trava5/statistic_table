@@ -236,15 +236,27 @@ tabulka počítá“):**
      „Číslo“, `bold_ranges` posunuty na `I50:O50`) – jinak stejná struktura
      jako dřív, na přání uživatele.
 6. ✅ **Drobné úpravy Liga 2.0 (25. 9.):**
-   - Graf „Pořadí v tabulce“ v šabloně vykresloval zápornou pomocnou
-     hodnotu (sloupec `X`, kvůli pokusu o obrácenou osu Y) a `dataLabel.
-     type=DATA` pak u bodu ukazoval tu zápornou hodnotu misto skutečného
-     pořadí – matoucí spolu s názvem osy „Pořadí“. Opraveno: graf teď čte
-     přímo skutečnou (kladnou) hodnotu ze sloupce `W`, pomocný sloupec `X`
-     smazán ze šablony. Aby se oprava dostala i do už naklonovaných
-     16 týmových listů, musely se smazat a znovu naklonovat (`league
-     sync-teams`) – vlastní data v nich nejsou, jen vzorce/graf z šablony,
-     takže je to bezztrátové.
+   - Graf „Pořadí v tabulce“ – dvě kola oprav:
+     1. Nejdřív graf vykresloval zápornou pomocnou hodnotu (sloupec `X`,
+        kvůli pokusu o obrácenou osu Y) a `dataLabel.type=DATA` u bodu
+        ukazoval tu zápornou hodnotu misto skutečného pořadí – matoucí
+        spolu s názvem osy „Pořadí“. První oprava: graf čte přímo
+        skutečnou (kladnou) hodnotu ze sloupce `W`, `X` smazán.
+     2. Uživatel ale správně upozornil, že tohle vizuálně obrátí smysl –
+        osa Y roste nahoru, takže horší pořadí (vyšší číslo) vychází nahoře
+        a lepší dole, opačně než u tabulky pořadí. Finální oprava: `X`
+        (záporné pořadí) vrácen zpět jako zdroj grafu (níže na ose = lepší
+        pořadí, tedy výš), ale s vlastním formátem buňky **„0;0"** (druhá
+        sekce formátu = záporná čísla, bez znaménka), takže popisek bodu
+        i osa (obojí čte formát zdrojové buňky) zobrazují kladné skutečné
+        číslo, i když je podkladová hodnota záporná. `CUSTOM` dataLabel s
+        `customLabelData` (ukázat jinou buňku, než se vykresluje) byl znovu
+        vyzkoušený i přes čerstvě vytvořený graf (ne přes `updateChartSpec`)
+        a znovu spadl na `500 Internal error` – potvrzeno, že jde o obecné
+        omezení API, ne jen chybu `updateChartSpec`.
+     Aby se oprava dostala i do už naklonovaných 16 týmových listů, musely
+     se smazat a znovu naklonovat (`league sync-teams`) – vlastní data
+     v nich nejsou, jen vzorce/graf z šablony, takže je to bezztrátové.
    - `scripts/build_league_poradi_view.py` (nový skript) – na list
      `Pořadí - liga` v Liga 2.0 doplňuje čitelný přehled: pomocný sloupec
      `F` (skupina týmu přes `INDEX/MATCH` proti `Skupiny - liga`) a dvě

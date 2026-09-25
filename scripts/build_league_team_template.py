@@ -112,16 +112,22 @@ def build_value_updates() -> dict[str, list[list]]:
     put("S6", f"=SUMIF({ZT}!$B:$B;$B$1;{ZT}!$L:$L)")
     put("T6", f"=SUMIF({ZT}!$C:$C;$B$1;{ZT}!$L:$L)")
 
-    # --- Podkladová data pro graf „Pořadí v tabulce" (sloupce V:W) -----------
+    # --- Podkladová data pro graf „Pořadí v tabulce" (sloupce V:X) -----------
     # Web nezveřejňuje historii tabulky, proto `league sync-games` při každém
     # nálezu nových zápasů uloží aktuální pořadí všech týmů jako jeden snímek
-    # do listu Pořadí - liga (viz PROJECT.MD, „Pořadí po kole"). Graf čte
-    # skutečné (kladné) pořadí přímo – pokus obrátit osu Y přes zápornou
-    # pomocnou hodnotu (níže = lepší pořadí) se ukázal nespolehlivý (popisek
-    # bodu pak ukazoval zápornou hodnotu misto skutečného pořadí); obrácení
-    # osy jde jen ručně přes UI editor grafu (Přizpůsobit → Svislá osa).
+    # do listu Pořadí - liga (viz PROJECT.MD, „Pořadí po kole"). Sloupec X je
+    # záporná hodnota pořadí – jen kvůli ose grafu (níže = lepší pořadí, tedy
+    # výš na ose). Zobrazené číslo (popisek bodu i osa) přitom vypadá kladně
+    # díky vlastnímu formátu buňky „0;0" (druhá sekce = záporná čísla, bez
+    # znaménka) – viz `number_format_requests` níže. Přímé zobrazení kladné
+    # hodnoty bez obrácení osy bylo vizuálně matoucí (lepší pořadí vycházelo
+    # níž na grafu), obrácení osy přes `viewWindowOptions`/`customLabelData`
+    # se v API ukázalo nespolehlivé (beze změny vykreslení, resp. `500
+    # Internal error`) – viz PLAN.MD.
     put_row("V4", ["Kolo", "Pořadí"])
     put("V5", f"=QUERY({PO}!A:D;\"select A, D where C = '\"&$B$1&\"' order by A\";0)")
+    put("X4", "Pořadí (záporně, pro graf)")
+    put("X5", '=ARRAYFORMULA(IF($W$5:$W$40="";"";-$W$5:$W$40))')
 
     # --- Odehrané zápasy / Bodování / Brankáři (vedle sebe) ------------------
     put("A49", "ODEHRANÉ ZÁPASY")
@@ -248,6 +254,28 @@ def main() -> None:
         }
         for rng in percent_ranges
     ]
+
+    # Sloupec X (záporné pořadí, jen kvůli ose grafu) – vlastní formát „0;0"
+    # zobrazí zápornou hodnotu bez znaménka (druhá sekce formátu = záporná
+    # čísla, bez explicitního „-"), takže popisek bodu i osa grafu (obojí čte
+    # formát zdrojové buňky) vypadají jako kladné skutečné pořadí.
+    format_requests.append(
+        {
+            "repeatCell": {
+                "range": {
+                    "sheetId": sheet_id,
+                    "startRowIndex": 4,
+                    "endRowIndex": 40,
+                    "startColumnIndex": 23,
+                    "endColumnIndex": 24,
+                },
+                "cell": {
+                    "userEnteredFormat": {"numberFormat": {"type": "NUMBER", "pattern": "0;0"}}
+                },
+                "fields": "userEnteredFormat.numberFormat",
+            }
+        }
+    )
 
     chart_meta = service.spreadsheets().get(
         spreadsheetId=spreadsheet_id,
@@ -402,7 +430,7 @@ def main() -> None:
                 "domains": [{"domain": source(3, 40, 21, 22)}],
                 "series": [
                     {
-                        "series": source(3, 40, 22, 23),
+                        "series": source(3, 40, 23, 24),
                         "targetAxis": "LEFT_AXIS",
                         "dataLabel": {"type": "DATA"},
                         "pointStyle": {"shape": "CIRCLE", "size": 7},
