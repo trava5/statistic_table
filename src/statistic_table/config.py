@@ -33,6 +33,8 @@ class Config:
     league_spreadsheet_id: str | None = None
     league_db_spreadsheet_id: str | None = None
     league_v2_spreadsheet_id: str | None = None
+    seznamy_db_spreadsheet_id: str | None = None
+    seznamy_v2_spreadsheet_id: str | None = None
 
 
 def load_config(env_file: str | Path = ".env") -> Config:
@@ -53,6 +55,8 @@ def load_config(env_file: str | Path = ".env") -> Config:
         league_spreadsheet_id=os.getenv("LEAGUE_SPREADSHEET_ID"),
         league_db_spreadsheet_id=os.getenv("LEAGUE_DB_SPREADSHEET_ID"),
         league_v2_spreadsheet_id=os.getenv("LEAGUE_V2_SPREADSHEET_ID"),
+        seznamy_db_spreadsheet_id=os.getenv("SEZNAMY_DB_SPREADSHEET_ID"),
+        seznamy_v2_spreadsheet_id=os.getenv("SEZNAMY_V2_SPREADSHEET_ID"),
     )
 
 
@@ -77,6 +81,24 @@ def require_league_v2_spreadsheet_id(config: Config) -> str:
     if not config.league_v2_spreadsheet_id:
         raise RuntimeError("Chybí LEAGUE_V2_SPREADSHEET_ID v .env (viz README, sekce Liga)")
     return config.league_v2_spreadsheet_id
+
+
+def require_seznamy_db_spreadsheet_id(config: Config) -> str:
+    """DB tabulka – jediný zdroj pravdy pro data zápasů LIT z PDF (Zápasy,
+    Góly, Vyloučení, Bruslaři/Brankáři (zápasy), oba týmy). Produkční
+    `SPREADSHEET_ID` („Seznamy“) do ní zatím nezapisuje ani nečte, běží
+    paralelně, dokud Seznamy 2.0 není hotová – viz PLAN.MD."""
+    if not config.seznamy_db_spreadsheet_id:
+        raise RuntimeError("Chybí SEZNAMY_DB_SPREADSHEET_ID v .env (viz README, sekce Seznamy)")
+    return config.seznamy_db_spreadsheet_id
+
+
+def require_seznamy_v2_spreadsheet_id(config: Config) -> str:
+    """„Seznamy 2.0“ – nová prezentační tabulka, čte z DB přes IMPORTRANGE
+    (rozpracováno, viz PLAN.MD)."""
+    if not config.seznamy_v2_spreadsheet_id:
+        raise RuntimeError("Chybí SEZNAMY_V2_SPREADSHEET_ID v .env (viz README, sekce Seznamy)")
+    return config.seznamy_v2_spreadsheet_id
 
 
 def get_credentials(config: Config):
@@ -237,3 +259,35 @@ LEAGUE_PORADI_HEADER = ["kolo", "datum", "tým", "pořadí"]
 # každém `league sync-games` – uložené jako fakt, aby `recompute_standings_
 # history` nemusela scrapovat znovu a aby to šlo použít i odjinud.
 LEAGUE_SKUPINY_HEADER = ["tým", "skupina"]
+
+# Listy v DB tabulce (SEZNAMY_DB_SPREADSHEET_ID) – jediný zdroj pravdy pro
+# zápasy LIT z PDF, zapisuje jen Python (`import`/`seznamy sync`). Symetricky
+# pro oba týmy (domácí i hosté) – PDF je parsuje pro oba, dřív se soupeřova
+# strana po naparsování zahazovala (viz PLAN.MD). Žádné vzorce, žádné
+# citlivé osobní údaje (jen registrační číslo jako identifikátor).
+SEZNAMY_ZAPASY_SHEET = "Zápasy"
+SEZNAMY_GOLY_SHEET = "Góly"
+SEZNAMY_VYLOUCENI_SHEET = "Vyloučení"
+SEZNAMY_SKATERS_LOG_SHEET = "Bruslaři (zápasy)"
+SEZNAMY_GOALIES_LOG_SHEET = "Brankáři (zápasy)"
+
+SEZNAMY_ZAPASY_HEADER = [
+    "číslo zápisu", "datum", "domácí", "hosté", "skóre domácí", "skóre hosté",
+    "pozn.", "1.P", "2.P", "3.P", "OT",
+]
+SEZNAMY_GOLY_HEADER = [
+    "číslo zápisu", "tým", "třetina", "čas", "střelec", "asistence 1", "asistence 2", "situace",
+]
+SEZNAMY_VYLOUCENI_HEADER = [
+    "číslo zápisu", "tým", "třetina", "čas", "hráč", "minuty", "důvod", "od", "do",
+]
+SEZNAMY_SKATERS_LOG_HEADER = [
+    "číslo zápisu", "tým", "číslo", "jméno", "registrace", "post", "nastoupil",
+    "G", "A", "B", "TM",
+]
+SEZNAMY_GOALIES_LOG_HEADER = [
+    # PDF nedává TOI ani počet zákroků (jen jméno brankáře, co chytal) – na
+    # rozdíl od webu Ligy tyhle dva sloupce v Seznamy DB chybí.
+    "číslo zápisu", "tým", "číslo", "jméno", "registrace", "chytal",
+    "obdržené góly", "G", "A", "TM",
+]

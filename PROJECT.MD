@@ -166,6 +166,30 @@ Až se do dat budou napojovat další analytické nástroje, tohle rozdělení
 (syrová fakta vs. odvozené pohledy) je i důvod, proč zvažujeme samostatný
 Google Sheet jako „databázovou“ vrstvu – viz diskuze v historii projektu.
 
+## LIT Seznamy 2.0 (rozpracováno)
+
+Stejný DB → prezentace vzor jako u Ligy, tentokrát nad daty LIT z PDF
+(`import_pdf`/`import_folder`), ne z webu. Produkční tabulka „Seznamy“
+(výše) běží dál beze změny, dokud Seznamy 2.0 není hotová – žádný „velký
+třesk“, viz PLAN.MD.
+
+- **Seznamy DB** (`SEZNAMY_DB_SPREADSHEET_ID`) – 5 syrových listů
+  (`Zápasy`, `Góly`, `Vyloučení`, `Bruslaři (zápasy)`, `Brankáři (zápasy)`),
+  **symetricky pro oba týmy** (na rozdíl od produkční `Seznamy`, kde se
+  soupeřova strana po naparsování PDF zahazuje). Zapisuje `seznamy_sheets.
+  append_game` – **dual-write**: každý `cli import` teď zapíše jak do
+  produkční `Seznamy` (beze změny), tak navíc (best-effort, nesmí import
+  shodit) do Seznamy DB. Identita hráče (jméno, registrace) je soběstačná
+  v rámci jednoho PDF, nepotřebuje `Seznam hráčů` – ten zůstává jen pro
+  zápis do produkční tabulky.
+- **Seznamy 2.0** (`SEZNAMY_V2_SPREADSHEET_ID`) – zatím jen založená
+  prázdná tabulka, prezentační vrstva (IMPORTRANGE mirror + formule
+  Bodování/Brankáři/Tým/Dashboard) je další krok.
+- Modul: `seznamy_sheets.py` (`build_seznamy_rows` – čistá funkce, žádná
+  síť; `append_game` – I/O, dedup podle čísla zápisu).
+- `stats.third_and_relative_time` – PDF má čas gólu/trestu jako průběžný
+  čas zápasu, ne čas od začátku třetiny; tahle funkce ho rozdělí.
+
 ## Struktura repozitáře
 
 Stav k 21. 9. 2026 (Kroky 0–8 z PLAN.MD hotové, viz tam sekce „Stav“):
@@ -195,10 +219,12 @@ statistic_table/
     league_scraper.py rozparsování /game/detail/<id> a seznamu zápasů (ceskyhokej.cz)
     league_stats.py   přesilovky/oslabení/výsledek z pohledu libovolného týmu
     league_sheets.py  zápis do samostatné ligové tabulky, listy per tým
+    seznamy_sheets.py zápis do Seznamy DB (5 syrových listů, oba týmy, z PDF)
     cli.py            check / import / standings / league sync-games / league sync-teams
   scripts/
     build_league_team_template.py     jednorázové postavení listu „Tým – šablona“
     build_league_aggregate_sheets.py  jednorázové postavení Bruslaři/Brankáři - liga
+    build_league_v2_mirrors.py        jednorázové IMPORTRANGE zrcadlo DB v Liga 2.0
   tests/
     fixtures/         PDF zápisy, uložené kopie hlaviček a stránky Ligy
     fixtures/league/  uložené stránky ceskyhokej.cz pro testy league_scraper.py

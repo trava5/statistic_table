@@ -16,6 +16,7 @@ from statistic_table.stats import (
     penalty_totals,
     power_plays,
     situation_result,
+    third_and_relative_time,
 )
 
 PDF_DIR = Path(__file__).parent / "fixtures" / "pdf"
@@ -234,3 +235,22 @@ def test_opponent_birth_years_warns_on_missing_registration():
     result = opponent_birth_years(team)
     assert result.counts == {}
     assert len(result.warnings) == 1
+
+
+@pytest.mark.parametrize(
+    ("cumulative", "expected_third", "expected_time"),
+    [
+        ("00:32", 1, "00:32"),
+        ("19:59", 1, "19:59"),
+        ("20:00", 2, "00:00"),
+        ("39:58", 2, "19:58"),
+        ("40:14", 3, "00:14"),
+        ("59:59", 3, "19:59"),
+        ("60:00", 4, "00:00"),
+        ("62:30", 4, "02:30"),
+    ],
+)
+def test_third_and_relative_time(cumulative, expected_third, expected_time):
+    third, relative = third_and_relative_time(cumulative)
+    assert third == expected_third
+    assert relative == expected_time

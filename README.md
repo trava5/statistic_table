@@ -133,6 +133,18 @@ Python počítá i něco navíc, jsou vysvětlené a zdůvodněné v PROJECT.MD)
 `import` bez zápisu vyžaduje `--dry-run`, aby šlo předem zkontrolovat, co by
 se zapsalo, beze změny tabulky.
 
+### LIT Seznamy 2.0 (rozpracováno)
+
+Produkční tabulka „Seznamy“ (`SPREADSHEET_ID`) běží dál beze změny. Vedle ní
+`cli import` (soubor i celá složka) navíc **dual-write** zapisuje totéž do
+`SEZNAMY_DB_SPREADSHEET_ID` – 5 syrových listů (`Zápasy`, `Góly`,
+`Vyloučení`, `Bruslaři (zápasy)`, `Brankáři (zápasy)`), symetricky pro oba
+týmy, viz PROJECT.MD/PLAN.MD. Bez nastavené `SEZNAMY_DB_SPREADSHEET_ID`
+v `.env` se tenhle krok tiše přeskočí; pokud je nastavená, ale zápis selže,
+je to jen varování v logu, produkční import to nezastaví.
+`SEZNAMY_V2_SPREADSHEET_ID` (prezentační Seznamy 2.0) je zatím jen založená
+prázdná tabulka bez napojení.
+
 ### Textové menu
 
 Pro spouštění bez pamatování si příkazů a přepínačů (např. na produkčním

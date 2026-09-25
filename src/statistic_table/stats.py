@@ -131,3 +131,15 @@ def average_age(team: TeamSheet, season_year: int) -> float:
 def note(game: Game) -> str:
     """Hodnota pro sloupec Zápasy!F (pozn.): 'pp', 'sn', nebo prázdný řetězec."""
     return game.ending or ""
+
+
+def third_and_relative_time(cumulative_time: str) -> tuple[int, str]:
+    """PDF má čas gólu/trestu jako průběžný čas zápasu (např. '40:14'), ne čas
+    v rámci třetiny. Rozdělí ho na (třetina, čas od začátku třetiny) – třetina
+    1–3 po 20 minutách, 4 = prodloužení (chování v reálném prodloužení zatím
+    neověřeno na referenčních zápasech, viz PLAN.MD)."""
+    minutes_str, _, seconds_str = cumulative_time.partition(":")
+    total_seconds = int(minutes_str) * 60 + int(seconds_str)
+    third = min(total_seconds // 1200 + 1, 4)
+    within = total_seconds - (3600 if third == 4 else (third - 1) * 1200)
+    return third, f"{within // 60:02d}:{within % 60:02d}"

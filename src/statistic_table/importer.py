@@ -29,6 +29,7 @@ from statistic_table.players import (
     match_lineup,
     opponent_alias,
 )
+from statistic_table.seznamy_sheets import append_game as append_seznamy_db_game
 from statistic_table.sheets import (
     append_import_log,
     ensure_import_log_sheet,
@@ -181,6 +182,18 @@ def build_import(
     return ImportPlan(row=row, game_number=game.number, cells=cells)
 
 
+def _write_to_seznamy_db(game: Game, config: Config) -> None:
+    """Dočasný souběžný zápis do Seznamy DB (viz PLAN.MD, LIT Seznamy 2.0) –
+    doplňkový k produkčnímu zápisu výše, nesmí ho shodit ani zpomalit import,
+    pokud selže. Bez SEZNAMY_DB_SPREADSHEET_ID v .env se přeskočí beze slova."""
+    if not config.seznamy_db_spreadsheet_id:
+        return
+    try:
+        append_seznamy_db_game(config, config.seznamy_db_spreadsheet_id, game)
+    except Exception as exc:  # noqa: BLE001 – doplňkový zápis, nesmí shodit produkční import
+        logger.warning("Zápas %s: zápis do Seznamy DB selhal: %s", game.number, exc)
+
+
 def import_pdf(
     path: str | Path, config: Config, club_roster: list[RosterPlayer], *, dry_run: bool
 ) -> ImportPlan:
@@ -190,6 +203,7 @@ def import_pdf(
         backup_row(config, plan.row)
         write_batch(config, plan.cells)
         logger.info("Zápas %s zapsán na řádek %s (%s)", plan.game_number, plan.row, path)
+        _write_to_seznamy_db(game, config)
     return plan
 
 
@@ -289,6 +303,7 @@ def import_folder(
                 logger.info(
                     "Zápas %s zapsán na řádek %s (%s)", plan.game_number, plan.row, f["name"]
                 )
+                _write_to_seznamy_db(game, config)
                 new_log_entries.append(
                     ImportLogEntry(
                         file_id=f["id"],

@@ -327,7 +327,10 @@ v tabulce“ (směr osy i pevný rozsah 1–8) i přehled Skupina 1/2 na listu
    - `Bruslaři (zápasy)` (oba týmy): číslo zápisu, tým, číslo, jméno,
      registrace, post, nastoupil, G, A, B, TM.
    - `Brankáři (zápasy)` (oba týmy): číslo zápisu, tým, číslo, jméno,
-     registrace, chytal, TOI, zákroky, obdržené góly, G, A, TM.
+     registrace, chytal, obdržené góly, G, A, TM. **Upraveno při
+     implementaci:** PDF nedává TOI ani počet zákroků (jen jméno brankáře,
+     co chytal) – tyhle dva sloupce oproti Lize (web je má) chybí, stejně
+     jako v dnešní produkční `Brankáři` (i tam TOI/zákroky nejsou).
 5. ✅ **Architektura – tři tabulky vedle sebe, žádný „velký třesk“:**
    - **Seznamy DB** (nová) – Python zapisuje jen těch 5 syrových tabulek.
    - **Seznamy 2.0** (nová) – `IMPORTRANGE` zrcadlo syrových tabulek z DB
@@ -346,10 +349,50 @@ v tabulce“ (směr osy i pevný rozsah 1–8) i přehled Skupina 1/2 na listu
    tabulky, napojené jako DB (analogie k `LEAGUE_DB_SPREADSHEET_ID`), ne do
    veřejně sdílené DB spolu se zápasovými daty.
 
-**Další krok:** uživatel založí `Seznamy DB` a `Seznamy 2.0` v účtu
-`hc.lit.juniori@gmail.com` a nasdílí je servisnímu účtu (stejný postup jako
-u Ligy) – teprve pak jde napsat `league`-style moduly
-(`seznamy_sheets.py`?) a přepracovat `importer.py`/`cli.py`.
+✅ **Seznamy DB naplněná a ověřená (25. 9.):** uživatel založil `Seznamy DB`
+(`19YrbX36JG3dpv-_Deqaf9TZlopw1cxAJKpZbjhSqGo8`) a `Seznamy 2.0`
+(`1xUieynl0ubjMzyabPGwuleLuI2qwKsA8om_noShvc4M`) v účtu
+`hc.lit.juniori@gmail.com`, nasdílel servisnímu účtu, ID v `.env`
+(`SEZNAMY_DB_SPREADSHEET_ID`, `SEZNAMY_V2_SPREADSHEET_ID`; helpery
+`require_seznamy_db_spreadsheet_id`/`require_seznamy_v2_spreadsheet_id`
+v `config.py`).
+
+**Rozhodnuto s uživatelem: zápis do DB je dual-write od teď** (ne oddělený
+jednorázový běh) – `cli import` (jak `import_pdf`, tak `import_folder`) po
+úspěšném zápisu do produkční `Seznamy` navíc (best-effort, nesmí shodit
+produkční import) zapíše i do Seznamy DB přes nový modul
+`seznamy_sheets.py`:
+- `build_seznamy_rows(game, config)` – čistá funkce (bez sítě), rozloží
+  `model.Game` na řádky pro 5 syrových listů, **symetricky pro oba týmy**.
+  Na rozdíl od produkčního zápisu (jen LIT) nepotřebuje `club_roster`/
+  `Seznam hráčů` vůbec – identita hráče (jméno, registrace) je soběstačná
+  v rámci jednoho PDF (`TeamSheet.roster`), stejně u LIT jako u soupeře.
+  Otestováno na obou referenčních zápasech (`tests/test_seznamy_sheets.py`,
+  8 testů) – počty gólů/vyloučení/TM/bruslařů/brankářů přesně odpovídají
+  PROJECT.MD.
+- **Nová derivace `stats.third_and_relative_time`:** PDF má čas gólu/trestu
+  jako průběžný čas zápasu (`"40:14"`), ne čas od začátku třetiny jako web
+  Ligy – rozdělí ho na (třetina 1–4, čas od začátku třetiny). Chování ve
+  4. „třetině“ (OT) je zatím neověřené na reálném zápase, stejně jako
+  zbytek OT logiky v projektu.
+- `append_game` má dedup podle čísla zápisu (bezpečné opakovaně volat
+  `cli import` na stejné PDF, nevytvoří duplicity).
+- **Past nalezená při backfillu:** `valueInputOption=USER_ENTERED` u
+  sloupců „od“/„do“ (čas trestu jako text `"29:06"`) Sheets samo
+  přeformátovalo na `"29:06:00"` (nesprávně si to vyložilo jako čas) –
+  stejná třída chyby jako dřívější TOI/„0:00:00“ u Ligy. Řešení tentokrát
+  jinačí: `seznamy_sheets.py` píše přes **`RAW`** input mode (ne
+  `USER_ENTERED`) – DB listy stejně nikdy neobsahují vzorce, takže není
+  potřeba ani apostrofový trik (`_protect`) proti `+-=@` na začátku textu,
+  RAW navíc nechá čísla/časy přesně tak, jak jsou.
+- Oba referenční zápasy (4002, 4012) zpětně dopočítané do DB přes
+  `cli import <pdf>` (idempotentní i pro produkci – najde existující
+  řádek, přepíše stejnými daty) – ověřeno živě: 2 zápasy, 8 gólů,
+  32 vyloučení (16+16), 72 bruslařů, 8 brankářů, hodnoty sedí.
+
+**Další krok:** navrhnout a postavit `Seznamy 2.0` (IMPORTRANGE mirror +
+formule `Bodování`/`Brankáři`/`Tým`/`Dashboard`), stejný postup jako
+`build_league_v2_mirrors.py`/`build_league_aggregate_sheets.py` u Ligy.
 
 Osud staré tabulky Liga (`LEAGUE_SPREADSHEET_ID`) po přechodu na Liga 2.0
 zatím neřešen (smazat / nechat ladem / archivovat) – rozhodnout až bude
