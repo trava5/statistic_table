@@ -235,6 +235,25 @@ tabulka počítá“):**
      „Číslo“ hned za „Hráč“ (`I50` vzorec rozšířen o `B` s labelem
      „Číslo“, `bold_ranges` posunuty na `I50:O50`) – jinak stejná struktura
      jako dřív, na přání uživatele.
+6. ✅ **Drobné úpravy Liga 2.0 (25. 9.):**
+   - Graf „Pořadí v tabulce“ v šabloně vykresloval zápornou pomocnou
+     hodnotu (sloupec `X`, kvůli pokusu o obrácenou osu Y) a `dataLabel.
+     type=DATA` pak u bodu ukazoval tu zápornou hodnotu misto skutečného
+     pořadí – matoucí spolu s názvem osy „Pořadí“. Opraveno: graf teď čte
+     přímo skutečnou (kladnou) hodnotu ze sloupce `W`, pomocný sloupec `X`
+     smazán ze šablony. Aby se oprava dostala i do už naklonovaných
+     16 týmových listů, musely se smazat a znovu naklonovat (`league
+     sync-teams`) – vlastní data v nich nejsou, jen vzorce/graf z šablony,
+     takže je to bezztrátové.
+   - `scripts/build_league_poradi_view.py` (nový skript) – na list
+     `Pořadí - liga` v Liga 2.0 doplňuje čitelný přehled: pomocný sloupec
+     `F` (skupina týmu přes `INDEX/MATCH` proti `Skupiny - liga`) a dvě
+     `QUERY` tabulky vedle sebe (Skupina 1 ve sloupcích `H:J`, Skupina 2
+     v `L:N`), obě řazené podle kola a pořadí. Nezasahuje do `A1:D5000`
+     (vlastní `IMPORTRANGE`) ani do DB. **Past:** `QUERY` s `where sloupec
+     <> ''` na číselném sloupci vrátí vždy 0 řádků (porovnání čísla s
+     prázdným řetězcem selže potichu) – filtr na hodnotu skupiny (`F = 1`)
+     stejně prázdné/nedoimportované řádky vyloučí sám, netřeba přidávat.
 
 **Další krok (jak ho zadal uživatel):** založit **LIT Seznamy 2.0** a
 projít krok po kroku, co ze stávající „Seznamy“ migrovat, co vynechat a

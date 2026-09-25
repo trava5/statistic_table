@@ -112,15 +112,16 @@ def build_value_updates() -> dict[str, list[list]]:
     put("S6", f"=SUMIF({ZT}!$B:$B;$B$1;{ZT}!$L:$L)")
     put("T6", f"=SUMIF({ZT}!$C:$C;$B$1;{ZT}!$L:$L)")
 
-    # --- Podkladová data pro graf „Pořadí v tabulce" (sloupce V:X) -----------
+    # --- Podkladová data pro graf „Pořadí v tabulce" (sloupce V:W) -----------
     # Web nezveřejňuje historii tabulky, proto `league sync-games` při každém
     # nálezu nových zápasů uloží aktuální pořadí všech týmů jako jeden snímek
-    # do listu Pořadí - liga (viz PROJECT.MD, „Pořadí po kole"). Záporná
-    # hodnota v X je jen kvůli grafu (níže = lepší pořadí, tedy výš na ose).
+    # do listu Pořadí - liga (viz PROJECT.MD, „Pořadí po kole"). Graf čte
+    # skutečné (kladné) pořadí přímo – pokus obrátit osu Y přes zápornou
+    # pomocnou hodnotu (níže = lepší pořadí) se ukázal nespolehlivý (popisek
+    # bodu pak ukazoval zápornou hodnotu misto skutečného pořadí); obrácení
+    # osy jde jen ručně přes UI editor grafu (Přizpůsobit → Svislá osa).
     put_row("V4", ["Kolo", "Pořadí"])
     put("V5", f"=QUERY({PO}!A:D;\"select A, D where C = '\"&$B$1&\"' order by A\";0)")
-    put("X4", "Pořadí (záporně, pro graf)")
-    put("X5", '=ARRAYFORMULA(IF($W$5:$W$40="";"";-$W$5:$W$40))')
 
     # --- Odehrané zápasy / Bodování / Brankáři (vedle sebe) ------------------
     put("A49", "ODEHRANÉ ZÁPASY")
@@ -401,7 +402,7 @@ def main() -> None:
                 "domains": [{"domain": source(3, 40, 21, 22)}],
                 "series": [
                     {
-                        "series": source(3, 40, 23, 24),
+                        "series": source(3, 40, 22, 23),
                         "targetAxis": "LEFT_AXIS",
                         "dataLabel": {"type": "DATA"},
                         "pointStyle": {"shape": "CIRCLE", "size": 7},
