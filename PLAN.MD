@@ -255,10 +255,17 @@ tabulka počítá“):**
      prázdným řetězcem selže potichu) – filtr na hodnotu skupiny (`F = 1`)
      stejně prázdné/nedoimportované řádky vyloučí sám, netřeba přidávat.
 
-**Další krok (jak ho zadal uživatel):** založit **LIT Seznamy 2.0** a
-projít krok po kroku, co ze stávající „Seznamy“ migrovat, co vynechat a
-v jakém tvaru to v nové tabulce bude (Zápasy, Sestavy, Bodování, Brankáři,
-Tým, Dashboard, Seznam hráčů, Trenéři – viz PROJECT.MD). Otevřené otázky:
+**Příště pokračovat na sheetu „Liga juniorů 2026/27“ (Liga 2.0,
+`LEAGUE_V2_SPREADSHEET_ID`)** – uživatel si ji chce ještě projít/doladit
+dál, než se přejde na Seznamy. Zatím hotovo a ověřeno: IMPORTRANGE mirror
+z DB, sezónní agregáty, šablona + 16 týmových listů, oprava grafu „Pořadí
+v tabulce“, přehled Skupina 1/2 na listu „Pořadí - liga“ (vše výše).
+
+Až bude Liga 2.0 uzavřená, dalším velkým krokem (zadaným uživatelem) je
+založit **LIT Seznamy 2.0** a projít krok po kroku, co ze stávající
+„Seznamy“ migrovat, co vynechat a v jakém tvaru to v nové tabulce bude
+(Zápasy, Sestavy, Bodování, Brankáři, Tým, Dashboard, Seznam hráčů,
+Trenéři – viz PROJECT.MD). Otevřené otázky:
 - Seznamy je produkční nástroj (trenér ho používá v sezóně) – migrace má
   být opatrnější/postupnější než u Liga 2.0, ne „velký třesk“.
 - Osud staré tabulky Liga (`LEAGUE_SPREADSHEET_ID`) po přechodu na Liga 2.0
