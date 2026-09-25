@@ -31,6 +31,7 @@ class Config:
     team_short: str
     season_start_year: int
     league_spreadsheet_id: str | None = None
+    league_db_spreadsheet_id: str | None = None
 
 
 def load_config(env_file: str | Path = ".env") -> Config:
@@ -49,6 +50,7 @@ def load_config(env_file: str | Path = ".env") -> Config:
         team_short=os.environ["TEAM_SHORT"],
         season_start_year=int(os.environ["SEASON_START_YEAR"]),
         league_spreadsheet_id=os.getenv("LEAGUE_SPREADSHEET_ID"),
+        league_db_spreadsheet_id=os.getenv("LEAGUE_DB_SPREADSHEET_ID"),
     )
 
 
@@ -56,6 +58,15 @@ def require_league_spreadsheet_id(config: Config) -> str:
     if not config.league_spreadsheet_id:
         raise RuntimeError("Chybí LEAGUE_SPREADSHEET_ID v .env (viz README, sekce Liga)")
     return config.league_spreadsheet_id
+
+
+def require_league_db_spreadsheet_id(config: Config) -> str:
+    """DB tabulka – jediný zdroj pravdy pro ligová data, zapisuje jen Python
+    (`league sync-games`). Prezentační listy (Liga, časem i Seznamy) do ní
+    nezapisují, jen z ní čtou přes IMPORTRANGE – viz PLAN.MD."""
+    if not config.league_db_spreadsheet_id:
+        raise RuntimeError("Chybí LEAGUE_DB_SPREADSHEET_ID v .env (viz README, sekce Liga)")
+    return config.league_db_spreadsheet_id
 
 
 def get_credentials(config: Config):
@@ -153,13 +164,15 @@ PORADI_PO_KOLE_COLUMN = "I"
 # Liga juniorů 2026/27, id soutěže z URL https://ceskyhokej.cz/competition/games/19
 LEAGUE_COMPETITION_ID = "19"
 
-# Listy v samostatné tabulce LEAGUE_SPREADSHEET_ID (syrová data, skript je zapisuje,
-# nikdo je needituje ručně – stejná filozofie jako vstupní buňky v tabulce Seznamy).
+# Listy v DB tabulce (LEAGUE_DB_SPREADSHEET_ID) – jediný zdroj pravdy pro
+# ligová data, zapisuje jen Python (`league sync-games`). Nikdo je needituje
+# ručně, prezentační tabulky (Liga, časem Seznamy) z nich jen čtou.
 LEAGUE_ZAPASY_SHEET = "Zápasy - liga"
 LEAGUE_ZAPASY_TYM_SHEET = "Zápasy - liga (tým)"
 LEAGUE_GOLY_SHEET = "Góly - liga"
 LEAGUE_VYLOUCENI_SHEET = "Vyloučení - liga"
 LEAGUE_PORADI_SHEET = "Pořadí - liga"
+LEAGUE_SKUPINY_SHEET = "Skupiny - liga"
 
 # Syrový log (skript sem jen přidává řádky, jeden řádek = jeden hráč v jednom
 # zápase) – zdroj dat pro vzorce sezónních součtů níže.
@@ -167,9 +180,9 @@ LEAGUE_SKATERS_LOG_SHEET = "Bruslaři - liga (zápasy)"
 LEAGUE_GOALIES_LOG_SHEET = "Brankáři - liga (zápasy)"
 
 # Sezónní bodování/brankářské statistiky celé ligy – jeden řádek na hráče.
-# Toto NEJSOU listy zapisované Pythonem – jsou to vzorce (QUERY group by nad
-# *_LOG_SHEET výše), jednorázově postavené scripts/build_league_aggregate_sheets.py.
-# Python do nich nikdy nezapisuje, jen čte (per-tým šablona je filtruje).
+# Toto NEJSOU listy v DB – žijí v prezentační tabulce LEAGUE_SPREADSHEET_ID
+# (Liga) jako vzorec (QUERY group by nad *_LOG_SHEET), postavené jednorázově
+# scripts/build_league_aggregate_sheets.py. Python do nich nikdy nezapisuje.
 LEAGUE_SKATERS_SHEET = "Bruslaři - liga"
 LEAGUE_GOALIES_SHEET = "Brankáři - liga"
 
@@ -209,3 +222,8 @@ LEAGUE_GOALIES_HEADER = [
 ]
 
 LEAGUE_PORADI_HEADER = ["kolo", "datum", "tým", "pořadí"]
+
+# Členství ve skupině (1/2), obnovuje se scrapem oficiální tabulky při
+# každém `league sync-games` – uložené jako fakt, aby `recompute_standings_
+# history` nemusela scrapovat znovu a aby to šlo použít i odjinud.
+LEAGUE_SKUPINY_HEADER = ["tým", "skupina"]

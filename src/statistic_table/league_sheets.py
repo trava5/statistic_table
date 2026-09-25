@@ -11,6 +11,8 @@ from statistic_table.config import (
     LEAGUE_PORADI_SHEET,
     LEAGUE_SKATERS_LOG_HEADER,
     LEAGUE_SKATERS_LOG_SHEET,
+    LEAGUE_SKUPINY_HEADER,
+    LEAGUE_SKUPINY_SHEET,
     LEAGUE_TEAM_NAME_CELL,
     LEAGUE_TEAM_TEMPLATE_SHEET,
     LEAGUE_VYLOUCENI_HEADER,
@@ -40,6 +42,7 @@ RAW_SHEETS = (
     (LEAGUE_SKATERS_LOG_SHEET, LEAGUE_SKATERS_LOG_HEADER),
     (LEAGUE_GOALIES_LOG_SHEET, LEAGUE_GOALIES_LOG_HEADER),
     (LEAGUE_PORADI_SHEET, LEAGUE_PORADI_HEADER),
+    (LEAGUE_SKUPINY_SHEET, LEAGUE_SKUPINY_HEADER),
 )
 # Bruslaři/Brankáři - liga (sezónní součty) záměrně NEJSOU v RAW_SHEETS – jsou
 # to vzorce (QUERY group by nad *_LOG_SHEET), postavené jednorázově skriptem
@@ -227,16 +230,38 @@ def _overwrite_sheet(
     ).execute()
 
 
+def refresh_group_membership(config: Config, spreadsheet_id: str) -> None:
+    """Obnoví LEAGUE_SKUPINY_SHEET živým scrapem oficiální tabulky (členství
+    ve skupině se v sezóně nemění, ale scrapuje se znovu při každém běhu, ať
+    je fakt v DB vždy aktuální). Při chybě ponechá, co už je v tabulce
+    uložené – bez skupin nejde spočítat pořadí, ale nesmí to shodit sync."""
+    try:
+        standings = parse_standings(fetch_standings_html())
+    except Exception:  # noqa: BLE001 – nepovinný krok, nesmí shodit sync
+        return
+    rows = [[s.team, s.group] for s in standings]
+    _overwrite_sheet(config, spreadsheet_id, LEAGUE_SKUPINY_SHEET, LEAGUE_SKUPINY_HEADER, rows)
+
+
+def read_group_membership(config: Config, spreadsheet_id: str) -> dict[str, int]:
+    values = (
+        _service(config)
+        .spreadsheets()
+        .values()
+        .get(spreadsheetId=spreadsheet_id, range=f"{LEAGUE_SKUPINY_SHEET}!A2:B1000000")
+        .execute()
+        .get("values", [])
+    )
+    return {row[0]: _int(row[1]) for row in values if len(row) >= 2 and row[0] and row[1]}
+
+
 def recompute_standings_history(config: Config, spreadsheet_id: str) -> None:
     """Přepočte pořadí po každém odehraném kole (LEAGUE_PORADI_SHEET) z vlastní
     tabulky Zápasy - liga (tým) – web historii tabulky nezveřejňuje, takže se
     pořadí po každém kole musí dopočítat zpětně z výsledků (viz PROJECT.MD,
-    „Pořadí po kole“). Skupina (Skupina 1/2) se zjišťuje živým scrapem
-    aktuální tabulky – členství ve skupině se v sezóně nemění."""
-    try:
-        team_groups = {s.team: s.group for s in parse_standings(fetch_standings_html())}
-    except Exception:  # noqa: BLE001 – bez skupin se pořadí spočítat nedá
-        team_groups = {}
+    „Pořadí po kole“). Skupina (Skupina 1/2) se čte z LEAGUE_SKUPINY_SHEET
+    (obnovuje `refresh_group_membership`), ne živým scrapem zvlášť."""
+    team_groups = read_group_membership(config, spreadsheet_id)
 
     rows = (
         _service(config)

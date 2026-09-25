@@ -76,32 +76,43 @@ celé sdílecí odkazy – např. z `.../folders/1k364.../` jen `1k364...`.
 Kromě evidence LIT z PDF zápisů umí skript stáhnout statistiky **všech**
 týmů Ligy juniorů přímo z `ceskyhokej.cz` (stránky jednotlivých zápasů mají
 kompletní zápis o utkání – soupisky, střelce, asistence, vyloučení – pro oba
-týmy, ne jen pro LIT). Data jdou do **samostatné** Google Tabulky
-(`LEAGUE_SPREADSHEET_ID` v `.env`), aby se to nemíchalo s produkční tabulkou
-„Seznamy“.
+týmy, ne jen pro LIT). Jsou na tom **dvě samostatné** Google Tabulky, ne
+produkční tabulka „Seznamy“:
+
+- **DB** (`LEAGUE_DB_SPREADSHEET_ID`) – jediný zdroj pravdy, zapisuje jen
+  `league sync-games`. Žádné vzorce, jen syrová/dopočítaná data.
+- **Liga** (`LEAGUE_SPREADSHEET_ID`) – prezentační tabulka (Tým – šablona,
+  per-tým listy, sezónní součty). Zatím čte data přímo u sebe; napojení na
+  DB přes `IMPORTRANGE` je naplánovaný další krok (viz PLAN.MD).
 
 Postup nastavení:
 
-1. Založ novou nativní Google Tabulku, nasdílej ji servisnímu účtu (role
-   Editor) a vlož její ID do `LEAGUE_SPREADSHEET_ID` v `.env`.
-2. Syrové listy (`Zápasy - liga`, `Zápasy - liga (tým)`, `Góly - liga`,
-   `Vyloučení - liga`, `Pořadí - liga`, `Bruslaři/Brankáři - liga (zápasy)` –
-   per-zápas log) založí skript sám při prvním `league sync-games`.
-3. `scripts/build_league_aggregate_sheets.py` (spustit jednou) postaví listy
-   **`Bruslaři - liga`** a **`Brankáři - liga`** – sezónní součty (jeden
-   řádek na hráče za celou ligu) jako `QUERY` vzorec nad `*-liga (zápasy)`.
-   Python do těchto dvou listů nikdy nezapisuje.
-4. `scripts/build_league_team_template.py` (spustit jednou) postaví list
-   **„Tým – šablona”** (Sezónní přehled, Přesilovky/oslabení, Vyloučení a TM,
-   grafy Skóre po zápasech/po třetinách/Pořadí v tabulce, a dole vedle sebe
-   Odehrané zápasy, Bodování a Brankáři – vše přes `QUERY`/`SUMIF`
-   parametrizované jménem týmu v buňce `B1`).
+1. Založ dvě nové nativní Google Tabulky, obě nasdílej servisnímu účtu
+   (role Editor), ID vlož do `LEAGUE_DB_SPREADSHEET_ID` a
+   `LEAGUE_SPREADSHEET_ID` v `.env`.
+2. Syrové listy v DB (`Zápasy - liga`, `Zápasy - liga (tým)`, `Góly - liga`,
+   `Vyloučení - liga`, `Pořadí - liga`, `Skupiny - liga`,
+   `Bruslaři/Brankáři - liga (zápasy)` – per-zápas log) založí skript sám
+   při prvním `league sync-games`.
+3. `scripts/build_league_aggregate_sheets.py` (spustit jednou, v tabulce
+   Liga) postaví listy **`Bruslaři - liga`** a **`Brankáři - liga`** –
+   sezónní součty (jeden řádek na hráče za celou ligu) jako `QUERY` vzorec
+   nad `*-liga (zápasy)`. Python do těchto dvou listů nikdy nezapisuje.
+4. `scripts/build_league_team_template.py` (spustit jednou, v tabulce Liga)
+   postaví list **„Tým – šablona”** (Sezónní přehled, Přesilovky/oslabení,
+   Vyloučení a TM, grafy Skóre po zápasech/po třetinách/Pořadí v tabulce,
+   a dole vedle sebe Odehrané zápasy, Bodování a Brankáři – vše přes
+   `QUERY`/`SUMIF` parametrizované jménem týmu v buňce `B1`).
 5. `league sync-games` – projde stránkovaný seznam zápasů ligy, přeskočí
-   zápasy, které ještě neproběhly, i ty, které už jsou v tabulce, nové
-   zapíše a přepočítá `Pořadí - liga` (viz PROJECT.MD, „Co je záměrně
-   v Pythonu, co ve vzorcích“).
+   zápasy, které ještě neproběhly, i ty, které už jsou v DB, nové zapíše,
+   obnoví `Skupiny - liga` a přepočítá `Pořadí - liga` (viz PROJECT.MD,
+   „Co je záměrně v Pythonu, co ve vzorcích“).
 6. `league sync-teams` – pro každý tým nalezený v syrových datech naklonuje
-   „Tým – šablona“ (list `<název klubu>`), pokud ještě neexistuje.
+   „Tým – šablona“ (list `<název klubu>`) v tabulce Liga, pokud ještě
+   neexistuje. **Pozor:** dokud Liga nečte z DB přes `IMPORTRANGE` (viz
+   PLAN.MD), zůstává napojená na svá vlastní syrová data – po přechodu
+   `league sync-games` na zápis do DB je tedy potřeba tenhle krok teprve
+   dodělat, jinak `sync-teams` nenajde nové týmy.
 
 Skript do listu „Tým – šablona“ ani do jeho kopií nikdy nezapisuje vzorce,
 jen buňku se jménem týmu – stejný princip jako u zbytku projektu (skript

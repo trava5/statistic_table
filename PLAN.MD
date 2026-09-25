@@ -196,24 +196,31 @@ tabulka počítá“):**
 2. Přesilovky/výsledek za zápas a pořadí po kole zůstávají v Pythonu
    (zdůvodnění viz PROJECT.MD – composite pravidla, těžko čitelná jako
    vzorec, testovaná v Pythonu).
-3. **Další krok – zatím jen navrženo, neimplementováno:** samostatný
-   Google Sheet jako „databázová“ vrstva – jediný zdroj pravdy, do kterého
-   Python importuje, a ze kterého si vzorcové/prezentační tabulky (Seznamy
-   i Liga, časem i další analytické nástroje) berou data přes
-   `IMPORTRANGE`. K rozmyšlení až se na to dojde:
-   - jaké tabulky/listy do DB sheetu patří a v jakém tvaru (syrová fakta
-     vs. co zůstane odvozené v Pythonu podle bodu 2 výše),
-   - jak/jestli zapojit LIT/Seznamy (Seznamy je produkční nástroj – návrh
-     byl pilotovat nejdřív jen na Lize, Seznamy až osvědčí-li se to),
-   - `IMPORTRANGE` omezení: jednorázová ruční autorizace přístupu mezi
-     tabulkami (nejde přes API), doporučeno v cílové tabulce mít jeden
-     „import“ list s `IMPORTRANGE` a ostatní vzorce ať čtou z něj, ne
-     opakovaně `IMPORTRANGE` přímo z mnoha míst.
-4. Až bude tvar DB sheetu domluvený: napsat plnicí skript, pak přepojit
-   listy v Lize (a případně Seznamech), aby data brala odtud.
+3. ✅ **DB tabulka jako jediný zdroj pravdy – založena a naplněna (24. 9.):**
+   nová samostatná Google Tabulka (`LEAGUE_DB_SPREADSHEET_ID`), do které
+   teď `league sync-games` výhradně zapisuje (přepnuto z
+   `LEAGUE_SPREADSHEET_ID`). Obsahuje identický tvar listů, jaký měla
+   dřív tabulka Liga: `Zápasy - liga`, `Zápasy - liga (tým)`, `Góly - liga`,
+   `Vyloučení - liga`, `Bruslaři/Brankáři - liga (zápasy)`, `Pořadí - liga`
+   a nově **`Skupiny - liga`** (tým → skupina, `refresh_group_membership`
+   ji obnovuje živým scrapem při každém `sync-games` – dřív se skupina
+   scrapovala přímo uvnitř `recompute_standings_history`, teď je to
+   samostatný uložený fakt). Ověřeno živě: 16 zápasů, 16 týmů ve
+   2 skupinách, `Pořadí - liga` pro LIT sedí (kolo 1→8., kolo 2→4.).
+4. **Tabulka Liga zamrzla** – `sync-teams`/`Tým – šablona`/sezónní vzorce
+   tam zůstávají beze změny a dál čtou ze svých vlastních (už needitovaných)
+   listů, dokud ji v dalším kroku nenahradí Liga 2.0 napojená na DB přes
+   `IMPORTRANGE`.
 
-**Kam příště navázat:** bod 3 výše – návrh tvaru DB sheetu (jaké listy,
-jaký tvar dat, co se odkud čte), než se začne cokoliv psát.
+**Další krok (jak ho zadal uživatel):** založit dvě nové prezentační
+tabulky – **Liga 2.0** a **LIT Seznamy 2.0** – a u každé projít krok po
+kroku, co ze stávající verze migrovat, co vynechat a v jakém tvaru to
+v nové tabulce bude. Otevřené otázky k tomu (z minulého kola):
+- `IMPORTRANGE` omezení: jednorázová ruční autorizace přístupu mezi
+  tabulkami (nejde přes API), doporučeno mít v cílové tabulce jeden
+  „import“ list s `IMPORTRANGE` a ostatní vzorce ať čtou z něj.
+- Seznamy je produkční nástroj (trenér ho používá v sezóně) – migrace na
+  Seznamy 2.0 má být opatrnější/později než Liga 2.0, ne nutně současně.
 
 ## Potvrzená rozhodnutí (21. 9. 2026)
 

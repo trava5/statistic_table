@@ -109,19 +109,22 @@ Kromě evidence LIT z PDF (výše) umí skript (`cli league sync-games` /
 stránek jednotlivých zápasů na `ceskyhokej.cz` (`/game/detail/<id>`) – ty
 jsou server-renderované a obsahují pro oba týmy kompletní zápis o utkání
 (soupisky, střelce, asistence s časem a herní situací, vyloučení s
-minutáží a druhem trestu, skóre po třetinách). Data jdou do **samostatné**
-Google Tabulky (`LEAGUE_SPREADSHEET_ID`), ne do „Seznamy“, ve stejném duchu
-jako zbytek projektu: skript zapisuje jen syrová data. Listy `Zápasy - liga`,
-`Zápasy - liga (tým)`, `Góly - liga`, `Vyloučení - liga` jsou normalizované
-(jeden řádek = jedna událost). Bodování a brankářské statistiky mají navíc
-dvě vrstvy: syrový log `Bruslaři/Brankáři - liga (zápasy)` (jeden řádek =
-jeden hráč v jednom zápase, skript do něj jen přidává) a **sezónní součty**
-`Bruslaři - liga` / `Brankáři - liga` (jeden řádek na hráče za celou
-sezónu) – to už ale Python nezapisuje, je to `QUERY` vzorec nad logem,
-jednorázově postavený `scripts/build_league_aggregate_sheets.py` (viz níže
-„Co je (záměrně) v Pythonu, co ve vzorcích“). Prezentaci a součty za tým
-dělá list „Tým – šablona“ vzorci `QUERY`/`SUMIF` nad sezónními součty
-(Sezónní přehled,
+minutáží a druhem trestu, skóre po třetinách). Data jsou na **dvou
+samostatných** Google Tabulkách, ne v „Seznamy“:
+
+- **DB** (`LEAGUE_DB_SPREADSHEET_ID`) – jediný zdroj pravdy, zapisuje jen
+  `league sync-games`. Listy `Zápasy - liga`, `Zápasy - liga (tým)`,
+  `Góly - liga`, `Vyloučení - liga` jsou normalizované (jeden řádek =
+  jedna událost), `Bruslaři/Brankáři - liga (zápasy)` je stejně normovaný
+  log (jeden řádek = jeden hráč v jednom zápase), `Pořadí - liga` a
+  `Skupiny - liga` jsou dopočítaná fakta (viz „Co je (záměrně) v Pythonu“
+  níže). Žádné vzorce, jen data od Pythonu.
+- **Liga** (`LEAGUE_SPREADSHEET_ID`) – prezentační tabulka. **Sezónní
+  součty** `Bruslaři - liga` / `Brankáři - liga` (jeden řádek na hráče za
+  celou sezónu) jsou tu `QUERY` vzorec nad `*-liga (zápasy)`, jednorázově
+  postavený `scripts/build_league_aggregate_sheets.py` – Python do nich
+  nezapisuje. List „Tým – šablona“ vzorci `QUERY`/`SUMIF` nad sezónními
+  součty (Sezónní přehled,
 Přesilovky/oslabení, Vyloučení a TM, grafy, a dole vedle sebe Odehrané
 zápasy/Bodování s kompletní soupiskou/Brankáři), naklonovaný skriptem pro
 každý tým zvlášť (`league sync-teams`). Šablonu samotnou staví jednorázově
@@ -150,7 +153,10 @@ za vysvětlení, protože počítají víc než jen přepis naškrábaných čí
   vzorcem (kumulativní `SUMIFS` do daného kola + `COUNTIFS`-based pořadí
   v rámci skupiny), ale je to composite pravidlo se třemi úrovněmi
   tie-breaku nad dynamicky filtrovanou skupinou – vědomě ponecháno
-  v testovaném Pythonu místo nepřehledného vzorce.
+  v testovaném Pythonu místo nepřehledného vzorce. Členství ve skupině
+  (`Skupiny - liga`) obnovuje `league_sheets.refresh_group_membership`
+  živým scrapem při každém `league sync-games` – uložené jako fakt v DB,
+  aby přepočet pořadí nemusel scrapovat znovu a šlo to použít i odjinud.
 
 Až se do dat budou napojovat další analytické nástroje, tohle rozdělení
 (syrová fakta vs. odvozené pohledy) je i důvod, proč zvažujeme samostatný

@@ -8,6 +8,7 @@ from statistic_table.config import (
     ZAPASY_DATA_START_ROW,
     ZAPASY_SHEET,
     load_config,
+    require_league_db_spreadsheet_id,
     require_league_spreadsheet_id,
 )
 from statistic_table.drive import list_pdf_files
@@ -32,6 +33,7 @@ from statistic_table.league_sheets import (
     read_known_game_ids,
     read_known_teams,
     recompute_standings_history,
+    refresh_group_membership,
     team_sheet_title,
 )
 from statistic_table.logging_config import setup_logging
@@ -162,7 +164,7 @@ def cmd_standings(args: argparse.Namespace) -> int:
 
 def cmd_league_sync_games(args: argparse.Namespace) -> int:
     config = load_config()
-    spreadsheet_id = require_league_spreadsheet_id(config)
+    spreadsheet_id = require_league_db_spreadsheet_id(config)
 
     if not args.dry_run:
         ensure_league_sheets(config, spreadsheet_id)
@@ -208,6 +210,7 @@ def cmd_league_sync_games(args: argparse.Namespace) -> int:
     if new_games and not args.dry_run:
         # Sezónní bodování a brankářské statistiky se dopočítají samy vzorcem
         # (viz Bruslaři/Brankáři - liga, postavené scripts/build_league_aggregate_sheets.py).
+        refresh_group_membership(config, spreadsheet_id)
         recompute_standings_history(config, spreadsheet_id)
         print("Pořadí po kolech přepočítáno.")
 
