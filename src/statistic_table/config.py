@@ -309,3 +309,7 @@ SEZNAMY_GOALIES_LOG_HEADER = [
 # aggregate_sheets.py. Python do nich nikdy nezapisuje.
 SEZNAMY_BODOVANI_SHEET = "Bodování"
 SEZNAMY_BRANKARI_SHEET = "Brankáři"
+
+# Týmový přehled (sezónní součty LIT:soupeř) – vzorec nad SEZNAMY_ZAPASY_TYM_SHEET
+# a SEZNAMY_ZAPASY_SHEET, postavený jednorázově scripts/build_seznamy_tym_sheet.py.
+SEZNAMY_TYM_SHEET = "Tým"

@@ -194,8 +194,11 @@ třesk“, viz PLAN.MD.
   `Brankáři` jsou `QUERY group by` nad `Bruslaři/Brankáři (zápasy)`
   filtrované na LIT (`scripts/build_seznamy_aggregate_sheets.py`),
   zjednodušené oproti produkční tabulce (jméno přímo z logu, bez INDEX/
-  MATCH do `Seznam hráčů`; `Brankáři` zatím bez výher/shutoutu). `Tým`/
-  `Dashboard` jsou další krok.
+  MATCH do `Seznam hráčů`; `Brankáři` zatím bez výher/shutoutu). `Tým`
+  (`scripts/build_seznamy_tym_sheet.py`) je sezónní přehled LIT:soupeř
+  (`SUMIF`/`COUNTIF` nad `Zápasy (tým)`) + skóre po třetinách
+  (`REGEXEXTRACT` nad `Zápasy`, rozpad podle domácí/hosté) – zatím bez
+  sekce Ročníky. `Dashboard` je další krok.
 - Modul: `seznamy_sheets.py` (`build_seznamy_rows` – čistá funkce, žádná
   síť; `append_game` – I/O, dedup podle čísla zápisu).
 - `stats.third_and_relative_time` – PDF má čas gólu/trestu jako průběžný

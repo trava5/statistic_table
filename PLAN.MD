@@ -429,9 +429,33 @@ referenční zápasy zpětně dopočítané, hodnoty sedí přesně na PROJECT.M
 (LIT 4002: P/0 bodů/6 PP/1 PP gól/7 PK/0 obdržených v PK/0 SH gólů/9
 vyloučení/26 TM; symetricky i pro Příbram/Chomutov).
 
-**Další krok:** navrhnout a postavit `Tým`/`Dashboard` v Seznamy 2.0
-(sezónní přehled, přesilovky/oslabení, ročníky, skóre po třetinách – ze
-`Zápasy` mirror) a později doplnit výhry/shutout do `Brankáři`.
+✅ **List `Tým` postaven (25. 9.), rozsah odsouhlasený s uživatelem:**
+„nejdřív připravit strukturu dat pro dashboard, dashboard sestavit ve
+druhém kroku“ – `Tým` je ta datová vrstva, `scripts/build_seznamy_tym_
+sheet.py` (nový skript):
+- **Sezónní přehled + Přesilovky/oslabení + Vyloučení a TM** – `SUMIF`/
+  `COUNTIF` nad `Zápasy (tým)` (LIT řádky vs. řádky ostatních týmů =
+  "soupeř"). **Past:** `COUNTIF(range;"<>LIT")` počítá i prázdné buňky
+  pod daty jako „různé od LIT" (997 místo 2 zápasů) – opraveno
+  `COUNTIFS(range;"<>";range;"<>LIT")` (druhá podmínka = neprázdné).
+  `SUMIF` se stejnou vadou netrpí (prázdné řádky přispívají nulou, součet
+  vyjde správně i bez opravy).
+- **Skóre po třetinách** – pomocné sloupce `F:M` (skryté) přes
+  `REGEXEXTRACT` rozparsují text `"h:a"` ze `Zápasy!H:K` (1.P/2.P/3.P/OT)
+  na LIT/soupeř podle toho, kdo byl domácí (`REGEXEXTRACT` zvoleno místo
+  `SPLIT`+`INDEX` z produkční tabulky – vektorizuje se čistě pod
+  `ARRAYFORMULA`, `SPLIT` ne).
+- **Bez sekce Ročníky** (vědomě odloženo) – vyžaduje dopočítat rok
+  narození z registrace v `Bruslaři/Brankáři (zápasy)` a zprůměrovat počty
+  hráčů na zápas podle ročníku, řeší se v dalším kroku.
+- Ověřeno živě proti produkční tabulce Tým – sedí přesně (Odehráno 2/2,
+  Góly 6/7, PP 12/15, PP góly 2/2, využití PP 16,67%/13,33%, PK 15/12,
+  obdržené v PK 2/2, úspěšnost PK 86,67%/83,33%, SH góly 0/1, vyloučení
+  18/14, TM 44/28, TM/zápas 22/14, skóre po třetinách 2:4/1:1/3:2/0:0).
+
+**Další krok:** postavit `Dashboard` v Seznamy 2.0 (přehled + grafy + Top 5
+Bodování, nad `Tým`/`Bodování`/`Brankáři` už hotovými), doplnit Ročníky do
+`Tým` a výhry/shutout do `Brankáři`.
 
 Osud staré tabulky Liga (`LEAGUE_SPREADSHEET_ID`) po přechodu na Liga 2.0
 zatím neřešen (smazat / nechat ladem / archivovat) – rozhodnout až bude
