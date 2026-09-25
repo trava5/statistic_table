@@ -254,6 +254,18 @@ tabulka počítá“):**
         vyzkoušený i přes čerstvě vytvořený graf (ne přes `updateChartSpec`)
         a znovu spadl na `500 Internal error` – potvrzeno, že jde o obecné
         omezení API, ne jen chybu `updateChartSpec`.
+     3. Uživatel dál chtěl, aby osa Y měla pevný rozsah 1 (nahoře) až 8
+        (dole) na každém listu, ne automatické přizpůsobení odehraným
+        kolům (na začátku sezóny je rozsah skutečných hodnot úzký, takže
+        osa neukazovala celou tabulku). Přidán `viewWindowOptions` na
+        `LEFT_AXIS`: `viewWindowMode: EXPLICIT`, `viewWindowMin: -8`,
+        `viewWindowMax: -1` (hodnoty jsou záporné jako sloupec `X` výše,
+        min/max jsou tedy prohozené oproti zobrazenému 1/8). Na rozdíl od
+        dřívějšího pokusu obrátit směr osy (`min > max`, který se tiše
+        neprojevil), tohle je běžný rostoucí rozsah s pevnými mezemi –
+        funguje spolehlivě přes API, uloženo a ověřeno na živém listu.
+        Předpoklad: skupina má 8 týmů (`Skupiny - liga`) – při jiném počtu
+        týmů v soutěži je potřeba mez přepočítat.
      Aby se oprava dostala i do už naklonovaných 16 týmových listů, musely
      se smazat a znovu naklonovat (`league sync-teams`) – vlastní data
      v nich nejsou, jen vzorce/graf z šablony, takže je to bezztrátové.

@@ -425,7 +425,21 @@ def main() -> None:
                 "legendPosition": "NO_LEGEND",
                 "axis": [
                     {"position": "BOTTOM_AXIS", "title": "Kolo"},
-                    {"position": "LEFT_AXIS", "title": "Pořadí"},
+                    {
+                        "position": "LEFT_AXIS",
+                        "title": "Pořadí",
+                        # Pevný rozsah 1–8 (skupina má 8 týmů, viz Skupiny -
+                        # liga), ne automatické přizpůsobení odehraným kolům –
+                        # jinak by na začátku sezóny (jen pár kol, úzký rozsah
+                        # skutečných hodnot) osa neukazovala celou tabulku.
+                        # Hodnoty jsou záporné (viz sloupec X výše), min/max
+                        # jsou tedy prohozené oproti zobrazenému 1/8.
+                        "viewWindowOptions": {
+                            "viewWindowMode": "EXPLICIT",
+                            "viewWindowMin": -8,
+                            "viewWindowMax": -1,
+                        },
+                    },
                 ],
                 "domains": [{"domain": source(3, 40, 21, 22)}],
                 "series": [
