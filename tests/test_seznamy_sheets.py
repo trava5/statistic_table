@@ -8,6 +8,7 @@ from statistic_table.config import (
     SEZNAMY_SKATERS_LOG_SHEET,
     SEZNAMY_VYLOUCENI_SHEET,
     SEZNAMY_ZAPASY_SHEET,
+    SEZNAMY_ZAPASY_TYM_SHEET,
     Config,
 )
 from statistic_table.pdf_parser import parse_game
@@ -55,6 +56,58 @@ def test_zapasy_row_4012(game_4012):
     assert rows[SEZNAMY_ZAPASY_SHEET] == [
         ["4012", "20.9.2026", "Chomutov", "LIT", 4, 5, "", "2:2", "1:0", "1:3", ""]
     ]
+
+
+def test_zapasy_tym_rows_4002(game_4002):
+    rows = build_seznamy_rows(game_4002, _config())[SEZNAMY_ZAPASY_TYM_SHEET]
+    by_team = {r[1]: r for r in rows}
+
+    lit = by_team["LIT"]
+    assert lit[3] == "doma"
+    assert lit[4] == 1  # skóre tým
+    assert lit[5] == 3  # skóre soupeř
+    assert lit[6] == "P"
+    assert lit[7] == 0
+    assert lit[8] == 6  # přesilovky
+    assert lit[9] == 1  # góly v přesilovce
+    assert lit[10] == 7  # oslabení
+    assert lit[11] == 0  # obdržené góly v oslabení
+    assert lit[12] == 0  # góly v oslabení (vstřelené)
+    assert lit[13] == 9  # vyloučení
+    assert lit[14] == 26  # trestné minuty
+
+    opp = by_team["Příbram"]
+    assert opp[6] == "V"
+    assert opp[7] == 3
+    assert opp[8] == 7  # přesilovky soupeře = oslabení LIT
+    assert opp[12] == 1  # góly soupeře v oslabení (SH 0:1 v pohledu LIT:soupeř)
+    assert opp[13] == 7
+    assert opp[14] == 14
+
+
+def test_zapasy_tym_rows_4012(game_4012):
+    rows = build_seznamy_rows(game_4012, _config())[SEZNAMY_ZAPASY_TYM_SHEET]
+    by_team = {r[1]: r for r in rows}
+
+    lit = by_team["LIT"]
+    assert lit[3] == "venku"
+    assert lit[4] == 5
+    assert lit[5] == 4
+    assert lit[6] == "V"
+    assert lit[7] == 3
+    assert lit[8] == 6
+    assert lit[9] == 1
+    assert lit[10] == 8
+    assert lit[11] == 2
+    assert lit[12] == 0
+    assert lit[13] == 9
+    assert lit[14] == 18
+
+    opp = by_team["Chomutov"]
+    assert opp[6] == "P"
+    assert opp[7] == 0
+    assert opp[13] == 7
+    assert opp[14] == 14
 
 
 def test_goly_total_matches_score(game_4002, game_4012):

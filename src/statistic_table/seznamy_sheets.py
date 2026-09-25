@@ -15,15 +15,24 @@ from statistic_table.config import (
     SEZNAMY_VYLOUCENI_SHEET,
     SEZNAMY_ZAPASY_HEADER,
     SEZNAMY_ZAPASY_SHEET,
+    SEZNAMY_ZAPASY_TYM_HEADER,
+    SEZNAMY_ZAPASY_TYM_SHEET,
     Config,
     get_credentials,
 )
 from statistic_table.model import Game, TeamSheet
 from statistic_table.players import identify_lit, opponent_alias
-from statistic_table.stats import note, third_and_relative_time
+from statistic_table.stats import (
+    goal_situation_counts,
+    note,
+    penalty_totals,
+    power_plays,
+    third_and_relative_time,
+)
 
 RAW_SHEETS = (
     (SEZNAMY_ZAPASY_SHEET, SEZNAMY_ZAPASY_HEADER),
+    (SEZNAMY_ZAPASY_TYM_SHEET, SEZNAMY_ZAPASY_TYM_HEADER),
     (SEZNAMY_GOLY_SHEET, SEZNAMY_GOLY_HEADER),
     (SEZNAMY_VYLOUCENI_SHEET, SEZNAMY_VYLOUCENI_HEADER),
     (SEZNAMY_SKATERS_LOG_SHEET, SEZNAMY_SKATERS_LOG_HEADER),
@@ -112,15 +121,48 @@ def _player_name(team: TeamSheet, number: str) -> str:
     return ""
 
 
-def _player_registration(team: TeamSheet, number: str) -> str:
-    for p in team.roster:
-        if p.number == number:
-            return p.registration_number
-    return ""
-
-
 def _short_name(team: TeamSheet, lit: TeamSheet, config: Config) -> str:
     return config.team_short if team is lit else opponent_alias(team.name)
+
+
+def _result_and_points(won: bool, ending: str | None) -> tuple[str, int]:
+    """Stejné pravidlo jako league_stats._result_and_points (duplikováno
+    záměrně, jiný datový model – TeamSheet.penalties/goals místo LeaguePenalty/
+    LeagueGoal, viz PROJECT.MD)."""
+    if ending:
+        return ("VP", 2) if won else ("PP", 1)
+    return ("V", 3) if won else ("P", 0)
+
+
+def _team_row(
+    game: Game,
+    team: TeamSheet,
+    opponent: TeamSheet,
+    short: str,
+    opponent_short: str,
+    *,
+    is_home: bool,
+) -> list:
+    """Výsledek, body, přesilovky/oslabení z pohledu `team` – composite pravidlo
+    s časovým párováním trestů (stejné jako league_stats.team_perspective_rows),
+    proto Python, ne vzorec (viz PROJECT.MD)."""
+    score_for, score_against = (
+        (game.home_score, game.away_score) if is_home else (game.away_score, game.home_score)
+    )
+    result, points = _result_and_points(score_for > score_against, game.ending)
+
+    pp = power_plays(team.penalties, opponent.penalties)
+    team_goals = goal_situation_counts(team.goals)
+    opponent_goals = goal_situation_counts(opponent.goals)
+    penalties = penalty_totals(team.penalties)
+
+    return [
+        game.number, short, opponent_short, "doma" if is_home else "venku",
+        score_for, score_against, result, points,
+        pp.home_power_plays, team_goals.pp_goals,
+        pp.away_power_plays, opponent_goals.pp_goals, team_goals.sh_goals,
+        penalties.count, penalties.minutes,
+    ]
 
 
 def build_seznamy_rows(game: Game, config: Config) -> dict[str, list[list]]:
@@ -136,6 +178,10 @@ def build_seznamy_rows(game: Game, config: Config) -> dict[str, list[list]]:
     zapasy_row = [
         game.number, date, home_short, away_short, game.home_score, game.away_score,
         note(game), *_period_score_cells(game),
+    ]
+    zapasy_tym_rows = [
+        _team_row(game, game.home, game.away, home_short, away_short, is_home=True),
+        _team_row(game, game.away, game.home, away_short, home_short, is_home=False),
     ]
 
     goly_rows: list[list] = []
@@ -195,6 +241,7 @@ def build_seznamy_rows(game: Game, config: Config) -> dict[str, list[list]]:
 
     return {
         SEZNAMY_ZAPASY_SHEET: [zapasy_row],
+        SEZNAMY_ZAPASY_TYM_SHEET: zapasy_tym_rows,
         SEZNAMY_GOLY_SHEET: goly_rows,
         SEZNAMY_VYLOUCENI_SHEET: vylouceni_rows,
         SEZNAMY_SKATERS_LOG_SHEET: bruslari_rows,

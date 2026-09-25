@@ -34,6 +34,7 @@ from statistic_table.config import (
     SEZNAMY_SKATERS_LOG_SHEET,
     SEZNAMY_VYLOUCENI_SHEET,
     SEZNAMY_ZAPASY_SHEET,
+    SEZNAMY_ZAPASY_TYM_SHEET,
     get_credentials,
     load_config,
     require_seznamy_db_spreadsheet_id,
@@ -43,6 +44,7 @@ from statistic_table.config import (
 # Jméno listu -> poslední sloupec s daty (viz SEZNAMY_*_HEADER v config.py).
 DB_MIRRORS = {
     SEZNAMY_ZAPASY_SHEET: "K",
+    SEZNAMY_ZAPASY_TYM_SHEET: "O",
     SEZNAMY_GOLY_SHEET: "H",
     SEZNAMY_VYLOUCENI_SHEET: "I",
     SEZNAMY_SKATERS_LOG_SHEET: "K",

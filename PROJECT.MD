@@ -173,18 +173,29 @@ Stejný DB → prezentace vzor jako u Ligy, tentokrát nad daty LIT z PDF
 (výše) běží dál beze změny, dokud Seznamy 2.0 není hotová – žádný „velký
 třesk“, viz PLAN.MD.
 
-- **Seznamy DB** (`SEZNAMY_DB_SPREADSHEET_ID`) – 5 syrových listů
-  (`Zápasy`, `Góly`, `Vyloučení`, `Bruslaři (zápasy)`, `Brankáři (zápasy)`),
-  **symetricky pro oba týmy** (na rozdíl od produkční `Seznamy`, kde se
-  soupeřova strana po naparsování PDF zahazuje). Zapisuje `seznamy_sheets.
-  append_game` – **dual-write**: každý `cli import` teď zapíše jak do
-  produkční `Seznamy` (beze změny), tak navíc (best-effort, nesmí import
-  shodit) do Seznamy DB. Identita hráče (jméno, registrace) je soběstačná
-  v rámci jednoho PDF, nepotřebuje `Seznam hráčů` – ten zůstává jen pro
-  zápis do produkční tabulky.
-- **Seznamy 2.0** (`SEZNAMY_V2_SPREADSHEET_ID`) – zatím jen založená
-  prázdná tabulka, prezentační vrstva (IMPORTRANGE mirror + formule
-  Bodování/Brankáři/Tým/Dashboard) je další krok.
+- **Seznamy DB** (`SEZNAMY_DB_SPREADSHEET_ID`) – 6 syrových listů
+  (`Zápasy`, `Zápasy (tým)`, `Góly`, `Vyloučení`, `Bruslaři (zápasy)`,
+  `Brankáři (zápasy)`), **symetricky pro oba týmy** (na rozdíl od produkční
+  `Seznamy`, kde se soupeřova strana po naparsování PDF zahazuje). Zapisuje
+  `seznamy_sheets.append_game` – **dual-write**: každý `cli import` teď
+  zapíše jak do produkční `Seznamy` (beze změny), tak navíc (best-effort,
+  nesmí import shodit) do Seznamy DB. Identita hráče (jméno, registrace) je
+  soběstačná v rámci jednoho PDF, nepotřebuje `Seznam hráčů` – ten zůstává
+  jen pro zápis do produkční tabulky. `Zápasy (tým)` (výsledek, body,
+  přesilovky/oslabení za zápas z pohledu daného týmu) počítá Python stejným
+  principem jako `Zápasy - liga (tým)` u Ligy – composite pravidlo
+  s časovým párováním trestů, ne vzorec (viz „Co je záměrně v Pythonu“
+  níže).
+- **Seznamy 2.0** (`SEZNAMY_V2_SPREADSHEET_ID`) – prezentační tabulka:
+  `IMPORTRANGE` mirror syrových listů z DB + neosobních sloupců B:F
+  (Příjmení, Jméno, č. reg., číslo, post) `Seznam hráčů` z produkční
+  `Seznamy` (`scripts/build_seznamy_v2_mirrors.py` – **nikdy** celý
+  `Seznam hráčů`, od sloupce J má citlivé osobní údaje). `Bodování`/
+  `Brankáři` jsou `QUERY group by` nad `Bruslaři/Brankáři (zápasy)`
+  filtrované na LIT (`scripts/build_seznamy_aggregate_sheets.py`),
+  zjednodušené oproti produkční tabulce (jméno přímo z logu, bez INDEX/
+  MATCH do `Seznam hráčů`; `Brankáři` zatím bez výher/shutoutu). `Tým`/
+  `Dashboard` jsou další krok.
 - Modul: `seznamy_sheets.py` (`build_seznamy_rows` – čistá funkce, žádná
   síť; `append_game` – I/O, dedup podle čísla zápisu).
 - `stats.third_and_relative_time` – PDF má čas gólu/trestu jako průběžný

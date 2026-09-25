@@ -266,6 +266,7 @@ LEAGUE_SKUPINY_HEADER = ["tým", "skupina"]
 # strana po naparsování zahazovala (viz PLAN.MD). Žádné vzorce, žádné
 # citlivé osobní údaje (jen registrační číslo jako identifikátor).
 SEZNAMY_ZAPASY_SHEET = "Zápasy"
+SEZNAMY_ZAPASY_TYM_SHEET = "Zápasy (tým)"
 SEZNAMY_GOLY_SHEET = "Góly"
 SEZNAMY_VYLOUCENI_SHEET = "Vyloučení"
 SEZNAMY_SKATERS_LOG_SHEET = "Bruslaři (zápasy)"
@@ -274,6 +275,15 @@ SEZNAMY_GOALIES_LOG_SHEET = "Brankáři (zápasy)"
 SEZNAMY_ZAPASY_HEADER = [
     "číslo zápisu", "datum", "domácí", "hosté", "skóre domácí", "skóre hosté",
     "pozn.", "1.P", "2.P", "3.P", "OT",
+]
+# Výsledek z pohledu daného týmu (přesilovky/oslabení, výsledek, body) – composite
+# pravidlo s časovým párováním trestů, stejný důvod jako LEAGUE_ZAPASY_TYM_HEADER
+# proč to zůstává v Pythonu (stats.py), ne ve vzorci. Bez "kolo" (LIT hraje jen
+# svůj rozpis, ne celou soutěž).
+SEZNAMY_ZAPASY_TYM_HEADER = [
+    "číslo zápisu", "tým", "soupeř", "doma/venku", "skóre tým", "skóre soupeř",
+    "výsledek", "body", "přesilovky", "góly v přesilovce", "oslabení",
+    "obdržené góly v oslabení", "góly v oslabení (vstřelené)", "vyloučení", "trestné minuty",
 ]
 SEZNAMY_GOLY_HEADER = [
     "číslo zápisu", "tým", "třetina", "čas", "střelec", "asistence 1", "asistence 2", "situace",

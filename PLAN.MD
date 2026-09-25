@@ -412,6 +412,23 @@ produkční import) zapíše i do Seznamy DB přes nový modul
   hodnotám z produkčního Dashboardu (Krátký 1Z/4G, Weber 1Z/3G, Hladík/
   Husák/Prokůpek 2Z/1G/1A/2B) – sedí přesně.
 
+✅ **6. tabulka `Zápasy (tým)` doplněna do Seznamy DB (25. 9., odsouhlaseno
+uživatelem):** chybějící dílek pro `Tým`/`Dashboard` – přesilovky/oslabení/
+vyloučení/TM **za zápas** vyžadují composite pravidlo s časovým párováním
+trestů (stejný důvod jako `Zápasy - liga (tým)` u Ligy, zůstává v Pythonu,
+ne ve vzorci). `seznamy_sheets.py` teď počítá symetricky pro oba týmy přes
+existující `stats.power_plays`/`goal_situation_counts`/`penalty_totals`
+(stejné funkce, jaké `build_import` už používal jen pro LIT) –
+`číslo zápisu, tým, soupeř, doma/venku, skóre tým, skóre soupeř, výsledek,
+body, přesilovky, góly v přesilovce, oslabení, obdržené góly v oslabení,
+góly v oslabení (vstřelené), vyloučení, trestné minuty`. Ročníky naopak
+zůstávají jako plán na vzorec (registrace je v `Bruslaři/Brankáři
+(zápasy)` pro oba týmy) – `Zápasy (tým)` je nemá, nejsou tam potřeba.
+Zrcadleno do Seznamy 2.0 (`build_seznamy_v2_mirrors.py` rozšířen), oba
+referenční zápasy zpětně dopočítané, hodnoty sedí přesně na PROJECT.MD
+(LIT 4002: P/0 bodů/6 PP/1 PP gól/7 PK/0 obdržených v PK/0 SH gólů/9
+vyloučení/26 TM; symetricky i pro Příbram/Chomutov).
+
 **Další krok:** navrhnout a postavit `Tým`/`Dashboard` v Seznamy 2.0
 (sezónní přehled, přesilovky/oslabení, ročníky, skóre po třetinách – ze
 `Zápasy` mirror) a později doplnit výhry/shutout do `Brankáři`.
