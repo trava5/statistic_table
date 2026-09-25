@@ -142,8 +142,9 @@ def build_value_updates() -> dict[str, list[list]]:
     put("I49", "BODOVÁNÍ")
     put(
         "I50",
-        f"=QUERY({BR}!A:J;\"select C, E, F, G, H, I where A = '\"&$B$1&\"' "
-        f"order by H desc label C 'Hráč', E 'Z', F 'G', G 'A', H 'B', I 'TM'\";1)",
+        f"=QUERY({BR}!A:J;\"select C, B, E, F, G, H, I where A = '\"&$B$1&\"' "
+        f"order by H desc label C 'Hráč', B 'Číslo', E 'Z', F 'G', G 'A', "
+        f"H 'B', I 'TM'\";1)",
     )
 
     put("P49", "BRANKÁŘI")
@@ -205,7 +206,7 @@ def main() -> None:
     bold_ranges = [
         "A1:A1", "A3:A3", "A7:A7", "A11:A11", "A15:A15", "A32:A32",
         "A49:A49", "I49:I49", "P49:P49",
-        "A4:G4", "A8:F8", "A12:F12", "A50:G50", "I50:N50", "P50:U50",
+        "A4:G4", "A8:F8", "A12:F12", "A50:G50", "I50:O50", "P50:U50",
     ]
 
     def range_to_grid(a1: str) -> dict:
