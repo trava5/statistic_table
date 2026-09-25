@@ -390,9 +390,31 @@ produkční import) zapíše i do Seznamy DB přes nový modul
   řádek, přepíše stejnými daty) – ověřeno živě: 2 zápasy, 8 gólů,
   32 vyloučení (16+16), 72 bruslařů, 8 brankářů, hodnoty sedí.
 
-**Další krok:** navrhnout a postavit `Seznamy 2.0` (IMPORTRANGE mirror +
-formule `Bodování`/`Brankáři`/`Tým`/`Dashboard`), stejný postup jako
-`build_league_v2_mirrors.py`/`build_league_aggregate_sheets.py` u Ligy.
+✅ **Seznamy 2.0 – mirror + Bodování/Brankáři hotové (25. 9.):**
+- `scripts/build_seznamy_v2_mirrors.py` (nový skript) – zrcadlí 5 syrových
+  listů ze Seznamy DB (stejná jména jako v DB). Navíc zrcadlí `Seznam
+  hráčů` z **produkční** `Seznamy` (`SPREADSHEET_ID`), ale **jen neosobní
+  sloupce B:F** (Příjmení, Jméno, č. reg., číslo, post) – od sloupce J má
+  produkční `Seznam hráčů` citlivé osobní údaje (pojišťovna, rodné číslo,
+  telefon, e-mail hráčů i rodičů), ty se do Seznamy 2.0 zapisovat nesmí
+  (viz bod 6 výše). `Trenéři` se nezrcadlí vůbec – žádná formule ho
+  nepotřebuje a je celý citlivý. Dvě samostatná ruční povolení IMPORTRANGE
+  potřeba (DB → Seznamy 2.0, produkční Seznamy → Seznamy 2.0 – jiná
+  dvojice tabulek, i když cíl je stejný).
+- `scripts/build_seznamy_aggregate_sheets.py` (nový skript) – `Bodování`
+  a `Brankáři` jako `QUERY group by` nad `Bruslaři/Brankáři (zápasy)`
+  (`where tým = 'LIT'`), stejný vzor jako Liga. **Zjednodušeno oproti
+  produkční tabulce** (rozhodnuto s uživatelem): jméno je jeden sloupec
+  „Hráč“ přímo z logu (z PDF, např. „HLADÍK Šimon“), ne INDEX/MATCH do
+  `Seznam hráčů` s rozpadem na Příjmení/Jméno; `Brankáři` zatím bez
+  výher/pct výher/shutoutu (vyžaduje spojit log s výsledkem zápasu ze
+  `Zápasy` – doplní se v dalším kroku). Ověřeno živě proti sezónním
+  hodnotám z produkčního Dashboardu (Krátký 1Z/4G, Weber 1Z/3G, Hladík/
+  Husák/Prokůpek 2Z/1G/1A/2B) – sedí přesně.
+
+**Další krok:** navrhnout a postavit `Tým`/`Dashboard` v Seznamy 2.0
+(sezónní přehled, přesilovky/oslabení, ročníky, skóre po třetinách – ze
+`Zápasy` mirror) a později doplnit výhry/shutout do `Brankáři`.
 
 Osud staré tabulky Liga (`LEAGUE_SPREADSHEET_ID`) po přechodu na Liga 2.0
 zatím neřešen (smazat / nechat ladem / archivovat) – rozhodnout až bude

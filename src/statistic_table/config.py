@@ -291,3 +291,11 @@ SEZNAMY_GOALIES_LOG_HEADER = [
     "číslo zápisu", "tým", "číslo", "jméno", "registrace", "chytal",
     "obdržené góly", "G", "A", "TM",
 ]
+
+# Sezónní bodování/brankářské statistiky LIT – jeden řádek na hráče. Toto
+# NEJSOU listy v DB – žijí v prezentační tabulce SEZNAMY_V2_SPREADSHEET_ID
+# (Seznamy 2.0) jako vzorec (QUERY group by nad SEZNAMY_*_LOG_SHEET,
+# filtrované na tým = LIT), postavené jednorázově scripts/build_seznamy_
+# aggregate_sheets.py. Python do nich nikdy nezapisuje.
+SEZNAMY_BODOVANI_SHEET = "Bodování"
+SEZNAMY_BRANKARI_SHEET = "Brankáři"
