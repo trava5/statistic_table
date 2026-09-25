@@ -119,19 +119,23 @@ samostatných** Google Tabulkách, ne v „Seznamy“:
   log (jeden řádek = jeden hráč v jednom zápase), `Pořadí - liga` a
   `Skupiny - liga` jsou dopočítaná fakta (viz „Co je (záměrně) v Pythonu“
   níže). Žádné vzorce, jen data od Pythonu.
-- **Liga** (`LEAGUE_SPREADSHEET_ID`) – prezentační tabulka. **Sezónní
-  součty** `Bruslaři - liga` / `Brankáři - liga` (jeden řádek na hráče za
-  celou sezónu) jsou tu `QUERY` vzorec nad `*-liga (zápasy)`, jednorázově
-  postavený `scripts/build_league_aggregate_sheets.py` – Python do nich
-  nezapisuje. List „Tým – šablona“ vzorci `QUERY`/`SUMIF` nad sezónními
-  součty (Sezónní přehled,
-Přesilovky/oslabení, Vyloučení a TM, grafy, a dole vedle sebe Odehrané
-zápasy/Bodování s kompletní soupiskou/Brankáři), naklonovaný skriptem pro
-každý tým zvlášť (`league sync-teams`). Šablonu samotnou staví jednorázově
-`scripts/build_league_team_template.py`. Použití viz README, sekce „Liga:
-statistiky všech týmů“; moduly: `league_model.py`, `league_scraper.py`,
-`league_stats.py` (přesilovky/oslabení z pohledu libovolného týmu, stejné
-pravidlo jako `stats.py`), `league_sheets.py`.
+- **Liga 2.0** (`LEAGUE_V2_SPREADSHEET_ID`) – prezentační tabulka, nekopíruje
+  žádná data ručně/Pythonem: syrové listy jsou v ní `IMPORTRANGE` mirror nad
+  DB (jeden vzorec na list, `scripts/build_league_v2_mirrors.py`), takže
+  jediný zápis Pythonem zůstává v DB. **Sezónní součty** `Bruslaři - liga` /
+  `Brankáři - liga` (jeden řádek na hráče za celou sezónu) jsou tu `QUERY`
+  vzorec nad mirror listem `*-liga (zápasy)`, jednorázově postavený
+  `scripts/build_league_aggregate_sheets.py` – Python do nich nezapisuje.
+  List „Tým – šablona“ vzorci `QUERY`/`SUMIF` nad sezónními součty (Sezónní
+  přehled, Přesilovky/oslabení, Vyloučení a TM, grafy, a dole vedle sebe
+  Odehrané zápasy/Bodování s kompletní soupiskou vč. čísla dresu/Brankáři),
+  naklonovaný skriptem pro každý tým zvlášť (`league sync-teams`). Šablonu
+  samotnou staví jednorázově `scripts/build_league_team_template.py`.
+  Stará tabulka `LEAGUE_SPREADSHEET_ID` (Liga) je zamrzlá, nahrazená
+  Liga 2.0. Použití viz README, sekce „Liga: statistiky všech týmů“; moduly:
+  `league_model.py`, `league_scraper.py`, `league_stats.py`
+  (přesilovky/oslabení z pohledu libovolného týmu, stejné pravidlo jako
+  `stats.py`), `league_sheets.py`.
 
 ### Co je (záměrně) v Pythonu, co ve vzorcích
 

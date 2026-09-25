@@ -27,7 +27,7 @@ from statistic_table.config import (
     LEAGUE_ZAPASY_TYM_SHEET,
     get_credentials,
     load_config,
-    require_league_spreadsheet_id,
+    require_league_v2_spreadsheet_id,
 )
 
 ZT = f"'{LEAGUE_ZAPASY_TYM_SHEET}'"
@@ -163,7 +163,7 @@ PLACEHOLDER_TEAM = "HC Stadion Litoměřice"
 
 def main() -> None:
     config = load_config()
-    spreadsheet_id = require_league_spreadsheet_id(config)
+    spreadsheet_id = require_league_v2_spreadsheet_id(config)
     service = build("sheets", "v4", credentials=get_credentials(config))
     placeholder_team = PLACEHOLDER_TEAM
 

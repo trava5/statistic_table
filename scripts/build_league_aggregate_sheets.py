@@ -27,7 +27,7 @@ from statistic_table.config import (
     LEAGUE_SKATERS_SHEET,
     get_credentials,
     load_config,
-    require_league_spreadsheet_id,
+    require_league_v2_spreadsheet_id,
 )
 
 BR_LOG = f"'{LEAGUE_SKATERS_LOG_SHEET}'"
@@ -36,7 +36,7 @@ GO_LOG = f"'{LEAGUE_GOALIES_LOG_SHEET}'"
 
 def main() -> None:
     config = load_config()
-    spreadsheet_id = require_league_spreadsheet_id(config)
+    spreadsheet_id = require_league_v2_spreadsheet_id(config)
     service = build("sheets", "v4", credentials=get_credentials(config))
 
     titles = {

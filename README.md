@@ -63,8 +63,9 @@ celé sdílecí odkazy – např. z `.../folders/1k364.../` jen `1k364...`.
 .venv\Scripts\python.exe -m statistic_table.cli standings --dry-run
 .venv\Scripts\python.exe -m statistic_table.cli standings --yes   # bez dotazu
 
-# Liga: stáhne nové odehrané zápasy VŠECH týmů (ne jen LIT) do samostatné
-# tabulky LEAGUE_SPREADSHEET_ID a založí chybějící listy jednotlivých týmů
+# Liga: stáhne nové odehrané zápasy VŠECH týmů (ne jen LIT) do DB tabulky
+# LEAGUE_DB_SPREADSHEET_ID a založí chybějící listy jednotlivých týmů
+# v prezentační tabulce LEAGUE_V2_SPREADSHEET_ID (Liga 2.0)
 .venv\Scripts\python.exe -m statistic_table.cli league sync-games --dry-run
 .venv\Scripts\python.exe -m statistic_table.cli league sync-games
 .venv\Scripts\python.exe -m statistic_table.cli league sync-teams --dry-run
@@ -81,38 +82,48 @@ produkční tabulka „Seznamy“:
 
 - **DB** (`LEAGUE_DB_SPREADSHEET_ID`) – jediný zdroj pravdy, zapisuje jen
   `league sync-games`. Žádné vzorce, jen syrová/dopočítaná data.
-- **Liga** (`LEAGUE_SPREADSHEET_ID`) – prezentační tabulka (Tým – šablona,
-  per-tým listy, sezónní součty). Zatím čte data přímo u sebe; napojení na
-  DB přes `IMPORTRANGE` je naplánovaný další krok (viz PLAN.MD).
+- **Liga 2.0** (`LEAGUE_V2_SPREADSHEET_ID`) – prezentační tabulka (Tým –
+  šablona, per-tým listy, sezónní součty). Data nekopíruje – syrové listy
+  jsou v ní jen `IMPORTRANGE` mirror nad DB (`scripts/build_league_v2_
+  mirrors.py`), takže veškerá logika zůstává ve vzorcích a jediný zápis
+  Pythonem je pořád do DB.
+
+Stará tabulka `LEAGUE_SPREADSHEET_ID` (Liga) je zamrzlá/nahrazená Liga 2.0
+a `.env` proměnná zůstává jen kvůli historii, nepoužívá se v žádném novém
+kódu.
 
 Postup nastavení:
 
-1. Založ dvě nové nativní Google Tabulky, obě nasdílej servisnímu účtu
-   (role Editor), ID vlož do `LEAGUE_DB_SPREADSHEET_ID` a
-   `LEAGUE_SPREADSHEET_ID` v `.env`.
+1. Založ dvě nové nativní Google Tabulky (DB, Liga 2.0), obě nasdílej
+   servisnímu účtu (role Editor), ID vlož do `LEAGUE_DB_SPREADSHEET_ID` a
+   `LEAGUE_V2_SPREADSHEET_ID` v `.env`.
 2. Syrové listy v DB (`Zápasy - liga`, `Zápasy - liga (tým)`, `Góly - liga`,
    `Vyloučení - liga`, `Pořadí - liga`, `Skupiny - liga`,
    `Bruslaři/Brankáři - liga (zápasy)` – per-zápas log) založí skript sám
    při prvním `league sync-games`.
-3. `scripts/build_league_aggregate_sheets.py` (spustit jednou, v tabulce
-   Liga) postaví listy **`Bruslaři - liga`** a **`Brankáři - liga`** –
+3. `scripts/build_league_v2_mirrors.py` (spustit jednou, cíl Liga 2.0)
+   postaví v Liga 2.0 pro každý syrový list z DB stejnojmenný list
+   s jediným vzorcem `IMPORTRANGE`. Po prvním spuštění je nutné v prohlížeči
+   ručně kliknout „Povolit přístup“ (Google to vyžaduje jednou za dvojici
+   tabulek, nejde přes API) – do potvrzení mirror listy ukazují chybu.
+4. `scripts/build_league_aggregate_sheets.py` (spustit jednou, cíl Liga 2.0)
+   postaví listy **`Bruslaři - liga`** a **`Brankáři - liga`** –
    sezónní součty (jeden řádek na hráče za celou ligu) jako `QUERY` vzorec
-   nad `*-liga (zápasy)`. Python do těchto dvou listů nikdy nezapisuje.
-4. `scripts/build_league_team_template.py` (spustit jednou, v tabulce Liga)
+   nad mirror listem `*-liga (zápasy)`. Python do těchto dvou listů nikdy
+   nezapisuje.
+5. `scripts/build_league_team_template.py` (spustit jednou, cíl Liga 2.0)
    postaví list **„Tým – šablona”** (Sezónní přehled, Přesilovky/oslabení,
    Vyloučení a TM, grafy Skóre po zápasech/po třetinách/Pořadí v tabulce,
-   a dole vedle sebe Odehrané zápasy, Bodování a Brankáři – vše přes
-   `QUERY`/`SUMIF` parametrizované jménem týmu v buňce `B1`).
-5. `league sync-games` – projde stránkovaný seznam zápasů ligy, přeskočí
-   zápasy, které ještě neproběhly, i ty, které už jsou v DB, nové zapíše,
-   obnoví `Skupiny - liga` a přepočítá `Pořadí - liga` (viz PROJECT.MD,
+   a dole vedle sebe Odehrané zápasy, Bodování (vč. sloupce Číslo) a
+   Brankáři – vše přes `QUERY`/`SUMIF` parametrizované jménem týmu v buňce
+   `B1`).
+6. `league sync-games` – projde stránkovaný seznam zápasů ligy, přeskočí
+   zápasy, které ještě neproběhly, i ty, které už jsou v DB, nové zapíše do
+   DB, obnoví `Skupiny - liga` a přepočítá `Pořadí - liga` (viz PROJECT.MD,
    „Co je záměrně v Pythonu, co ve vzorcích“).
-6. `league sync-teams` – pro každý tým nalezený v syrových datech naklonuje
-   „Tým – šablona“ (list `<název klubu>`) v tabulce Liga, pokud ještě
-   neexistuje. **Pozor:** dokud Liga nečte z DB přes `IMPORTRANGE` (viz
-   PLAN.MD), zůstává napojená na svá vlastní syrová data – po přechodu
-   `league sync-games` na zápis do DB je tedy potřeba tenhle krok teprve
-   dodělat, jinak `sync-teams` nenajde nové týmy.
+7. `league sync-teams` – přečte seznam týmů z DB a pro každý nalezený tým
+   naklonuje „Tým – šablona“ (list `<název klubu>`) v Liga 2.0, pokud ještě
+   neexistuje.
 
 Skript do listu „Tým – šablona“ ani do jeho kopií nikdy nezapisuje vzorce,
 jen buňku se jménem týmu – stejný princip jako u zbytku projektu (skript

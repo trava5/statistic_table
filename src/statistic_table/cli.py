@@ -9,7 +9,7 @@ from statistic_table.config import (
     ZAPASY_SHEET,
     load_config,
     require_league_db_spreadsheet_id,
-    require_league_spreadsheet_id,
+    require_league_v2_spreadsheet_id,
 )
 from statistic_table.drive import list_pdf_files
 from statistic_table.importer import (
@@ -221,13 +221,14 @@ def cmd_league_sync_games(args: argparse.Namespace) -> int:
 
 def cmd_league_sync_teams(args: argparse.Namespace) -> int:
     config = load_config()
-    spreadsheet_id = require_league_spreadsheet_id(config)
+    db_spreadsheet_id = require_league_db_spreadsheet_id(config)
+    view_spreadsheet_id = require_league_v2_spreadsheet_id(config)
 
-    teams = read_known_teams(config, spreadsheet_id)
+    teams = read_known_teams(config, db_spreadsheet_id)
     print(f"Týmů v syrových datech: {len(teams)}")
 
     for team in sorted(teams):
-        needs_sheet = ensure_team_sheet(config, spreadsheet_id, team, dry_run=args.dry_run)
+        needs_sheet = ensure_team_sheet(config, view_spreadsheet_id, team, dry_run=args.dry_run)
         if needs_sheet:
             action = "chybí list" if args.dry_run else "založen list"
             print(f"  {team}: {action} '{team_sheet_title(team)}'")

@@ -32,6 +32,7 @@ class Config:
     season_start_year: int
     league_spreadsheet_id: str | None = None
     league_db_spreadsheet_id: str | None = None
+    league_v2_spreadsheet_id: str | None = None
 
 
 def load_config(env_file: str | Path = ".env") -> Config:
@@ -51,6 +52,7 @@ def load_config(env_file: str | Path = ".env") -> Config:
         season_start_year=int(os.environ["SEASON_START_YEAR"]),
         league_spreadsheet_id=os.getenv("LEAGUE_SPREADSHEET_ID"),
         league_db_spreadsheet_id=os.getenv("LEAGUE_DB_SPREADSHEET_ID"),
+        league_v2_spreadsheet_id=os.getenv("LEAGUE_V2_SPREADSHEET_ID"),
     )
 
 
@@ -67,6 +69,14 @@ def require_league_db_spreadsheet_id(config: Config) -> str:
     if not config.league_db_spreadsheet_id:
         raise RuntimeError("Chybí LEAGUE_DB_SPREADSHEET_ID v .env (viz README, sekce Liga)")
     return config.league_db_spreadsheet_id
+
+
+def require_league_v2_spreadsheet_id(config: Config) -> str:
+    """„Liga 2.0“ – nová prezentační tabulka, čte z DB přes IMPORTRANGE
+    (nahrazuje zamrzlou LEAGUE_SPREADSHEET_ID) – viz PLAN.MD."""
+    if not config.league_v2_spreadsheet_id:
+        raise RuntimeError("Chybí LEAGUE_V2_SPREADSHEET_ID v .env (viz README, sekce Liga)")
+    return config.league_v2_spreadsheet_id
 
 
 def get_credentials(config: Config):

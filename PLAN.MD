@@ -209,18 +209,42 @@ tabulka počítá“):**
    2 skupinách, `Pořadí - liga` pro LIT sedí (kolo 1→8., kolo 2→4.).
 4. **Tabulka Liga zamrzla** – `sync-teams`/`Tým – šablona`/sezónní vzorce
    tam zůstávají beze změny a dál čtou ze svých vlastních (už needitovaných)
-   listů, dokud ji v dalším kroku nenahradí Liga 2.0 napojená na DB přes
-   `IMPORTRANGE`.
+   listů. Nahrazena Liga 2.0 (viz níže), plán zrušení/archivace zatím
+   neurčen.
+5. ✅ **Liga 2.0 založena a napojená na DB (25. 9.):** nová prezentační
+   tabulka (`LEAGUE_V2_SPREADSHEET_ID`), uživatel ji založil v účtu
+   `hc.lit.juniori@gmail.com` a nasdílel servisnímu účtu. Struktura:
+   - `scripts/build_league_v2_mirrors.py` (nový skript) – pro každý syrový
+     list z DB vytvoří v Liga 2.0 stejnojmenný list s jediným vzorcem
+     `=IMPORTRANGE(DB_ID; "'list'!A1:sloupec5000")`. Listy mají záměrně
+     **stejná jména** jako v DB, takže na ně `build_league_aggregate_
+     sheets.py` a `build_league_team_template.py` odkazují beze změny –
+     jen se přepnul jejich cíl z `LEAGUE_SPREADSHEET_ID` na
+     `LEAGUE_V2_SPREADSHEET_ID`.
+   - `IMPORTRANGE` vyžaduje jednorázové ruční potvrzení „Povolit přístup“
+     v prohlížeči (nejde přes API) – uživatel potvrdil, mirror listy žijí.
+   - `cmd_league_sync_teams` (cli.py) teď čte seznam týmů z DB
+     (`require_league_db_spreadsheet_id`) a klonuje/plní šablonu v Liga 2.0
+     (`require_league_v2_spreadsheet_id`) – rozdělené na dvě různé tabulky,
+     dřív to byla jedna a tatáž.
+   - `Bruslaři - liga`/`Brankáři - liga` (agregáty) i všech 16 týmových listů
+     znovu postaveno a ověřeno v Liga 2.0 (Kamil Drábek 2Z/2G/3A/5B, LIT
+     sezónní přehled 2 Z/1 V/1 P, bodování se sloupcem **Číslo**, grafy se
+     správným počtem sérií).
+   - Šablona (`Tým – šablona`) dostala v sekci Bodování nový sloupec
+     „Číslo“ hned za „Hráč“ (`I50` vzorec rozšířen o `B` s labelem
+     „Číslo“, `bold_ranges` posunuty na `I50:O50`) – jinak stejná struktura
+     jako dřív, na přání uživatele.
 
-**Další krok (jak ho zadal uživatel):** založit dvě nové prezentační
-tabulky – **Liga 2.0** a **LIT Seznamy 2.0** – a u každé projít krok po
-kroku, co ze stávající verze migrovat, co vynechat a v jakém tvaru to
-v nové tabulce bude. Otevřené otázky k tomu (z minulého kola):
-- `IMPORTRANGE` omezení: jednorázová ruční autorizace přístupu mezi
-  tabulkami (nejde přes API), doporučeno mít v cílové tabulce jeden
-  „import“ list s `IMPORTRANGE` a ostatní vzorce ať čtou z něj.
-- Seznamy je produkční nástroj (trenér ho používá v sezóně) – migrace na
-  Seznamy 2.0 má být opatrnější/později než Liga 2.0, ne nutně současně.
+**Další krok (jak ho zadal uživatel):** založit **LIT Seznamy 2.0** a
+projít krok po kroku, co ze stávající „Seznamy“ migrovat, co vynechat a
+v jakém tvaru to v nové tabulce bude (Zápasy, Sestavy, Bodování, Brankáři,
+Tým, Dashboard, Seznam hráčů, Trenéři – viz PROJECT.MD). Otevřené otázky:
+- Seznamy je produkční nástroj (trenér ho používá v sezóně) – migrace má
+  být opatrnější/postupnější než u Liga 2.0, ne „velký třesk“.
+- Osud staré tabulky Liga (`LEAGUE_SPREADSHEET_ID`) po přechodu na Liga 2.0
+  zatím neřešen (smazat / nechat ladem / archivovat) – rozhodnout až bude
+  Liga 2.0 nějakou dobu v provozu ověřená uživatelem.
 
 ## Potvrzená rozhodnutí (21. 9. 2026)
 
