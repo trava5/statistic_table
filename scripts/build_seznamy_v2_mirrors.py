@@ -47,7 +47,7 @@ EXTRA_COLUMN_ROWS = 100  # dost i na několik sezón zápasů LIT
 
 # Jméno listu -> poslední sloupec s daty (viz SEZNAMY_*_HEADER v config.py).
 DB_MIRRORS = {
-    SEZNAMY_ZAPASY_SHEET: "K",
+    SEZNAMY_ZAPASY_SHEET: "L",  # K + "pořadí po kole" (standings.py, doplněno dodatečně)
     SEZNAMY_ZAPASY_TYM_SHEET: "O",
     SEZNAMY_GOLY_SHEET: "H",
     SEZNAMY_VYLOUCENI_SHEET: "I",
@@ -94,6 +94,17 @@ def main() -> None:
             spreadsheetId=v2_id, body={"requests": requests}
         ).execute()
 
+    # Starší běh skriptu psal "Zápasy!L:M" (Góly/Asistence) – ten sloupec teď
+    # patří rozšířenému IMPORTRANGE spillu (A:L = "pořadí po kole" z DB) a
+    # leftover vzorec ve staré pozici L by spill blokoval (#REF! – "array
+    # result was not expanded because it would overwrite data"). Vyčistit před
+    # zápisem nové formule, ne po – jinak by IMPORTRANGE ještě jednu chvíli
+    # dopočítávalo přes starý obsah.
+    service.spreadsheets().values().clear(
+        spreadsheetId=v2_id,
+        range=f"'{SEZNAMY_ZAPASY_SHEET}'!L1:L{1 + EXTRA_COLUMN_ROWS}",
+    ).execute()
+
     data = []
     for name, last_col in DB_MIRRORS.items():
         formula = f'=IMPORTRANGE("{db_id}"; "\'{name}\'!A1:{last_col}{ROWS}")'
@@ -103,12 +114,13 @@ def main() -> None:
     hraci_formula = f'=IMPORTRANGE("{production_id}"; "\'{SEZNAM_HRACU_SHEET}\'!B3:F1000")'
     data.append({"range": f"'{SEZNAM_HRACU_SHEET}'!A2", "values": [[hraci_formula]]})
 
-    # --- Zápasy!L:M – střelci/nahrávači LIT za daný zápas (mimo IMPORTRANGE
-    # spill A:K, počítá se z Góly zvlášť za každý řádek – FILTER nejde
-    # vektorizovat přes ARRAYFORMULA, protože kritérium (číslo zápisu) se mění
-    # po řádcích, proto je vzorec zapsaný zvlášť pro každý z EXTRA_COLUMN_ROWS
-    # řádků, ne jako jeden spill.
-    data.append({"range": f"'{SEZNAMY_ZAPASY_SHEET}'!L1", "values": [["Góly", "Asistence"]]})
+    # --- Zápasy!M:N – střelci/nahrávači LIT za daný zápas (mimo IMPORTRANGE
+    # spill A:L – sloupec L je teď "pořadí po kole" zrcadlené z DB, proto tyhle
+    # dva sloupce navíc začínají až na M, ne na L jako dřív). Počítá se z Góly
+    # zvlášť za každý řádek – FILTER nejde vektorizovat přes ARRAYFORMULA,
+    # protože kritérium (číslo zápisu) se mění po řádcích, proto je vzorec
+    # zapsaný zvlášť pro každý z EXTRA_COLUMN_ROWS řádků, ne jako jeden spill.
+    data.append({"range": f"'{SEZNAMY_ZAPASY_SHEET}'!M1", "values": [["Góly", "Asistence"]]})
     zapasy_extra_rows = []
     for row in range(2, 2 + EXTRA_COLUMN_ROWS):
         goly = (
@@ -124,13 +136,13 @@ def main() -> None:
             f'{GOLY}!$B$2:$B$5000="LIT"));""))'
         )
         zapasy_extra_rows.append([goly, asistence])
-    data.append({"range": f"'{SEZNAMY_ZAPASY_SHEET}'!L2", "values": zapasy_extra_rows})
+    data.append({"range": f"'{SEZNAMY_ZAPASY_SHEET}'!M2", "values": zapasy_extra_rows})
 
     # --- Brankáři (zápasy)!K:L – výsledek zápasu z pohledu LIT + příznak
     # "vychytaná výhra" (V/VP), mimo IMPORTRANGE spill A:J. MATCH pod
     # ARRAYFORMULA se zřetězeným polem jako lookup_value i lookup_array
     # (VLOOKUP+`{}` i INDEX/MATCH) se choval nespolehlivě – vždy vrátilo
-    # výsledek prvního řádku, ne správný. Stejné řešení jako u Zápasy!L:M
+    # výsledek prvního řádku, ne správný. Stejné řešení jako u Zápasy!M:N
     # výše: obyčejný (ne ARRAYFORMULA) vzorec po řádcích, se skalárním
     # lookup_value (jen $A{row}/$B{row}), ne polem – MATCH se skalárem je
     # spolehlivý stejně jako všude jinde v projektu.

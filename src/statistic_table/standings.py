@@ -5,14 +5,7 @@ from dataclasses import dataclass
 import requests
 from bs4 import BeautifulSoup
 
-from statistic_table.config import (
-    PORADI_PO_KOLE_COLUMN,
-    STANDINGS_URL,
-    ZAPASY_DATA_START_ROW,
-    ZAPASY_SHEET,
-    Config,
-)
-from statistic_table.sheets import read_range, write_batch
+from statistic_table.config import STANDINGS_URL
 
 
 @dataclass(frozen=True)
@@ -160,18 +153,3 @@ def cross_check_issues(standing: TeamStanding, record: Record) -> list[str]:
     return issues
 
 
-def last_played_row(config: Config) -> int | None:
-    values = read_range(config, f"{ZAPASY_SHEET}!A{ZAPASY_DATA_START_ROW}:E1000")
-    last = None
-    for offset, row in enumerate(values):
-        if len(row) >= 5 and row[0] and row[3] and row[4]:
-            last = ZAPASY_DATA_START_ROW + offset
-    return last
-
-
-def write_position(config: Config, row: int, position: int) -> None:
-    write_batch(
-        config,
-        config.spreadsheet_id,
-        {f"{ZAPASY_SHEET}!{PORADI_PO_KOLE_COLUMN}{row}": [str(position)]},
-    )

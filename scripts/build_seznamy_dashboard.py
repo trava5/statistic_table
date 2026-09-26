@@ -2,10 +2,9 @@
 („Seznamy 2.0“) – přehled pro trenérský štáb nad už hotovými listy `Tým`,
 `Zápasy (tým)`, `Zápasy`, `Bodování`, `Brankáři`.
 
-Na rozdíl od produkčního Dashboardu (viz PLAN.MD) **nemá „Pořadí v lize"** –
-to dnes zapisuje samostatný příkaz `standings` přímo do produkční tabulky,
-Seznamy DB tuhle hodnotu zatím nemá (rozšíření `standings` na zápis do DB
-je samostatný krok).
+„Pořadí v lize“ (H5) čte poslední vyplněnou hodnotu `Zápasy!L` (INDEX+COUNTA,
+stejný vzor jako produkční Dashboard) – ten sloupec zapisuje `cli standings`
+přímo do Seznamy DB (ne `cli import`), viz PLAN.MD.
 
 Vzorce používají `;` jako oddělovač argumentů (tabulka je v cs_CZ locale).
 Pozn. k `endRowIndex` u grafů: viz build_league_team_template.py – Sheets
@@ -53,7 +52,10 @@ def build_value_updates() -> dict[str, list[list]]:
 
     # --- Sezónní přehled -----------------------------------------------------
     put("A3", "SEZÓNNÍ PŘEHLED")
-    put_row("A4", ["Odehráno", "V", "VP", "PP", "P", "Body", "Skóre (LIT:soupeř)"])
+    put_row(
+        "A4",
+        ["Odehráno", "V", "VP", "PP", "P", "Body", "Skóre (LIT:soupeř)", "Pořadí v lize"],
+    )
     put("A5", f"={TYM}!B4")
     put("B5", f'=COUNTIFS({ZT}!$B:$B;{LIT};{ZT}!$G:$G;"V")')
     put("C5", f'=COUNTIFS({ZT}!$B:$B;{LIT};{ZT}!$G:$G;"VP")')
@@ -61,6 +63,9 @@ def build_value_updates() -> dict[str, list[list]]:
     put("E5", f'=COUNTIFS({ZT}!$B:$B;{LIT};{ZT}!$G:$G;"P")')
     put("F5", f"=SUMIF({ZT}!$B:$B;{LIT};{ZT}!$H:$H)")
     put("G5", f'={TYM}!B5&":"&{TYM}!C5')
+    # Poslední vyplněná hodnota Zápasy!L (zapisuje cli.cmd_standings po každém
+    # kole, ne cli import) – stejný INDEX+COUNTA vzor jako produkční Dashboard.
+    put("H5", f'=IFERROR(INDEX({Z}!$L$2:$L$5000;COUNTA({Z}!$A$2:$A$5000));"")')
 
     # --- Přesilovky / oslabení -------------------------------------------------
     put("A7", "PŘESILOVKY / OSLABENÍ")
@@ -152,7 +157,7 @@ def main() -> None:
 
     bold_ranges = [
         "A1:A1", "A3:A3", "A7:A7", "A11:A11", "A15:A15", "A32:A32", "A49:A49", "I49:I49",
-        "A4:G4", "A8:F8", "A12:F12",
+        "A4:H4", "A8:F8", "A12:F12",
     ]
 
     def range_to_grid(a1: str) -> dict:

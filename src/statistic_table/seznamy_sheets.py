@@ -10,6 +10,7 @@ from statistic_table.config import (
     SEZNAMY_GOALIES_LOG_SHEET,
     SEZNAMY_GOLY_HEADER,
     SEZNAMY_GOLY_SHEET,
+    SEZNAMY_PORADI_PO_KOLE_COLUMN,
     SEZNAMY_SKATERS_LOG_HEADER,
     SEZNAMY_SKATERS_LOG_SHEET,
     SEZNAMY_VYLOUCENI_HEADER,
@@ -53,7 +54,9 @@ def _sheet_titles(config: Config, spreadsheet_id: str) -> dict[str, int]:
 
 
 def ensure_seznamy_sheets(config: Config, spreadsheet_id: str) -> None:
-    """Založí syrové listy (viz RAW_SHEETS) s hlavičkou, pokud ještě neexistují."""
+    """Založí syrové listy (viz RAW_SHEETS) s hlavičkou, pokud ještě neexistují.
+    Neřeší dodatečné rozšíření hlavičky existujícího listu (např. nový sloupec
+    přidaný do schématu později) – to je jednorázová migrace, ne běžící kód."""
     titles = _sheet_titles(config, spreadsheet_id)
     missing = [(name, header) for name, header in RAW_SHEETS if name not in titles]
     if missing:
@@ -143,6 +146,33 @@ def read_known_game_numbers(config: Config, spreadsheet_id: str) -> set[str]:
         .get("values", [])
     )
     return {row[0] for row in values if row and row[0]}
+
+
+def last_game_row(config: Config, spreadsheet_id: str) -> int | None:
+    """Poslední řádek s daty v listu Zápasy (append-only – poslední řádek je
+    poslední naimportovaný, tedy i poslední odehraný zápas). Použito pro zápis
+    „pořadí po kole“ (`write_poradi`), které se dozví teprve po importu, ne
+    při něm, viz `cli.cmd_standings`."""
+    values = (
+        _service(config)
+        .spreadsheets()
+        .values()
+        .get(spreadsheetId=spreadsheet_id, range=f"'{SEZNAMY_ZAPASY_SHEET}'!A2:A1000000")
+        .execute()
+        .get("values", [])
+    )
+    return len(values) + 1 if values else None
+
+
+def write_poradi(config: Config, spreadsheet_id: str, row: int, position: int) -> None:
+    """Zapíše „pořadí po kole“ (sloupec `SEZNAMY_PORADI_PO_KOLE_COLUMN`) pro
+    daný řádek listu Zápasy."""
+    _write_row(
+        config,
+        spreadsheet_id,
+        f"'{SEZNAMY_ZAPASY_SHEET}'!{SEZNAMY_PORADI_PO_KOLE_COLUMN}{row}",
+        [str(position)],
+    )
 
 
 def _format_date(pdf_date: str) -> str:

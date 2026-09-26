@@ -5,9 +5,8 @@ import sys
 
 from statistic_table.config import (
     LEAGUE_COMPETITION_ID,
+    SEZNAMY_PORADI_PO_KOLE_COLUMN,
     SEZNAMY_ZAPASY_SHEET,
-    ZAPASY_DATA_START_ROW,
-    ZAPASY_SHEET,
     load_config,
     require_league_db_spreadsheet_id,
     require_league_v2_spreadsheet_id,
@@ -38,7 +37,7 @@ from statistic_table.league_sheets import (
     team_sheet_title,
 )
 from statistic_table.logging_config import setup_logging
-from statistic_table.seznamy_sheets import build_seznamy_rows
+from statistic_table.seznamy_sheets import build_seznamy_rows, last_game_row, write_poradi
 from statistic_table.sheets import check_headers, read_player_registry, read_range
 from statistic_table.standings import (
     arithmetic_issues,
@@ -46,9 +45,7 @@ from statistic_table.standings import (
     cross_check_issues,
     fetch_standings_html,
     find_team,
-    last_played_row,
     parse_standings,
-    write_position,
 )
 
 
@@ -137,9 +134,8 @@ def cmd_standings(args: argparse.Namespace) -> int:
     )
 
     issues = arithmetic_issues(standing)
-    # Bilance se dopočítává ze Seznamy DB (ne z produkční tabulky) – od cutoveru
-    # na Seznamy 2.0 (viz PLAN.MD) tam `cli import` zapisuje nové zápasy, do
-    # produkční `Zápasy` se už nic nepřidává. Sloupce B:G (datum, domácí,
+    # Bilance i zápis pořadí jdou od cutoveru na Seznamy DB (viz PLAN.MD) –
+    # produkční `Zápasy` už nové zápasy nedostává. Sloupce B:G (datum, domácí,
     # hosté, skóre domácí, skóre hosté, pozn.) mají stejný tvar jako dřív A:F
     # v produkční tabulce, `compute_record_from_rows` beze změny.
     seznamy_db_id = require_seznamy_db_spreadsheet_id(config)
@@ -155,32 +151,20 @@ def cmd_standings(args: argparse.Namespace) -> int:
             print(f"  - {issue}")
         return 1
 
-    row = last_played_row(config)
+    row = last_game_row(config, seznamy_db_id)
     if row is None:
-        print("V tabulce zatím není žádný odehraný zápas.")
+        print("V Seznamy DB zatím není žádný odehraný zápas.")
         return 1
 
-    # Produkční tabulka Zápasy se od cutoveru na Seznamy DB dál neplní novými
-    # zápasy (viz PLAN.MD) – pokud DB eviduje víc odehraných zápasů, poslední
-    # řádek v produkci je zastaralý a zápis pořadí by šel na špatný řádek.
-    # Bezpečněji odmítnout, než tiše zapsat na starý zápas. Zápis "Pořadí
-    # v lize" do Seznamy DB je otevřený bod (viz PLAN.MD, další krok).
-    production_game_count = row - ZAPASY_DATA_START_ROW + 1
-    if record.games > production_game_count:
-        print(
-            "Produkční tabulka Zápasy zaostává za Seznamy DB "
-            f"({production_game_count} vs. {record.games} zápasů) – od cutoveru na "
-            "Seznamy 2.0 tam `cli import` nové zápasy nezapisuje. Zápis pořadí do "
-            "produkční tabulky se odmítá, dokud `standings` nebude přepnutý na "
-            "zápis do Seznamy DB (viz PLAN.MD)."
-        )
-        return 1
-
-    current = read_range(config, f"{ZAPASY_SHEET}!I{row}")
+    current = read_range(
+        config,
+        f"{SEZNAMY_ZAPASY_SHEET}!{SEZNAMY_PORADI_PO_KOLE_COLUMN}{row}",
+        spreadsheet_id=seznamy_db_id,
+    )
     current_value = current[0][0] if current and current[0] else ""
     print(
-        f"Navrhovaný zápis: {ZAPASY_SHEET}!I{row} = {standing.position} "
-        f"(nyní: {current_value!r})"
+        f"Navrhovaný zápis: {SEZNAMY_ZAPASY_SHEET}!{SEZNAMY_PORADI_PO_KOLE_COLUMN}{row} = "
+        f"{standing.position} (nyní: {current_value!r})"
     )
 
     if args.dry_run:
@@ -193,7 +177,7 @@ def cmd_standings(args: argparse.Namespace) -> int:
             print("Zrušeno.")
             return 0
 
-    write_position(config, row, standing.position)
+    write_poradi(config, seznamy_db_id, row, standing.position)
     print("Zapsáno.")
     return 0
 

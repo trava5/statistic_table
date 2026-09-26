@@ -193,7 +193,6 @@ IMPORT_LOG_DATA_START_ROW = 2
 IMPORT_LOG_HEADER = ["soubor_id", "kontrolní součet", "číslo zápisu", "datum importu", "výsledek"]
 
 STANDINGS_URL = "https://ceskyhokej.cz/souteze-juniori/liga-junioru"
-PORADI_PO_KOLE_COLUMN = "I"
 
 # Liga juniorů 2026/27, id soutěže z URL https://ceskyhokej.cz/competition/games/19
 LEAGUE_COMPETITION_ID = "19"
@@ -276,8 +275,12 @@ SEZNAMY_GOALIES_LOG_SHEET = "Brankáři (zápasy)"
 
 SEZNAMY_ZAPASY_HEADER = [
     "číslo zápisu", "datum", "domácí", "hosté", "skóre domácí", "skóre hosté",
-    "pozn.", "1.P", "2.P", "3.P", "OT",
+    "pozn.", "1.P", "2.P", "3.P", "OT", "pořadí po kole",
 ]
+# "pořadí po kole" (sloupec L) se na rozdíl od zbytku řádku nezapisuje při
+# importu zápasu (standings.py ho zjišťuje až dodatečně, scrapem stránky Ligy
+# juniorů) – zapisuje ho samostatně cli.cmd_standings do posledního řádku.
+SEZNAMY_PORADI_PO_KOLE_COLUMN = "L"
 # Výsledek z pohledu daného týmu (přesilovky/oslabení, výsledek, body) – composite
 # pravidlo s časovým párováním trestů, stejný důvod jako LEAGUE_ZAPASY_TYM_HEADER
 # proč to zůstává v Pythonu (stats.py), ne ve vzorci. Bez "kolo" (LIT hraje jen

@@ -521,11 +521,32 @@ Co se změnilo v kódu:
 - **`cmd_standings` přepnutý na čtení bilance ze Seznamy DB** (sloupce
   `Zápasy!B:G`, stejný tvar jako dřív produkční `A:F`) – jinak by cross-check
   proti produkční tabulce po cutoveru začal padat na každém dalším zápase
-  (produkce už nové zápasy nedostává). **Zápis „Pořadí v lize“ pořád jde do
-  produkční tabulky** (otevřený bod výše), ale teď s bezpečnostní pojistkou:
-  pokud Seznamy DB eviduje víc odehraných zápasů než produkce naposledy měla
-  zapsáno, `standings` zápis pořadí odmítne (místo aby ho tiše zapsal na
-  zastaralý/špatný řádek) a nahlásí, že čeká na přepnutí zápisu pořadí do DB.
+  (produkce už nové zápasy nedostává).
+
+✅ **Zápis „Pořadí v lize“ přepnutý na Seznamy DB (26. 9. 2026) – poslední
+otevřený bod z cutoveru uzavřen.** `standings` (`cmd_standings`) teď píše
+pozici přímo do Seznamy DB, ne do produkční tabulky:
+- `SEZNAMY_ZAPASY_HEADER` rozšířen o 12. sloupec `L` „pořadí po kole“
+  (`SEZNAMY_PORADI_PO_KOLE_COLUMN`) – na rozdíl od zbytku řádku (zapisuje
+  `cli import`) ho vyplňuje až `cli standings` dodatečně, po dohrání kola.
+  Živý list měl hlavičku jen do `K` (OT), doplněno jednorázovým ručním
+  zápisem `L1` (`ensure_seznamy_sheets` retroaktivně needituje hlavičku
+  existujícího listu, řeší jen nově vznikající listy – záměrně, ať běžný
+  import nedělá kvůli tomu 6 zbytečných extra API čtení na každý zápas).
+- `seznamy_sheets.last_game_row`/`write_poradi` (append-only list Zápasy,
+  poslední řádek = poslední naimportovaný = poslední odehraný zápas).
+  `standings.last_played_row`/`write_position` (produkční varianta) smazány
+  beze zbytku – všechny nové zápasy jdou od cutoveru jen do DB, takže
+  produkční verze už neměla žádné realistické použití.
+- **Kolize v Seznamy 2.0:** rozšíření IMPORTRANGE spillu `Zápasy` z `A:K` na
+  `A:L` narazilo na starý vzorec „Góly“ ve sloupci `L` (leftover z dřívějšího
+  běhu `build_seznamy_v2_mirrors.py`, viz níže) – spill do už obsazené buňky
+  skončil na `#REF!` („array result was not expanded because it would
+  overwrite data“). `build_seznamy_v2_mirrors.py` teď před zápisem nové
+  formule vždy vyčistí starou pozici (`Zápasy!L1:L101`), sloupce „Góly“/
+  „Asistence“ posunuty na `M:N`. Ověřeno živě: mirror i Dashboard („Pořadí
+  v lize“ = 6, `INDEX+COUNTA` nad `Zápasy!L`) sedí přesně na hodnotu
+  zapsanou `cli standings`.
 
 ## Potvrzená rozhodnutí (21. 9. 2026)
 
