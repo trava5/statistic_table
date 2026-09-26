@@ -103,14 +103,14 @@ def build_value_updates() -> dict[str, list[list]]:
     put("O5", f"=FILTER({ZT}!$E$2:$E$5000;{ZT}!$B$2:$B$5000={LIT})")
     put("P5", f"=FILTER({ZT}!$F$2:$F$5000;{ZT}!$B$2:$B$5000={LIT})")
 
-    # --- Top 5 – Bodování a Brankáři (vedle sebe) ------------------------------
-    put("A49", "TOP 5 – BODOVÁNÍ")
+    # --- Bodování (všichni hráči) a Brankáři (vedle sebe) ----------------------
+    put("A49", "BODOVÁNÍ")
     put(
         "A50",
-        f"=QUERY({BOD}!A:G;\"select A, C, D, E, F order by F desc limit 5\";1)",
+        f'=QUERY({BOD}!A:G;"select A, C, D, E, F order by F desc";1)',
     )
     put("I49", "BRANKÁŘI")
-    put("I50", f'=QUERY({GOA}!A:G;"select *";1)')
+    put("I50", f'=QUERY({GOA}!A:F;"select *";1)')
 
     return updates
 

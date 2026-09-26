@@ -41,6 +41,10 @@ from statistic_table.config import (
     require_seznamy_v2_spreadsheet_id,
 )
 
+GOLY = f"'{SEZNAMY_GOLY_SHEET}'"
+ZAPASY_TYM = f"'{SEZNAMY_ZAPASY_TYM_SHEET}'"
+EXTRA_COLUMN_ROWS = 100  # dost i na několik sezón zápasů LIT
+
 # Jméno listu -> poslední sloupec s daty (viz SEZNAMY_*_HEADER v config.py).
 DB_MIRRORS = {
     SEZNAMY_ZAPASY_SHEET: "K",
@@ -98,6 +102,54 @@ def main() -> None:
     data.append({"range": f"'{SEZNAM_HRACU_SHEET}'!A1", "values": [SEZNAM_HRACU_HEADER]})
     hraci_formula = f'=IMPORTRANGE("{production_id}"; "\'{SEZNAM_HRACU_SHEET}\'!B3:F1000")'
     data.append({"range": f"'{SEZNAM_HRACU_SHEET}'!A2", "values": [[hraci_formula]]})
+
+    # --- Zápasy!L:M – střelci/nahrávači LIT za daný zápas (mimo IMPORTRANGE
+    # spill A:K, počítá se z Góly zvlášť za každý řádek – FILTER nejde
+    # vektorizovat přes ARRAYFORMULA, protože kritérium (číslo zápisu) se mění
+    # po řádcích, proto je vzorec zapsaný zvlášť pro každý z EXTRA_COLUMN_ROWS
+    # řádků, ne jako jeden spill.
+    data.append({"range": f"'{SEZNAMY_ZAPASY_SHEET}'!L1", "values": [["Góly", "Asistence"]]})
+    zapasy_extra_rows = []
+    for row in range(2, 2 + EXTRA_COLUMN_ROWS):
+        goly = (
+            f'=IF($A{row}="";"";IFERROR(TEXTJOIN(", ";TRUE;'
+            f'FILTER({GOLY}!$E$2:$E$5000;{GOLY}!$A$2:$A$5000=$A{row};'
+            f'{GOLY}!$B$2:$B$5000="LIT"));""))'
+        )
+        asistence = (
+            f'=IF($A{row}="";"";IFERROR(TEXTJOIN(", ";TRUE;'
+            f'FILTER({GOLY}!$F$2:$F$5000;{GOLY}!$A$2:$A$5000=$A{row};'
+            f'{GOLY}!$B$2:$B$5000="LIT");'
+            f'FILTER({GOLY}!$G$2:$G$5000;{GOLY}!$A$2:$A$5000=$A{row};'
+            f'{GOLY}!$B$2:$B$5000="LIT"));""))'
+        )
+        zapasy_extra_rows.append([goly, asistence])
+    data.append({"range": f"'{SEZNAMY_ZAPASY_SHEET}'!L2", "values": zapasy_extra_rows})
+
+    # --- Brankáři (zápasy)!K:L – výsledek zápasu z pohledu LIT + příznak
+    # "vychytaná výhra" (V/VP), mimo IMPORTRANGE spill A:J. MATCH pod
+    # ARRAYFORMULA se zřetězeným polem jako lookup_value i lookup_array
+    # (VLOOKUP+`{}` i INDEX/MATCH) se choval nespolehlivě – vždy vrátilo
+    # výsledek prvního řádku, ne správný. Stejné řešení jako u Zápasy!L:M
+    # výše: obyčejný (ne ARRAYFORMULA) vzorec po řádcích, se skalárním
+    # lookup_value (jen $A{row}/$B{row}), ne polem – MATCH se skalárem je
+    # spolehlivý stejně jako všude jinde v projektu.
+    data.append(
+        {
+            "range": f"'{SEZNAMY_GOALIES_LOG_SHEET}'!K1",
+            "values": [["výsledek", "vychytaná výhra"]],
+        }
+    )
+    goalies_extra_rows = []
+    for row in range(2, 2 + EXTRA_COLUMN_ROWS):
+        vysledek = (
+            f'=IF($A{row}="";"";IFERROR(INDEX({ZAPASY_TYM}!$G$2:$G${ROWS};'
+            f'MATCH($A{row}&"|"&$B{row};'
+            f'{ZAPASY_TYM}!$A$2:$A${ROWS}&"|"&{ZAPASY_TYM}!$B$2:$B${ROWS};0));""))'
+        )
+        vychytana_vyhra = f'=IF(K{row}="";"";IF(OR(K{row}="V";K{row}="VP");1;0))'
+        goalies_extra_rows.append([vysledek, vychytana_vyhra])
+    data.append({"range": f"'{SEZNAMY_GOALIES_LOG_SHEET}'!K2", "values": goalies_extra_rows})
 
     service.spreadsheets().values().batchUpdate(
         spreadsheetId=v2_id, body={"valueInputOption": "USER_ENTERED", "data": data}

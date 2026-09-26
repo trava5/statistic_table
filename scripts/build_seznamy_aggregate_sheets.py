@@ -8,9 +8,18 @@ Na rozdíl od produkční tabulky Seznamy (INDEX/MATCH proti Seznam hráčů,
 SUMPRODUCT proti pozičním sloupcům Zápasy/Sestavy) čte přímo z normalizovaného
 logu a nepotřebuje Seznam hráčů vůbec – jméno hráče je už v logu (z PDF).
 
-Záměrně BEZ výher/pct výher/shutoutu u Brankářů (na rozdíl od produkční
-tabulky) – to vyžaduje spojit log s výsledkem zápasu ze `Zápasy`, doplní se
-v dalším kroku, až bude tahle základní vrstva odladěná (viz PLAN.MD).
+`Brankáři` má „Vychytané výhry“/„% výher“ (ne celou produkční sadu – bez
+shutoutu, ø při výhře/prohře) – spočítané ze sloupců `K`/`L` (výsledek,
+vychytaná výhra), které `build_seznamy_v2_mirrors.py` doplňuje na mirror
+listu `Brankáři (zápasy)` navíc k IMPORTRANGE spillu. `G`/`A`/`TM` u
+brankářů (na rozdíl od produkční tabulky) nejsou – u brankáře nejsou
+zajímavá čísla a QUERY select je bez nich čitelnější.
+
+`Bodování` je navíc nativní Sheets „Tabulka“ (ne jen vzorec) – aby šlo
+řadit podle sloupců kliknutím na hlavičku, stejně jako produkční `Bodování`/
+`Brankáři`. **Past:** Tabulka nad rozsahem, kam píše `QUERY`, dřív (viz
+PLAN.MD) tiše přebíjela vzorcem vygenerované hlavičky vlastními „Sloupec N“
+– řešení je `deleteTable` před přepsáním vzorce, pak `addTable` znovu.
 
 Vzorce používají `;` jako oddělovač argumentů (tabulka je v cs_CZ locale).
 
@@ -72,12 +81,13 @@ def main() -> None:
         f"sum(K) 'TM'\";1)"
     )
     # Brankáři (zápasy): A číslo zápisu, B tým, C číslo, D jméno, E registrace,
-    # F chytal, G obdržené góly, H G, I A, J TM.
+    # F chytal, G obdržené góly, H G, I A, J TM, K výsledek, L vychytaná výhra
+    # (K, L doplňuje build_seznamy_v2_mirrors.py mimo IMPORTRANGE spill A:J).
     goalie_query = (
-        f"=QUERY({GOALIES_LOG}!A:J;\"select D, sum(F), sum(G), sum(G)/sum(F), sum(H), sum(I), "
-        f"sum(J) where B = 'LIT' group by D order by sum(F) desc "
+        f"=QUERY({GOALIES_LOG}!A:L;\"select D, sum(F), sum(G), sum(G)/sum(F), sum(L), "
+        f"sum(L)/sum(F) where B = 'LIT' group by D order by sum(F) desc "
         f"label D 'Hráč', sum(F) 'Z', sum(G) 'obdržené góly', "
-        f"sum(G)/sum(F) 'obdržené góly/zápas', sum(H) 'G', sum(I) 'A', sum(J) 'TM'\";1)"
+        f"sum(G)/sum(F) 'průměr', sum(L) 'Vychytané výhry', sum(L)/sum(F) '% výher'\";1)"
     )
 
     data = [
@@ -88,6 +98,65 @@ def main() -> None:
         spreadsheetId=spreadsheet_id, body={"valueInputOption": "USER_ENTERED", "data": data}
     ).execute()
     print(f"Vzorce zapsány do '{SEZNAMY_BODOVANI_SHEET}' a '{SEZNAMY_BRANKARI_SHEET}'.")
+
+    # "% výher" jako podíl – bez formátu je to syrové desetinné číslo.
+    sheet_ids = {
+        s["properties"]["title"]: s["properties"]["sheetId"]
+        for s in service.spreadsheets().get(spreadsheetId=spreadsheet_id).execute()["sheets"]
+    }
+    percent_format_request = {
+        "repeatCell": {
+            "range": {
+                "sheetId": sheet_ids[SEZNAMY_BRANKARI_SHEET],
+                "startRowIndex": 1,
+                "endRowIndex": 1000,
+                "startColumnIndex": 5,
+                "endColumnIndex": 6,
+            },
+            "cell": {
+                "userEnteredFormat": {"numberFormat": {"type": "PERCENT", "pattern": "0.00%"}}
+            },
+            "fields": "userEnteredFormat.numberFormat",
+        }
+    }
+    service.spreadsheets().batchUpdate(
+        spreadsheetId=spreadsheet_id, body={"requests": [percent_format_request]}
+    ).execute()
+
+    _ensure_sortable_table(
+        service, spreadsheet_id, sheet_ids[SEZNAMY_BODOVANI_SHEET], SEZNAMY_BODOVANI_SHEET
+    )
+    print(f"'{SEZNAMY_BODOVANI_SHEET}' je nativní Tabulka (řazení kliknutím na hlavičku).")
+
+
+def _ensure_sortable_table(service, spreadsheet_id: str, sheet_id: int, name: str) -> None:
+    """Nativní Sheets „Tabulka“ nad rozsahem, kam píše QUERY – dřív (viz
+    PLAN.MD) tiché přebití hlaviček „Sloupec N“, proto vždy nejdřív smazat
+    starou tabulku (pokud existuje) a založit znovu, ne upravovat na místě."""
+    meta = service.spreadsheets().get(
+        spreadsheetId=spreadsheet_id, fields="sheets(properties(sheetId),tables(tableId))"
+    ).execute()
+    sheet = next(s for s in meta["sheets"] if s["properties"]["sheetId"] == sheet_id)
+    delete_requests = [
+        {"deleteTable": {"tableId": t["tableId"]}} for t in sheet.get("tables", [])
+    ]
+    add_request = {
+        "addTable": {
+            "table": {
+                "name": name,
+                "range": {
+                    "sheetId": sheet_id,
+                    "startRowIndex": 0,
+                    "endRowIndex": 1000,
+                    "startColumnIndex": 0,
+                    "endColumnIndex": 7,
+                },
+            }
+        }
+    }
+    service.spreadsheets().batchUpdate(
+        spreadsheetId=spreadsheet_id, body={"requests": [*delete_requests, add_request]}
+    ).execute()
 
 
 if __name__ == "__main__":
