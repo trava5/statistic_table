@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from collections import Counter
 
 from googleapiclient.discovery import build
@@ -29,6 +30,8 @@ from statistic_table.stats import (
     power_plays,
     third_and_relative_time,
 )
+
+logger = logging.getLogger("statistic_table")
 
 RAW_SHEETS = (
     (SEZNAMY_ZAPASY_SHEET, SEZNAMY_ZAPASY_HEADER),
@@ -78,16 +81,56 @@ def _write_row(config: Config, spreadsheet_id: str, range_: str, values: list) -
     ).execute()
 
 
-def _append_rows(config: Config, spreadsheet_id: str, sheet: str, rows: list[list]) -> None:
+def _append_rows(
+    config: Config, spreadsheet_id: str, sheet: str, rows: list[list]
+) -> str | None:
+    """Vrací rozsah, kam se skutečně zapsalo (`updates.updatedRange`), nebo
+    None, pokud nebylo co zapsat – použito pro rollback v `_append_all_or_nothing`."""
     if not rows:
-        return
-    _service(config).spreadsheets().values().append(
-        spreadsheetId=spreadsheet_id,
-        range=f"'{sheet}'!A2",
-        valueInputOption="RAW",
-        insertDataOption="INSERT_ROWS",
-        body={"values": rows},
-    ).execute()
+        return None
+    result = (
+        _service(config)
+        .spreadsheets()
+        .values()
+        .append(
+            spreadsheetId=spreadsheet_id,
+            range=f"'{sheet}'!A2",
+            valueInputOption="RAW",
+            insertDataOption="INSERT_ROWS",
+            body={"values": rows},
+        )
+        .execute()
+    )
+    return result.get("updates", {}).get("updatedRange")
+
+
+def _append_all_or_nothing(
+    config: Config, spreadsheet_id: str, writes: list[tuple[str, list[list]]]
+) -> None:
+    """Zapíše víc listů (`_append_rows` po jednom, Sheets API nemá atomický
+    append přes víc listů najednou). Dedup dalšího volání (`read_known_game_
+    numbers`) se dívá jen na první zapisovaný list (`SEZNAMY_ZAPASY_SHEET`) –
+    pokud by zápis pozdějšího listu selhal, zápas by se navenek tvářil jako už
+    zapsaný, ale chyběla by mu část dat, a žádný další import stejného PDF by
+    to už nedoplnil (dedup by ho přeskočil dřív, než by se stihlo cokoli
+    zapsat). Proto se při chybě smažou i rozsahy zapsané předchozími kroky
+    v tomto volání (kompenzační transakce) – zápas tak buď skončí zapsaný
+    celý, nebo vůbec, a příští import PDF ho zkusí znovu."""
+    written: list[str] = []
+    try:
+        for sheet, rows in writes:
+            updated_range = _append_rows(config, spreadsheet_id, sheet, rows)
+            if updated_range:
+                written.append(updated_range)
+    except Exception:
+        for range_ in written:
+            try:
+                _service(config).spreadsheets().values().clear(
+                    spreadsheetId=spreadsheet_id, range=range_
+                ).execute()
+            except Exception:  # noqa: BLE001 – rollback je best-effort, nesmí zastřít původní chybu
+                logger.warning("Rollback rozsahu %s po chybě zápisu se nezdařil", range_)
+        raise
 
 
 def read_known_game_numbers(config: Config, spreadsheet_id: str) -> set[str]:
@@ -257,5 +300,4 @@ def append_game(config: Config, spreadsheet_id: str, game: Game) -> None:
     if game.number in read_known_game_numbers(config, spreadsheet_id):
         return
     rows_by_sheet = build_seznamy_rows(game, config)
-    for sheet, rows in rows_by_sheet.items():
-        _append_rows(config, spreadsheet_id, sheet, rows)
+    _append_all_or_nothing(config, spreadsheet_id, list(rows_by_sheet.items()))

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+
 from googleapiclient.discovery import build
 
 from statistic_table.config import (
@@ -47,6 +49,8 @@ RAW_SHEETS = (
 # Bruslaři/Brankáři - liga (sezónní součty) záměrně NEJSOU v RAW_SHEETS – jsou
 # to vzorce (QUERY group by nad *_LOG_SHEET), postavené jednorázově skriptem
 # scripts/build_league_aggregate_sheets.py, Python do nich nikdy nezapisuje.
+
+logger = logging.getLogger("statistic_table")
 
 
 def _service(config: Config):
@@ -97,16 +101,55 @@ def _write_row(config: Config, spreadsheet_id: str, range_: str, values: list) -
     ).execute()
 
 
-def _append_rows(config: Config, spreadsheet_id: str, sheet: str, rows: list[list]) -> None:
+def _append_rows(
+    config: Config, spreadsheet_id: str, sheet: str, rows: list[list]
+) -> str | None:
+    """Vrací rozsah, kam se skutečně zapsalo (`updates.updatedRange`), nebo
+    None, pokud nebylo co zapsat – použito pro rollback v `_append_all_or_nothing`."""
     if not rows:
-        return
-    _service(config).spreadsheets().values().append(
-        spreadsheetId=spreadsheet_id,
-        range=f"{sheet}!A2",
-        valueInputOption="USER_ENTERED",
-        insertDataOption="INSERT_ROWS",
-        body={"values": [_protect_row(row) for row in rows]},
-    ).execute()
+        return None
+    result = (
+        _service(config)
+        .spreadsheets()
+        .values()
+        .append(
+            spreadsheetId=spreadsheet_id,
+            range=f"{sheet}!A2",
+            valueInputOption="USER_ENTERED",
+            insertDataOption="INSERT_ROWS",
+            body={"values": [_protect_row(row) for row in rows]},
+        )
+        .execute()
+    )
+    return result.get("updates", {}).get("updatedRange")
+
+
+def _append_all_or_nothing(
+    config: Config, spreadsheet_id: str, writes: list[tuple[str, list[list]]]
+) -> None:
+    """Zapíše víc listů (`_append_rows` po jednom, Sheets API nemá atomický
+    append přes víc listů najednou). Dedup dalšího běhu (`read_known_game_ids`)
+    se dívá jen na první zapisovaný list (`LEAGUE_ZAPASY_SHEET`) – pokud by
+    zápis pozdějšího listu (Góly/Vyloučení/Bruslaři/Brankáři) selhal, zápas by
+    se navenek tvářil jako už synchronizovaný, ale chyběla by mu část dat, a
+    žádný další běh by to už nedoplnil. Proto se při chybě smažou i rozsahy
+    zapsané předchozími kroky v tomto volání (kompenzační transakce) – zápas
+    tak buď skončí zapsaný celý, nebo vůbec, a příští běh ho zkusí znovu."""
+    written: list[str] = []
+    try:
+        for sheet, rows in writes:
+            updated_range = _append_rows(config, spreadsheet_id, sheet, rows)
+            if updated_range:
+                written.append(updated_range)
+    except Exception:
+        for range_ in written:
+            try:
+                _service(config).spreadsheets().values().clear(
+                    spreadsheetId=spreadsheet_id, range=range_
+                ).execute()
+            except Exception:  # noqa: BLE001 – rollback je best-effort, nesmí zastřít původní chybu
+                logger.warning("Rollback rozsahu %s po chybě zápisu se nezdařil", range_)
+        raise
 
 
 def read_known_game_ids(config: Config, spreadsheet_id: str) -> set[int]:
@@ -181,12 +224,18 @@ def append_game(
         for g in goalies
     ]
 
-    _append_rows(config, spreadsheet_id, LEAGUE_ZAPASY_SHEET, [game_row])
-    _append_rows(config, spreadsheet_id, LEAGUE_ZAPASY_TYM_SHEET, tym_rows)
-    _append_rows(config, spreadsheet_id, LEAGUE_GOLY_SHEET, goal_rows)
-    _append_rows(config, spreadsheet_id, LEAGUE_VYLOUCENI_SHEET, penalty_rows)
-    _append_rows(config, spreadsheet_id, LEAGUE_SKATERS_LOG_SHEET, skater_rows)
-    _append_rows(config, spreadsheet_id, LEAGUE_GOALIES_LOG_SHEET, goalie_rows)
+    _append_all_or_nothing(
+        config,
+        spreadsheet_id,
+        [
+            (LEAGUE_ZAPASY_SHEET, [game_row]),
+            (LEAGUE_ZAPASY_TYM_SHEET, tym_rows),
+            (LEAGUE_GOLY_SHEET, goal_rows),
+            (LEAGUE_VYLOUCENI_SHEET, penalty_rows),
+            (LEAGUE_SKATERS_LOG_SHEET, skater_rows),
+            (LEAGUE_GOALIES_LOG_SHEET, goalie_rows),
+        ],
+    )
 
 
 def _int(value) -> int:
