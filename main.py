@@ -29,24 +29,21 @@ def menu_check() -> None:
     _run(["check"])
 
 
-def menu_import_single() -> None:
-    path = _ask("Cesta k PDF zápisu: ")
-    if not path:
-        print("Cesta nebyla zadána.")
-        return
+def menu_import_pdf() -> None:
+    if _confirm("Celá složka Zápisy (ne jen jeden konkrétní soubor)?", default_yes=True):
+        argv_base = ["import"]
+    else:
+        path = _ask("Cesta k PDF zápisu: ")
+        if not path:
+            print("Cesta nebyla zadána.")
+            return
+        argv_base = ["import", path]
+
     if _confirm("Nejdřív jen dry-run?", default_yes=True):
-        _run(["import", path, "--dry-run"])
+        _run([*argv_base, "--dry-run"])
         if not _confirm("Zapsat doopravdy?", default_yes=False):
             return
-    _run(["import", path])
-
-
-def menu_import_folder() -> None:
-    if _confirm("Nejdřív jen dry-run?", default_yes=True):
-        _run(["import", "--dry-run"])
-        if not _confirm("Zapsat doopravdy?", default_yes=False):
-            return
-    _run(["import"])
+    _run(argv_base)
 
 
 def menu_standings() -> None:
@@ -75,11 +72,10 @@ def menu_league_sync_teams() -> None:
 
 MENU: dict[str, tuple[str, Callable[[], None] | None]] = {
     "1": ("Ověřit přístup k Disku a Tabulce", menu_check),
-    "2": ("Naimportovat jeden lokální PDF", menu_import_single),
-    "3": ("Naimportovat celou složku Zápisy", menu_import_folder),
-    "4": ("Zjistit a zapsat pořadí po kole", menu_standings),
-    "5": ("Liga: stáhnout nové odehrané zápasy všech týmů", menu_league_sync_games),
-    "6": ("Liga: založit listy pro nové týmy", menu_league_sync_teams),
+    "2": ("Import z PDF (Zápisy)", menu_import_pdf),
+    "3": ("Zjistit a zapsat pořadí po kole", menu_standings),
+    "4": ("Import z webu (Liga: nové odehrané zápasy)", menu_league_sync_games),
+    "5": ("Liga: založit listy pro nové týmy", menu_league_sync_teams),
     "0": ("Konec", None),
 }
 
