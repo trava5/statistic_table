@@ -32,12 +32,15 @@ CHECK_CELLS = {
 }
 
 
-def read_range(config: Config, range_: str) -> list[list[str]]:
+def read_range(
+    config: Config, range_: str, spreadsheet_id: str | None = None
+) -> list[list[str]]:
+    """Bez `spreadsheet_id` čte z produkční tabulky (`config.spreadsheet_id`)."""
     service = build("sheets", "v4", credentials=get_credentials(config))
     result = (
         service.spreadsheets()
         .values()
-        .get(spreadsheetId=config.spreadsheet_id, range=range_)
+        .get(spreadsheetId=spreadsheet_id or config.spreadsheet_id, range=range_)
         .execute()
     )
     return result.get("values", [])
@@ -96,14 +99,14 @@ def find_or_create_row(config: Config, date: str, home: str, away: str) -> int:
     return ZAPASY_DATA_START_ROW + len(values)
 
 
-def write_batch(config: Config, updates: dict[str, list]) -> None:
+def write_batch(config: Config, spreadsheet_id: str, updates: dict[str, list]) -> None:
     """Zapíše všechny rozsahy jedním batchUpdate (vzorce v ostatních buňkách
     zůstávají nedotčené, protože se zapisují jen explicitně vyjmenované rozsahy)."""
     service = build("sheets", "v4", credentials=get_credentials(config))
     data = [{"range": range_, "values": [values]} for range_, values in updates.items()]
     body = {"valueInputOption": "USER_ENTERED", "data": data}
     service.spreadsheets().values().batchUpdate(
-        spreadsheetId=config.spreadsheet_id, body=body
+        spreadsheetId=spreadsheet_id, body=body
     ).execute()
 
 
@@ -116,10 +119,12 @@ def read_checks(config: Config, row: int) -> dict[str, str]:
     return results
 
 
-def ensure_import_log_sheet(config: Config) -> None:
-    """Založí skrytý list Import log (s hlavičkou), pokud ještě neexistuje."""
+def ensure_import_log_sheet(config: Config, spreadsheet_id: str) -> None:
+    """Založí skrytý list Import log (s hlavičkou) v dané tabulce, pokud ještě
+    neexistuje. Parametrizováno tabulkou (ne natvrdo `config.spreadsheet_id`) –
+    od LIT Seznamy 2.0 žije Import log v Seznamy DB, ne v produkční tabulce."""
     service = build("sheets", "v4", credentials=get_credentials(config))
-    meta = service.spreadsheets().get(spreadsheetId=config.spreadsheet_id).execute()
+    meta = service.spreadsheets().get(spreadsheetId=spreadsheet_id).execute()
     titles = {s["properties"]["title"] for s in meta["sheets"]}
     if IMPORT_LOG_SHEET in titles:
         return
@@ -128,13 +133,17 @@ def ensure_import_log_sheet(config: Config) -> None:
             {"addSheet": {"properties": {"title": IMPORT_LOG_SHEET, "hidden": True}}}
         ]
     }
-    service.spreadsheets().batchUpdate(spreadsheetId=config.spreadsheet_id, body=body).execute()
+    service.spreadsheets().batchUpdate(spreadsheetId=spreadsheet_id, body=body).execute()
     header_range = f"{IMPORT_LOG_SHEET}!A{IMPORT_LOG_HEADER_ROW}:E{IMPORT_LOG_HEADER_ROW}"
-    write_batch(config, {header_range: IMPORT_LOG_HEADER})
+    write_batch(config, spreadsheet_id, {header_range: IMPORT_LOG_HEADER})
 
 
-def read_import_log(config: Config) -> list[ImportLogEntry]:
-    values = read_range(config, f"{IMPORT_LOG_SHEET}!A{IMPORT_LOG_DATA_START_ROW}:E1000000")
+def read_import_log(config: Config, spreadsheet_id: str) -> list[ImportLogEntry]:
+    values = read_range(
+        config,
+        f"{IMPORT_LOG_SHEET}!A{IMPORT_LOG_DATA_START_ROW}:E1000000",
+        spreadsheet_id=spreadsheet_id,
+    )
     entries = []
     for row in values:
         file_id = row[0] if len(row) > 0 else ""
@@ -152,7 +161,9 @@ def read_import_log(config: Config) -> list[ImportLogEntry]:
     return entries
 
 
-def append_import_log(config: Config, entries: list[ImportLogEntry]) -> None:
+def append_import_log(
+    config: Config, spreadsheet_id: str, entries: list[ImportLogEntry]
+) -> None:
     if not entries:
         return
     service = build("sheets", "v4", credentials=get_credentials(config))
@@ -160,7 +171,7 @@ def append_import_log(config: Config, entries: list[ImportLogEntry]) -> None:
         [e.file_id, e.checksum, e.game_number, e.imported_at, e.result] for e in entries
     ]
     service.spreadsheets().values().append(
-        spreadsheetId=config.spreadsheet_id,
+        spreadsheetId=spreadsheet_id,
         range=f"{IMPORT_LOG_SHEET}!A{IMPORT_LOG_DATA_START_ROW}",
         valueInputOption="USER_ENTERED",
         insertDataOption="INSERT_ROWS",

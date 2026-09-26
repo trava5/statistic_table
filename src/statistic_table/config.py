@@ -183,6 +183,8 @@ SEZNAM_HRACU_DATA_START_ROW = 3
 TEAM_ALIASES = {
     "HC Příbram": "Příbram",
     "Piráti Chomutov": "Chomutov",
+    "HC Olomouc": "Olomouc",
+    "HK MD Šumperk": "Šumperk",
 }
 
 IMPORT_LOG_SHEET = "Import log"

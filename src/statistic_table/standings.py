@@ -170,4 +170,8 @@ def last_played_row(config: Config) -> int | None:
 
 
 def write_position(config: Config, row: int, position: int) -> None:
-    write_batch(config, {f"{ZAPASY_SHEET}!{PORADI_PO_KOLE_COLUMN}{row}": [str(position)]})
+    write_batch(
+        config,
+        config.spreadsheet_id,
+        {f"{ZAPASY_SHEET}!{PORADI_PO_KOLE_COLUMN}{row}": [str(position)]},
+    )

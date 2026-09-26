@@ -5,11 +5,13 @@ import sys
 
 from statistic_table.config import (
     LEAGUE_COMPETITION_ID,
+    SEZNAMY_ZAPASY_SHEET,
     ZAPASY_DATA_START_ROW,
     ZAPASY_SHEET,
     load_config,
     require_league_db_spreadsheet_id,
     require_league_v2_spreadsheet_id,
+    require_seznamy_db_spreadsheet_id,
 )
 from statistic_table.drive import list_pdf_files
 from statistic_table.importer import (
@@ -17,7 +19,6 @@ from statistic_table.importer import (
     import_folder,
     import_pdf,
     print_outcomes,
-    print_plan,
 )
 from statistic_table.league_scraper import (
     fetch_game_detail_html,
@@ -37,7 +38,8 @@ from statistic_table.league_sheets import (
     team_sheet_title,
 )
 from statistic_table.logging_config import setup_logging
-from statistic_table.sheets import check_headers, read_checks, read_player_registry, read_range
+from statistic_table.seznamy_sheets import build_seznamy_rows
+from statistic_table.sheets import check_headers, read_player_registry, read_range
 from statistic_table.standings import (
     arithmetic_issues,
     compute_record_from_rows,
@@ -79,23 +81,33 @@ def cmd_check(_args: argparse.Namespace) -> int:
 
 def cmd_import(args: argparse.Namespace) -> int:
     config = load_config()
-    club_roster = read_player_registry(config)
 
     if args.pdf:
         try:
-            plan = import_pdf(args.pdf, config, club_roster, dry_run=args.dry_run)
+            game = import_pdf(args.pdf, config, dry_run=args.dry_run)
         except IMPORT_ERRORS as exc:
             print(f"Import se nezdařil: {exc}")
             return 1
-        print_plan(plan)
+        print(
+            f"Zápas {game.number}: {game.date}  {game.home.name} "
+            f"{game.home_score}:{game.away_score} {game.away.name}"
+        )
         if args.dry_run:
+            try:
+                rows_by_sheet = build_seznamy_rows(game, config)
+            except IMPORT_ERRORS as exc:
+                print(f"Import se nezdařil: {exc}")
+                return 1
+            for sheet, rows in rows_by_sheet.items():
+                print(f"  {sheet} ({len(rows)}):")
+                for row in rows:
+                    print(f"    {row}")
             print("(--dry-run: nic se nezapsalo)")
             return 0
-        for label, value in read_checks(config, plan.row).items():
-            print(f"{label}: {value!r}")
+        print(f"Zápas {game.number} zapsán do Seznamy DB.")
         return 0
 
-    outcomes = import_folder(config, club_roster, dry_run=args.dry_run)
+    outcomes = import_folder(config, dry_run=args.dry_run)
     print_outcomes(outcomes)
     if args.dry_run:
         print("(--dry-run: nic se nezapsalo)")
@@ -125,7 +137,15 @@ def cmd_standings(args: argparse.Namespace) -> int:
     )
 
     issues = arithmetic_issues(standing)
-    rows = read_range(config, f"{ZAPASY_SHEET}!A{ZAPASY_DATA_START_ROW}:F1000")
+    # Bilance se dopočítává ze Seznamy DB (ne z produkční tabulky) – od cutoveru
+    # na Seznamy 2.0 (viz PLAN.MD) tam `cli import` zapisuje nové zápasy, do
+    # produkční `Zápasy` se už nic nepřidává. Sloupce B:G (datum, domácí,
+    # hosté, skóre domácí, skóre hosté, pozn.) mají stejný tvar jako dřív A:F
+    # v produkční tabulce, `compute_record_from_rows` beze změny.
+    seznamy_db_id = require_seznamy_db_spreadsheet_id(config)
+    rows = read_range(
+        config, f"{SEZNAMY_ZAPASY_SHEET}!B2:G100000", spreadsheet_id=seznamy_db_id
+    )
     record = compute_record_from_rows(rows, config.team_short)
     issues += cross_check_issues(standing, record)
 
@@ -138,6 +158,22 @@ def cmd_standings(args: argparse.Namespace) -> int:
     row = last_played_row(config)
     if row is None:
         print("V tabulce zatím není žádný odehraný zápas.")
+        return 1
+
+    # Produkční tabulka Zápasy se od cutoveru na Seznamy DB dál neplní novými
+    # zápasy (viz PLAN.MD) – pokud DB eviduje víc odehraných zápasů, poslední
+    # řádek v produkci je zastaralý a zápis pořadí by šel na špatný řádek.
+    # Bezpečněji odmítnout, než tiše zapsat na starý zápas. Zápis "Pořadí
+    # v lize" do Seznamy DB je otevřený bod (viz PLAN.MD, další krok).
+    production_game_count = row - ZAPASY_DATA_START_ROW + 1
+    if record.games > production_game_count:
+        print(
+            "Produkční tabulka Zápasy zaostává za Seznamy DB "
+            f"({production_game_count} vs. {record.games} zápasů) – od cutoveru na "
+            "Seznamy 2.0 tam `cli import` nové zápasy nezapisuje. Zápis pořadí do "
+            "produkční tabulky se odmítá, dokud `standings` nebude přepnutý na "
+            "zápis do Seznamy DB (viz PLAN.MD)."
+        )
         return 1
 
     current = read_range(config, f"{ZAPASY_SHEET}!I{row}")
@@ -205,7 +241,11 @@ def cmd_league_sync_games(args: argparse.Namespace) -> int:
             f"(#{game.game_number}, id {game_id})"
         )
         if not args.dry_run:
-            append_game(config, spreadsheet_id, game, goals, penalties, skaters, goalies)
+            try:
+                append_game(config, spreadsheet_id, game, goals, penalties, skaters, goalies)
+            except Exception as exc:  # noqa: BLE001 – jeden vadný zápas nesmí zastavit zbytek
+                print(f"  zápas {game_id}: zápis do DB selhal – {exc}")
+                continue
 
     if new_games and not args.dry_run:
         # Sezónní bodování a brankářské statistiky se dopočítají samy vzorcem

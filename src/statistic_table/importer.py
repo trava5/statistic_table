@@ -9,7 +9,6 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from statistic_table import stats
-from statistic_table.backup import backup_row
 from statistic_table.config import (
     SESTAVY_COLUMNS,
     SESTAVY_SHEET,
@@ -18,6 +17,7 @@ from statistic_table.config import (
     ColumnGroup,
     Config,
     check_capacity,
+    require_seznamy_db_spreadsheet_id,
 )
 from statistic_table.drive import download_file, list_pdf_files
 from statistic_table.model import Game, ImportLogEntry, RosterPlayer, TeamSheet
@@ -35,7 +35,6 @@ from statistic_table.sheets import (
     ensure_import_log_sheet,
     find_or_create_row,
     read_import_log,
-    write_batch,
 )
 
 BIRTH_YEARS = range(2005, 2011)
@@ -94,6 +93,13 @@ def _period_score_cells(game: Game) -> list[str]:
     return [_score_str(p) for p in periods[:3]] + [_score_str(game.ot_score)]
 
 
+# `build_import`/`ImportPlan`/`print_plan` sestavují zápis do PŮVODNÍ produkční
+# tabulky Seznamy (buňka po buňce, se jménem hráče dohledaným v Seznam hráčů).
+# Od cutoveru na LIT Seznamy 2.0 (26. 9. 2026, viz PLAN.MD) `import_pdf`/
+# `import_folder` níže tuhle funkci už nevolají – jediný cíl zápisu je teď
+# Seznamy DB (stejný vzor jako u Ligy). Zůstává tu netknutá a otestovaná
+# (viz test_importer.py) jako referenční/legacy cesta, kdyby bylo někdy
+# potřeba psát znovu i do staré produkční tabulky.
 def build_import(
     game: Game,
     config: Config,
@@ -182,29 +188,18 @@ def build_import(
     return ImportPlan(row=row, game_number=game.number, cells=cells)
 
 
-def _write_to_seznamy_db(game: Game, config: Config) -> None:
-    """Dočasný souběžný zápis do Seznamy DB (viz PLAN.MD, LIT Seznamy 2.0) –
-    doplňkový k produkčnímu zápisu výše, nesmí ho shodit ani zpomalit import,
-    pokud selže. Bez SEZNAMY_DB_SPREADSHEET_ID v .env se přeskočí beze slova."""
-    if not config.seznamy_db_spreadsheet_id:
-        return
-    try:
-        append_seznamy_db_game(config, config.seznamy_db_spreadsheet_id, game)
-    except Exception as exc:  # noqa: BLE001 – doplňkový zápis, nesmí shodit produkční import
-        logger.warning("Zápas %s: zápis do Seznamy DB selhal: %s", game.number, exc)
-
-
-def import_pdf(
-    path: str | Path, config: Config, club_roster: list[RosterPlayer], *, dry_run: bool
-) -> ImportPlan:
+def import_pdf(path: str | Path, config: Config, *, dry_run: bool) -> Game:
+    """Naimportuje jeden PDF do Seznamy DB (jediný cíl zápisu, viz PLAN.MD).
+    Použití: ruční/testovací import jednoho souboru mimo běžný běh nad celou
+    složkou Zápisy (`cli import <pdf>`), bez Import logu a bez porovnávání
+    s ostatními soubory – dedup proti duplicitnímu zápisu čísla utkání řeší
+    `seznamy_sheets.append_game` sám (viz `read_known_game_numbers`)."""
     game = parse_game(path)
-    plan = build_import(game, config, club_roster)
     if not dry_run:
-        backup_row(config, plan.row)
-        write_batch(config, plan.cells)
-        logger.info("Zápas %s zapsán na řádek %s (%s)", plan.game_number, plan.row, path)
-        _write_to_seznamy_db(game, config)
-    return plan
+        spreadsheet_id = require_seznamy_db_spreadsheet_id(config)
+        append_seznamy_db_game(config, spreadsheet_id, game)
+        logger.info("Zápas %s zapsán do Seznamy DB (%s)", game.number, path)
+    return game
 
 
 def print_plan(plan: ImportPlan) -> None:
@@ -255,68 +250,87 @@ def _classify(
     )
 
 
-def import_folder(
-    config: Config, club_roster: list[RosterPlayer], *, dry_run: bool = False
-) -> list[FileOutcome]:
+def import_folder(config: Config, *, dry_run: bool = False) -> list[FileOutcome]:
     """Projde PDF ve složce Zápisy, přeskočí už importované/duplicitní/změněné
-    a nové zapíše (pokud dry_run=False), v pořadí podle data zápasu."""
-    ensure_import_log_sheet(config)
-    log_by_game_number = {entry.game_number: entry for entry in read_import_log(config)}
+    a nové zapíše do Seznamy DB (pokud dry_run=False), v pořadí podle data
+    zápasu. Import log (evidence zpracovaných souborů) žije v Seznamy DB, ne
+    v produkční tabulce – ta se od cutoveru na Seznamy 2.0 (viz PLAN.MD) touto
+    cestou už nezapisuje."""
+    spreadsheet_id = require_seznamy_db_spreadsheet_id(config)
+    ensure_import_log_sheet(config, spreadsheet_id)
+    log_by_game_number = {
+        entry.game_number: entry for entry in read_import_log(config, spreadsheet_id)
+    }
 
     files = list_pdf_files(config)
     outcomes: list[FileOutcome] = []
     new_log_entries: list[ImportLogEntry] = []
 
-    with tempfile.TemporaryDirectory() as tmp_dir:
-        candidates: list[tuple[Game, dict, str]] = []
-        for f in files:
-            local_path = Path(tmp_dir) / f["name"]
-            download_file(config, f["id"], local_path)
-            try:
-                game = parse_game(local_path)
-            except IMPORT_ERRORS as exc:
-                logger.error("Nelze načíst PDF %s: %s", f["name"], exc)
-                outcomes.append(FileOutcome(f["name"], "error", f"Nelze načíst PDF: {exc}"))
-                continue
-            candidates.append((game, f, file_checksum(local_path)))
+    try:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            candidates: list[tuple[Game, dict, str]] = []
+            for f in files:
+                local_path = Path(tmp_dir) / f["name"]
+                download_file(config, f["id"], local_path)
+                try:
+                    game = parse_game(local_path)
+                except IMPORT_ERRORS as exc:
+                    logger.error("Nelze načíst PDF %s: %s", f["name"], exc)
+                    outcomes.append(FileOutcome(f["name"], "error", f"Nelze načíst PDF: {exc}"))
+                    continue
+                candidates.append((game, f, file_checksum(local_path)))
 
-        candidates.sort(key=lambda c: _date_sort_key(c[0].date))
+            candidates.sort(key=lambda c: _date_sort_key(c[0].date))
 
-        for game, f, checksum in candidates:
-            status, detail = _classify(game.number, f["id"], checksum, log_by_game_number)
-            if status == "warning":
-                logger.warning("%s: %s", f["name"], detail)
-            if status != "new":
-                outcomes.append(FileOutcome(f["name"], status, detail))
-                continue
+            for game, f, checksum in candidates:
+                status, detail = _classify(game.number, f["id"], checksum, log_by_game_number)
+                if status == "warning":
+                    logger.warning("%s: %s", f["name"], detail)
+                if status != "new":
+                    outcomes.append(FileOutcome(f["name"], status, detail))
+                    continue
 
-            try:
-                plan = build_import(game, config, club_roster)
-            except IMPORT_ERRORS as exc:
-                logger.error("Zápas %s (%s): %s", game.number, f["name"], exc)
-                outcomes.append(FileOutcome(f["name"], "error", str(exc)))
-                continue
-
-            if not dry_run:
-                backup_row(config, plan.row)
-                write_batch(config, plan.cells)
-                logger.info(
-                    "Zápas %s zapsán na řádek %s (%s)", plan.game_number, plan.row, f["name"]
+                # Zapsat do log_by_game_number hned (ne až po dokončení celého
+                # běhu) – jinak by druhý soubor se stejným číslem zápisu ve
+                # stejné složce prošel _classify jako "new" místo "duplicitní
+                # zápis", protože by se porovnával jen proti stavu z listu
+                # Import log před začátkem běhu, ne proti souborům už
+                # zpracovaným v tomto běhu.
+                entry = ImportLogEntry(
+                    file_id=f["id"],
+                    checksum=checksum,
+                    game_number=game.number,
+                    imported_at=datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S"),
+                    result="Seznamy DB",
                 )
-                _write_to_seznamy_db(game, config)
-                new_log_entries.append(
-                    ImportLogEntry(
-                        file_id=f["id"],
-                        checksum=checksum,
-                        game_number=game.number,
-                        imported_at=datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S"),
-                        result=f"řádek {plan.row}",
-                    )
-                )
-            outcomes.append(FileOutcome(f["name"], "imported", f"řádek {plan.row}"))
+                log_by_game_number[game.number] = entry
 
-    if new_log_entries:
-        append_import_log(config, new_log_entries)
+                if not dry_run:
+                    try:
+                        append_seznamy_db_game(config, spreadsheet_id, game)
+                    except IMPORT_ERRORS as exc:
+                        logger.error("Zápas %s (%s): %s", game.number, f["name"], exc)
+                        outcomes.append(FileOutcome(f["name"], "error", str(exc)))
+                        continue
+                    except Exception as exc:  # noqa: BLE001 – jeden vadný soubor nesmí zastavit zbytek
+                        logger.error(
+                            "Zápas %s (%s): zápis do Seznamy DB selhal: %s",
+                            game.number, f["name"], exc,
+                        )
+                        outcomes.append(
+                            FileOutcome(f["name"], "error", f"Zápis do DB selhal: {exc}")
+                        )
+                        continue
+                    logger.info("Zápas %s zapsán do Seznamy DB (%s)", game.number, f["name"])
+                    new_log_entries.append(entry)
+                outcomes.append(FileOutcome(f["name"], "imported", "Seznamy DB"))
+    finally:
+        # V `finally`, ne až po smyčce: pokud u některého souboru vyletí
+        # neočekávaná výjimka (např. výpadek Sheets API), zápasy zapsané
+        # předchozími iteracemi tohoto běhu se do Import logu musí dostat i
+        # tak – jinak by se při dalším běhu považovaly znovu za nové.
+        if new_log_entries:
+            append_import_log(config, spreadsheet_id, new_log_entries)
 
     return outcomes
 

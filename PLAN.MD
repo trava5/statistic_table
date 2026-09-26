@@ -487,6 +487,46 @@ Osud staré tabulky Liga (`LEAGUE_SPREADSHEET_ID`) po přechodu na Liga 2.0
 zatím neřešen (smazat / nechat ladem / archivovat) – rozhodnout až bude
 Liga 2.0 nějakou dobu v provozu ověřená uživatelem.
 
+✅ **Cutover `cli import` na Seznamy DB (26. 9. 2026, odsouhlaseno uživatelem
+– „přepnout hned, mezery doladit potom“):** architektura LIT je teď stejná
+jako Liga – `cli import` (`import_pdf` i `import_folder`) zapisuje **jen**
+do Seznamy DB, přímý zápis do produkční tabulky Seznamy (buňka po buňce,
+se jménem hráče přes Seznam hráčů) skončil. Souběžně s cutoverem doplněny
+dva nové soupeři do `TEAM_ALIASES` (HC Olomouc → Olomouc, HK MD Šumperk →
+Šumperk) a naimportovány první dva ostré zápasy po cutoveru (4018 Olomouc–LIT
+6:1, 4026 Šumperk–LIT 10:2) – ověřeno živě proti Seznamy DB (žádné duplicity,
+kontrolní součty vyloučení/TM sedí, shodná sestava LIT v obou zápasech
+nezávisle ověřená přímo ze dvou různých PDF, jde o dvoudenní turnaj).
+
+Co se změnilo v kódu:
+- `importer.build_import`/`ImportPlan`/`print_plan` (mapování na starou
+  produkční tabulku) zůstávají netknuté a otestované (`test_importer.py`) jako
+  referenční/legacy kód – jen se přestaly volat z `import_pdf`/`import_folder`.
+  Ty teď nepotřebují `club_roster` vůbec (identita hráče je soběstačná
+  v PDF, stejně jako zbytek DB zápisu).
+- `import_pdf`/`import_folder` vrací/pracují přímo s `Game`, ne s `ImportPlan`
+  – žádný „řádek“ v produkční tabulce už neexistuje, `--dry-run` u
+  jednotlivého PDF teď ukazuje skutečné řádky přes `seznamy_sheets.
+  build_seznamy_rows` místo starého `print_plan`.
+- **Import log (evidence zpracovaných souborů z Drive) se přestěhoval do
+  Seznamy DB** (nový skrytý list tam, ne v produkční tabulce) – `sheets.
+  write_batch`/`ensure_import_log_sheet`/`read_import_log`/`append_import_log`/
+  `read_range` teď berou `spreadsheet_id` jako parametr místo natvrdo
+  `config.spreadsheet_id` (used i `standings.write_position`, který dál píše
+  do produkce – to je jediné zbylé místo). Protože je to nový list, první
+  běh po cutoveru označil všechny 4 dosavadní zápasy jako „nové“ (log byl
+  prázdný) – neškodné, protože `seznamy_sheets.append_game` má vlastní dedup
+  podle čísla zápisu (ověřeno: žádné duplicitní řádky v DB), jen se do
+  nového logu zapsaly hned při prvním běhu.
+- **`cmd_standings` přepnutý na čtení bilance ze Seznamy DB** (sloupce
+  `Zápasy!B:G`, stejný tvar jako dřív produkční `A:F`) – jinak by cross-check
+  proti produkční tabulce po cutoveru začal padat na každém dalším zápase
+  (produkce už nové zápasy nedostává). **Zápis „Pořadí v lize“ pořád jde do
+  produkční tabulky** (otevřený bod výše), ale teď s bezpečnostní pojistkou:
+  pokud Seznamy DB eviduje víc odehraných zápasů než produkce naposledy měla
+  zapsáno, `standings` zápis pořadí odmítne (místo aby ho tiše zapsal na
+  zastaralý/špatný řádek) a nahlásí, že čeká na přepnutí zápisu pořadí do DB.
+
 ## Potvrzená rozhodnutí (21. 9. 2026)
 
 - Skript **pouze importuje** vstupní data, veškerá logika statistik zůstává ve vzorcích sešitu.
