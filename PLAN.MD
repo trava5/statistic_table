@@ -674,11 +674,19 @@ Hotovo: příkaz `standings` vypíše pořadí a navrhne zápis, zapíše po pot
 4. README s postupem spuštění, nastavením přístupů a řešením typických chyb (neznámý hráč, neshoda kontrol).
 5. Volitelně: plánované spouštění (cron nebo plánovač na domácím serveru), notifikace o výsledku importu.
 
-## Krok 9 – Přechod ⏳ (čeká se na další reálný zápas)
+## Krok 9 – Přechod ✅ (body 1–2 splněny, jinou cestou než plán původně čekal)
 
-1. Paralelní provoz: první dva až tři zápasy importovat skriptem do kopie a porovnat s ručním výsledkem.
-2. Přepnout ostrou tabulku na skript, ruční import a asistence v konverzaci ukončit.
-3. Sezónní údržba: rozšíření ročníků, nový Seznam hráčů, nová tabulka pro další sezónu (`SEASON_START_YEAR`).
+1. ✅ Paralelní provoz proběhl, ale ne jako plánovaný „dva až tři zápasy do
+   kopie" – zápasy 4002/4012 se rovnou zapisovaly do ostré produkční
+   tabulky (Krok 5–8), pak od 25.–26. 9. 2026 souběžně i do nové Seznamy DB
+   (dual-write), než se ověřila (viz sekce „LIT Seznamy 2.0" výše).
+2. ✅ **Ostrá tabulka přepnuta – ale na Seznamy DB / Seznamy 2.0, ne na
+   zůstávající starou produkční „Seznamy"** (26. 9. 2026, cutover). Ruční
+   import a asistence v konverzaci skončily už dřív (produkční import
+   fungoval samostatně od Kroku 8), tahle poslední změna jen přesunula cíl
+   zápisu na novou architekturu sdílenou s Ligou.
+3. ⏳ Sezónní údržba (rozšíření ročníků, nový Seznam hráčů, nová tabulka pro
+   další sezónu podle `SEASON_START_YEAR`) zůstává otevřená na příští sezónu.
 
 ## Rizika a otevřené otázky
 

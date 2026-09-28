@@ -21,11 +21,20 @@ Uživatelé: realizační tým (asistent trenéra Michal), malý interní tým. 
 
 Důsledek: změna vzhledu nebo vzorců statistik se dělá v tabulce, změna způsobu čtení zápisu ve skriptu.
 
-## Tabulka „Seznamy“
+## Tabulka „Seznamy“ (produkční, částečně zamrzlá od 26. 9. 2026)
 
 Listy: Zápasy, Sestavy, Bodování, Brankáři, Tým, Seznam hráčů, Trenéři.
 
 Statistiky na listech Bodování a Brankáři se tvoří z listů Zápasy, Sestavy a Seznam hráčů.
+
+**Od cutoveru na Seznamy DB (26. 9. 2026, viz PLAN.MD) skript do listů Zápasy
+a Sestavy níže už nezapisuje** – nové zápasy jdou jen do `SEZNAMY_DB_SPREADSHEET_ID`
+(sekce „LIT Seznamy 2.0“ níže). Popis vstupních buněk zůstává jako historický
+záznam toho, jak byla tabulka naplněná do 26. 9. 2026 (zápasy č. 4002–4026),
+a jako reference pro `importer.build_import` (netknutý, ale nevolaný z živé
+cesty). Listy **Seznam hráčů** a **Trenéři** zůstávají v produkční tabulce
+živé a ručně editované trenérem i nadále – Seznamy 2.0 si z nich jen čte
+neosobní sloupce (viz níže).
 
 ### Vstupní buňky (zapisuje skript)
 
@@ -166,52 +175,69 @@ Až se do dat budou napojovat další analytické nástroje, tohle rozdělení
 (syrová fakta vs. odvozené pohledy) je i důvod, proč zvažujeme samostatný
 Google Sheet jako „databázovou“ vrstvu – viz diskuze v historii projektu.
 
-## LIT Seznamy 2.0 (rozpracováno)
+## LIT Seznamy 2.0 (od 26. 9. 2026 živá architektura, dřívější „Seznamy“ nahradila)
 
 Stejný DB → prezentace vzor jako u Ligy, tentokrát nad daty LIT z PDF
-(`import_pdf`/`import_folder`), ne z webu. Produkční tabulka „Seznamy“
-(výše) běží dál beze změny, dokud Seznamy 2.0 není hotová – žádný „velký
-třesk“, viz PLAN.MD.
+(`import_pdf`/`import_folder`), ne z webu. **Cutover dokončen 26. 9. 2026**
+(viz PLAN.MD) – `cli import` zapisuje jen do Seznamy DB, přímý zápis do
+produkční „Seznamy“ (buňka po buňce přes `Seznam hráčů`) skončil.
+`importer.build_import`/`ImportPlan` (mapování na starou produkční tabulku)
+zůstávají v kódu netknuté a otestované jako referenční/legacy cesta, jen se
+nevolají odnikud za běhu.
 
-- **Seznamy DB** (`SEZNAMY_DB_SPREADSHEET_ID`) – 6 syrových listů
-  (`Zápasy`, `Zápasy (tým)`, `Góly`, `Vyloučení`, `Bruslaři (zápasy)`,
-  `Brankáři (zápasy)`), **symetricky pro oba týmy** (na rozdíl od produkční
-  `Seznamy`, kde se soupeřova strana po naparsování PDF zahazuje). Zapisuje
-  `seznamy_sheets.append_game` – **dual-write**: každý `cli import` teď
-  zapíše jak do produkční `Seznamy` (beze změny), tak navíc (best-effort,
-  nesmí import shodit) do Seznamy DB. Identita hráče (jméno, registrace) je
-  soběstačná v rámci jednoho PDF, nepotřebuje `Seznam hráčů` – ten zůstává
-  jen pro zápis do produkční tabulky. `Zápasy (tým)` (výsledek, body,
-  přesilovky/oslabení za zápas z pohledu daného týmu) počítá Python stejným
-  principem jako `Zápasy - liga (tým)` u Ligy – composite pravidlo
-  s časovým párováním trestů, ne vzorec (viz „Co je záměrně v Pythonu“
-  níže).
-- **Seznamy 2.0** (`SEZNAMY_V2_SPREADSHEET_ID`) – prezentační tabulka:
-  `IMPORTRANGE` mirror syrových listů z DB + neosobních sloupců B:F
+- **Seznamy DB** (`SEZNAMY_DB_SPREADSHEET_ID`) – 6 syrových listů (`Zápasy`,
+  `Zápasy (tým)`, `Góly`, `Vyloučení`, `Bruslaři (zápasy)`, `Brankáři
+  (zápasy)`), **symetricky pro oba týmy** (na rozdíl od bývalého zápisu do
+  produkční `Seznamy`, kde se soupeřova strana po naparsování PDF
+  zahazovala). Jediný cíl zápisu `cli import` (`seznamy_sheets.append_game`,
+  dedup podle čísla zápisu, `_append_all_or_nothing` maže rozepsané řádky
+  při chybě uprostřed zápisu – zápas skončí zapsaný celý, nebo vůbec).
+  Identita hráče (jméno, registrace) je soběstačná v rámci jednoho PDF,
+  nepotřebuje `Seznam hráčů`. `Zápasy` má navíc sloupec `L` „pořadí po
+  kole“ – na rozdíl od zbytku řádku (zapisuje `cli import`) ho doplňuje až
+  `cli standings` po dohrání kola (`seznamy_sheets.last_game_row`/
+  `write_poradi`, append-only list, poslední řádek = poslední odehraný
+  zápas). `Zápasy (tým)` (výsledek, body, přesilovky/oslabení za zápas
+  z pohledu daného týmu) počítá Python stejným principem jako `Zápasy -
+  liga (tým)` u Ligy – composite pravidlo s časovým párováním trestů, ne
+  vzorec (viz „Co je záměrně v Pythonu“ níže).
+- **Seznamy 2.0** (`SEZNAMY_V2_SPREADSHEET_ID`) – prezentační tabulka, jediné
+  místo, které trenérský štáb sleduje po cutoveru. `IMPORTRANGE` mirror
+  syrových listů z DB (`scripts/build_seznamy_v2_mirrors.py`, spill `A:L`
+  u `Zápasy` – zahrnuje i „pořadí po kole“) + neosobních sloupců B:F
   (Příjmení, Jméno, č. reg., číslo, post) `Seznam hráčů` z produkční
-  `Seznamy` (`scripts/build_seznamy_v2_mirrors.py` – **nikdy** celý
-  `Seznam hráčů`, od sloupce J má citlivé osobní údaje). `Bodování`/
-  `Brankáři` jsou `QUERY group by` nad `Bruslaři/Brankáři (zápasy)`
+  `Seznamy` (**nikdy** celý `Seznam hráčů`, od sloupce J má citlivé osobní
+  údaje – ten list v produkční tabulce zůstává jediný, který se dál ručně
+  edituje). Mirror listu `Zápasy` má navíc mimo spill sloupce `M:N`
+  („Góly“/„Asistence“ – střelci/nahrávači LIT za daný zápas, FILTER+TEXTJOIN
+  nad `Góly`) a mirror `Brankáři (zápasy)` sloupce `K:L` („výsledek“/
+  „vychytaná výhra“, MATCH proti `Zápasy (tým)`), obojí po řádcích, ne jako
+  `ARRAYFORMULA` (nespolehlivé se zřetězeným polem jako lookup, viz skript).
+  `Bodování` (nativní Sheets Tabulka, řazení kliknutím na hlavičku) a
+  `Brankáři` (vč. „Vychytané výhry“/„% výher“ ze sloupců výše, zatím bez
+  shutoutu) jsou `QUERY group by` nad `Bruslaři/Brankáři (zápasy)`
   filtrované na LIT (`scripts/build_seznamy_aggregate_sheets.py`),
   zjednodušené oproti produkční tabulce (jméno přímo z logu, bez INDEX/
-  MATCH do `Seznam hráčů`; `Brankáři` zatím bez výher/shutoutu). `Tým`
-  (`scripts/build_seznamy_tym_sheet.py`) je sezónní přehled LIT:soupeř
-  (`SUMIF`/`COUNTIF` nad `Zápasy (tým)`) + skóre po třetinách
-  (`REGEXEXTRACT` nad `Zápasy`, rozpad podle domácí/hosté) – zatím bez
-  sekce Ročníky. `Dashboard` (`scripts/build_seznamy_dashboard.py`) je
-  přehled pro trenérský štáb nad `Tým`/`Bodování`/`Brankáři` (žádná
-  vlastní syrová data) – sezónní přehled, přesilovky/oslabení, vyloučení/
-  TM, grafy Skóre po zápasech/po třetinách, Top 5 Bodování, Brankáři.
-  Bez „Pořadí v lize“ (zapisuje ho jen `standings` do produkční tabulky,
-  rozšíření na Seznamy DB je otevřené).
+  MATCH do `Seznam hráčů`). `Tým` (`scripts/build_seznamy_tym_sheet.py`) je
+  sezónní přehled LIT:soupeř (`SUMIF`/`COUNTIF` nad `Zápasy (tým)`) + skóre
+  po třetinách (`REGEXEXTRACT` nad `Zápasy`, rozpad podle domácí/hosté) –
+  zatím bez sekce Ročníky. `Dashboard` (`scripts/build_seznamy_dashboard.py`)
+  je přehled pro trenérský štáb nad `Tým`/`Bodování`/`Brankáři` (žádná
+  vlastní syrová data) – sezónní přehled vč. „Pořadí v lize“
+  (`INDEX`+`COUNTA` nad mirrored `Zápasy!L`), přesilovky/oslabení,
+  vyloučení/TM, grafy Skóre po zápasech/po třetinách, Bodování, Brankáři.
 - Modul: `seznamy_sheets.py` (`build_seznamy_rows` – čistá funkce, žádná
-  síť; `append_game` – I/O, dedup podle čísla zápisu).
+  síť; `append_game` – I/O, dedup podle čísla zápisu; `last_game_row`/
+  `write_poradi` – zápis pořadí po kole).
 - `stats.third_and_relative_time` – PDF má čas gólu/trestu jako průběžný
   čas zápasu, ne čas od začátku třetiny; tahle funkce ho rozdělí.
+- **Otevřené:** Ročníky v `Tým` a shutout v `Brankáři` zatím chybí (viz
+  PLAN.MD, „Další krok“).
 
 ## Struktura repozitáře
 
-Stav k 21. 9. 2026 (Kroky 0–8 z PLAN.MD hotové, viz tam sekce „Stav“):
+Stav k 26. 9. 2026 (Kroky 0–8 z PLAN.MD hotové + cutover LIT na Seznamy DB
+dokončen, viz tam sekce „Stav“):
 
 ```
 statistic_table/
@@ -223,27 +249,38 @@ statistic_table/
   src/statistic_table/
     config.py         načtení .env, mapa sloupců tabulky, aliasy soupeřů
     drive.py          Google Drive: složka Zápisy, výpis + stahování PDF
-    sheets.py         Google Sheets: čtení/zápis, kontrola záhlaví, Import log
+    sheets.py         Google Sheets: čtení/zápis, kontrola záhlaví produkční
+                       tabulky (`spreadsheet_id` teď parametr, ne natvrdo)
     pdf_parser.py     PDF -> datový model zápasu
     model.py          datové třídy (Game, TeamSheet, GamePlayer, Goal, Penalty,
                        RosterPlayer, ImportLogEntry)
     players.py        párování hráčů, určení týmu LIT/soupeře
     stats.py          přesilovky, góly PP/SH, tresty, ročníky, věk
-    importer.py       orchestrace: PDF (jeden nebo celá složka) -> zápis
-    standings.py      pořadí po kole z ceskyhokej.cz (volitelné)
-    backup.py         záloha řádku před přepsáním (backups/, mimo git)
+    importer.py       orchestrace: PDF (jeden nebo celá složka) -> Seznamy DB;
+                       `build_import`/`ImportPlan` (stará produkční cesta)
+                       netknuté jako referenční/legacy kód, nevolané za běhu
+    standings.py      pořadí po kole z ceskyhokej.cz (volitelné, čistá logika)
+    backup.py         záloha řádku produkční tabulky před přepsáním
+                       (backups/, mimo git) – používá jen legacy `build_import`
     logging_config.py logování do logs/ (mimo git)
     league_model.py   datové třídy pro statistiky celé ligy (LeagueGame,
                        LeagueGoal, LeaguePenalty, LeagueSkaterStat, LeagueGoalieStat)
     league_scraper.py rozparsování /game/detail/<id> a seznamu zápasů (ceskyhokej.cz)
     league_stats.py   přesilovky/oslabení/výsledek z pohledu libovolného týmu
-    league_sheets.py  zápis do samostatné ligové tabulky, listy per tým
-    seznamy_sheets.py zápis do Seznamy DB (5 syrových listů, oba týmy, z PDF)
+    league_sheets.py  zápis do Liga DB, listy per tým v Liga 2.0
+                       (`_append_all_or_nothing` – rollback při chybě uprostřed zápisu)
+    seznamy_sheets.py zápis do Seznamy DB (6 syrových listů, oba týmy, z PDF;
+                       `last_game_row`/`write_poradi` pro pořadí po kole)
     cli.py            check / import / standings / league sync-games / league sync-teams
   scripts/
     build_league_team_template.py     jednorázové postavení listu „Tým – šablona“
     build_league_aggregate_sheets.py  jednorázové postavení Bruslaři/Brankáři - liga
     build_league_v2_mirrors.py        jednorázové IMPORTRANGE zrcadlo DB v Liga 2.0
+    build_league_poradi_view.py       přehled Skupina 1/2 na listu Pořadí - liga
+    build_seznamy_v2_mirrors.py       jednorázové IMPORTRANGE zrcadlo DB v Seznamy 2.0
+    build_seznamy_aggregate_sheets.py jednorázové postavení Bodování/Brankáři v Seznamy 2.0
+    build_seznamy_tym_sheet.py        jednorázové postavení listu Tým v Seznamy 2.0
+    build_seznamy_dashboard.py        jednorázové postavení listu Dashboard v Seznamy 2.0
   tests/
     fixtures/         PDF zápisy, uložené kopie hlaviček a stránky Ligy
     fixtures/league/  uložené stránky ceskyhokej.cz pro testy league_scraper.py

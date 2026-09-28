@@ -46,19 +46,23 @@ celé sdílecí odkazy – např. z `.../folders/1k364.../` jen `1k364...`.
 
 ## Použití
 
+Od 26. 9. 2026 `import` i `standings` zapisují do **Seznamy DB**
+(`SEZNAMY_DB_SPREADSHEET_ID`), ne do produkční tabulky „Seznamy“ – viz sekce
+„LIT Seznamy 2.0“ níže a PROJECT.MD/PLAN.MD.
+
 ```powershell
 # Ověří přístup k Disku i Tabulce a rozložení sloupců
 .venv\Scripts\python.exe -m statistic_table.cli check
 
-# Naimportuje jeden lokální PDF (pro test/ladění)
+# Naimportuje jeden lokální PDF do Seznamy DB (pro test/ladění)
 .venv\Scripts\python.exe -m statistic_table.cli import cesta/k/zapisu.pdf --dry-run
 .venv\Scripts\python.exe -m statistic_table.cli import cesta/k/zapisu.pdf
 
-# Projde celou složku Zápisy, přeskočí už importované, zapíše nové
+# Projde celou složku Zápisy, přeskočí už importované, nové zapíše do Seznamy DB
 .venv\Scripts\python.exe -m statistic_table.cli import
 .venv\Scripts\python.exe -m statistic_table.cli import --dry-run
 
-# Zjistí pořadí LIT na stránce Ligy juniorů a po potvrzení ho zapíše
+# Zjistí pořadí LIT na stránce Ligy juniorů a po potvrzení ho zapíše do Seznamy DB
 .venv\Scripts\python.exe -m statistic_table.cli standings
 .venv\Scripts\python.exe -m statistic_table.cli standings --dry-run
 .venv\Scripts\python.exe -m statistic_table.cli standings --yes   # bez dotazu
@@ -133,17 +137,30 @@ Python počítá i něco navíc, jsou vysvětlené a zdůvodněné v PROJECT.MD)
 `import` bez zápisu vyžaduje `--dry-run`, aby šlo předem zkontrolovat, co by
 se zapsalo, beze změny tabulky.
 
-### LIT Seznamy 2.0 (rozpracováno)
+### LIT Seznamy 2.0
 
-Produkční tabulka „Seznamy“ (`SPREADSHEET_ID`) běží dál beze změny. Vedle ní
-`cli import` (soubor i celá složka) navíc **dual-write** zapisuje totéž do
-`SEZNAMY_DB_SPREADSHEET_ID` – 5 syrových listů (`Zápasy`, `Góly`,
-`Vyloučení`, `Bruslaři (zápasy)`, `Brankáři (zápasy)`), symetricky pro oba
-týmy, viz PROJECT.MD/PLAN.MD. Bez nastavené `SEZNAMY_DB_SPREADSHEET_ID`
-v `.env` se tenhle krok tiše přeskočí; pokud je nastavená, ale zápis selže,
-je to jen varování v logu, produkční import to nezastaví.
-`SEZNAMY_V2_SPREADSHEET_ID` (prezentační Seznamy 2.0) je zatím jen založená
-prázdná tabulka bez napojení.
+Od 26. 9. 2026 (cutover, viz PLAN.MD) je tohle **jediná** cesta zápisu pro
+LIT – `cli import` a `cli standings` zapisují výhradně do
+`SEZNAMY_DB_SPREADSHEET_ID`, přímý zápis do produkční tabulky „Seznamy“
+(`SPREADSHEET_ID`) skončil. Produkční tabulka zůstává v provozu jen pro
+listy **Seznam hráčů** a **Trenéři** (trenér je dál edituje ručně) a jako
+zdroj neosobních sloupců pro Seznamy 2.0.
+
+Stejný DB → prezentace vzor jako u Ligy:
+
+- **Seznamy DB** (`SEZNAMY_DB_SPREADSHEET_ID`) – 6 syrových listů (`Zápasy`,
+  `Zápasy (tým)`, `Góly`, `Vyloučení`, `Bruslaři (zápasy)`, `Brankáři
+  (zápasy)`) symetricky pro oba týmy, plus sloupec `Zápasy!L` „pořadí po
+  kole“ zapisovaný `cli standings`. `SEZNAMY_DB_SPREADSHEET_ID` je od
+  cutoveru **povinná** – bez ní `cli import`/`cli standings` skončí chybou.
+- **Seznamy 2.0** (`SEZNAMY_V2_SPREADSHEET_ID`) – prezentační tabulka
+  (Dashboard, Tým, Bodování, Brankáři), kterou sleduje trenérský štáb.
+  Syrové listy jsou v ní `IMPORTRANGE` mirror nad DB
+  (`scripts/build_seznamy_v2_mirrors.py`), stejný princip jako u Liga 2.0.
+  Po každé změně tvaru syrových dat (nový sloupec v DB) je potřeba tenhle
+  skript znovu spustit, ať se rozšíří i mirrorovaný rozsah.
+
+Podrobný popis listů a vzorců je v PROJECT.MD, sekce „LIT Seznamy 2.0“.
 
 ### Textové menu
 
@@ -154,21 +171,29 @@ počítači) stačí:
 .venv\Scripts\python.exe main.py
 ```
 
-Nabídne stejné čtyři akce (`check`, import jednoho PDF, import celé složky,
-`standings`), u zápisu se vždy nejdřív zeptá na dry-run a pak na potvrzení.
+Nabídne pět akcí – ověřit přístup, import z PDF (zeptá se, jestli jeden
+konkrétní soubor nebo celá složka Zápisy), pořadí po kole, import z webu
+(Liga: nové odehrané zápasy) a Liga: založení listů pro nové týmy. U zápisu
+se vždy nejdřív zeptá na dry-run a pak na potvrzení.
 
 ## Co skript dělá a co ne
 
-- Skript zapisuje **jen vstupní buňky** (soupisky, góly, přihrávky, tresty,
-  ročníky soupeře – viz PROJECT.MD). Veškeré výpočty (body, průměry, listy
-  Bodování/Brankáři/Tým) zůstávají ve vzorcích tabulky a skript se jich
-  nedotýká.
-- Před každým zápisem se aktuální obsah řádku (Zápasy i Sestavy) uloží do
-  `backups/*.json` (mimo git). Při problému lze hodnoty ručně vrátit.
-- Evidence importovaných souborů je na skrytém listu **Import log** v
-  samotné tabulce – přežije změnu počítače. Druhé spuštění `import` nad
-  stejnou složkou nic nezmění (soubory se stejným obsahem se přeskočí).
-- Log běhu se ukládá do `logs/statistic_table.log` (mimo git).
+- Skript zapisuje **jen syrová vstupní data** (soupisky, góly, přihrávky,
+  tresty – viz PROJECT.MD) do Seznamy DB, formou append (nikdy nepřepisuje
+  cizí řádek). Veškeré výpočty a prezentace (Bodování, Brankáři, Tým,
+  Dashboard) zůstávají ve vzorcích Seznamy 2.0 nad touhle DB.
+- Evidence importovaných souborů je na skrytém listu **Import log** přímo
+  v Seznamy DB (ne v produkční tabulce) – přežije změnu počítače. Druhé
+  spuštění `import` nad stejnou složkou nic nezmění (soubory se stejným
+  obsahem se přeskočí); změněný soubor dá varování, dva soubory se stejným
+  číslem zápisu chybu.
+- Pokud zápis do některého z listů Seznamy DB selže uprostřed (např. výpadek
+  API), zápas se nezapíše napůl – `_append_all_or_nothing` smaže i to, co se
+  do té chvíle stihlo zapsat, a příští import ho zkusí znovu celý.
+- Log běhu se ukládá do `logs/statistic_table.log` (mimo git). Záloha řádku
+  do `backups/*.json` je jen součástí staré, nevolané cesty pro produkční
+  tabulku (`importer.build_import`) – Seznamy DB se jen doplňuje (append),
+  takže tam není co přepsat a zálohovat.
 
 ## Řešení typických chyb
 
