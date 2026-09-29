@@ -139,6 +139,8 @@ def build_value_updates() -> dict[str, list[list]]:
     put("X5", '=ARRAYFORMULA(IF($W$5:$W$40="";"";-$W$5:$W$40))')
 
     # --- Odehrané zápasy / Bodování / Brankáři (vedle sebe) ------------------
+    # `order by D` ze stejného důvodu jako u grafu "Skóre po zápasech" výše -
+    # bez něj je tabulka v pořadí zápisu do DB, ne chronologicky.
     put("A49", "ODEHRANÉ ZÁPASY")
     put_row(
         "A50",
@@ -146,7 +148,7 @@ def build_value_updates() -> dict[str, list[list]]:
     )
     put(
         "A51",
-        f"=QUERY({ZT}!A:S;\"select D, C, E, F, G, H, I where B = '\"&$B$1&\"'\";0)",
+        f"=QUERY({ZT}!A:S;\"select D, C, E, F, G, H, I where B = '\"&$B$1&\"' order by D\";0)",
     )
 
     # Bruslaři - liga a Brankáři - liga jsou už sezónní součty (jeden řádek na
