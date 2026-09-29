@@ -108,6 +108,28 @@ def build_value_updates() -> dict[str, list[list]]:
     put("O5", f"=FILTER({ZT}!$E$2:$E$5000;{ZT}!$B$2:$B$5000={LIT})")
     put("P5", f"=FILTER({ZT}!$F$2:$F$5000;{ZT}!$B$2:$B$5000={LIT})")
 
+    # --- Podkladová data pro graf „Pořadí po kole" (sloupce Q:R, skryté) -----
+    # Zápasy!L ("pořadí po kole") zapisuje cli.cmd_standings jen po dohraném
+    # kole, ne po každém zápase – řádky bez hodnoty jsou prázdné, dokud se
+    # standings nespustí znovu (viz PLAN.MD). Stejné zarovnání podle čísla
+    # zápisu jako u sloupců N:P výše, sdílí s nimi i osu X (datum), aby oba
+    # grafy vedle sebe ukazovaly stejnou časovou osu.
+    put("Q4", "Pořadí po kole")
+    put(
+        "Q5",
+        f"=ARRAYFORMULA(IFERROR(VLOOKUP("
+        f"FILTER({ZT}!$A$2:$A$5000;{ZT}!$B$2:$B$5000={LIT});{Z}!$A:$L;12;FALSE)))",
+    )
+    # R = záporná hodnota Q jen kvůli ose grafu (níž na ose = lepší pořadí,
+    # tedy výš) – vlastní formát buňky „0;0" (viz format_requests) zobrazí
+    # popisek i osu jako kladné číslo i přes zápornou podkladovou hodnotu.
+    # Přímé zobrazení kladné hodnoty bez obrácení osy je vizuálně matoucí
+    # (lepší pořadí by vycházelo níž), obrácení osy přes `viewWindowOptions`/
+    # `customLabelData` je v API nespolehlivé – viz PLAN.MD a
+    # build_league_team_template.py, odkud je tenhle vzor převzatý.
+    put("R4", "Pořadí (záporně, pro graf)")
+    put("R5", '=ARRAYFORMULA(IF($Q$5:$Q$40="";"";-$Q$5:$Q$40))')
+
     # --- Bodování (všichni hráči) a Brankáři (vedle sebe) ----------------------
     put("A49", "BODOVÁNÍ")
     put(
@@ -164,11 +186,10 @@ def main() -> None:
         start, end = a1.split(":")
         col_start = ord(start[0]) - ord("A")
         col_end = ord(end[0]) - ord("A") + 1
-        row = int(start[1:]) - 1
         return {
             "sheetId": sheet_id,
-            "startRowIndex": row,
-            "endRowIndex": row + 1,
+            "startRowIndex": int(start[1:]) - 1,
+            "endRowIndex": int(end[1:]),
             "startColumnIndex": col_start,
             "endColumnIndex": col_end,
         }
@@ -196,6 +217,21 @@ def main() -> None:
         for rng in ("B9:B9", "D9:D9")
     ]
 
+    # "0;0" = druhá sekce formátu (záporná čísla) bez znaménka – R má záporné
+    # hodnoty (jen kvůli ose grafu), ale osa i popisek bodu čtou formát
+    # zdrojové buňky, takže se zobrazí jako kladné skutečné pořadí.
+    format_requests.append(
+        {
+            "repeatCell": {
+                "range": range_to_grid("R5:R40"),
+                "cell": {
+                    "userEnteredFormat": {"numberFormat": {"type": "NUMBER", "pattern": "0;0"}}
+                },
+                "fields": "userEnteredFormat.numberFormat",
+            }
+        }
+    )
+
     format_requests.append(
         {
             "updateDimensionProperties": {
@@ -203,7 +239,7 @@ def main() -> None:
                     "sheetId": sheet_id,
                     "dimension": "COLUMNS",
                     "startIndex": 13,
-                    "endIndex": 16,
+                    "endIndex": 18,
                 },
                 "properties": {"hiddenByUser": True},
                 "fields": "hiddenByUser",
@@ -309,6 +345,52 @@ def main() -> None:
             }
         },
         expected_series=2,
+    )
+
+    create_chart_robust(
+        {
+            "title": "Pořadí po kole",
+            "hiddenDimensionStrategy": "SHOW_ALL",
+            "basicChart": {
+                "chartType": "LINE",
+                "legendPosition": "NO_LEGEND",
+                "axis": [
+                    {"position": "BOTTOM_AXIS", "title": "Datum"},
+                    {
+                        "position": "LEFT_AXIS",
+                        "title": "Pořadí",
+                        # Pevný rozsah 1–8 (skupina LIT má 8 týmů, viz Liga DB
+                        # Skupiny - liga), ne automatické přizpůsobení. Hodnoty
+                        # jsou záporné (sloupec R výše), min/max jsou tedy
+                        # prohozené oproti zobrazenému 1/8 – stejný vzor jako
+                        # build_league_team_template.py.
+                        "viewWindowOptions": {
+                            "viewWindowMode": "EXPLICIT",
+                            "viewWindowMin": -8,
+                            "viewWindowMax": -1,
+                        },
+                    },
+                ],
+                "domains": [{"domain": source(sheet_id, 3, 40, 13, 14)}],
+                "series": [
+                    {
+                        "series": source(sheet_id, 3, 40, 17, 18),
+                        "targetAxis": "LEFT_AXIS",
+                        "dataLabel": {"type": "DATA"},
+                        "pointStyle": {"shape": "CIRCLE", "size": 7},
+                    }
+                ],
+                "headerCount": 1,
+            },
+        },
+        {
+            "overlayPosition": {
+                "anchorCell": {"sheetId": sheet_id, "rowIndex": 14, "columnIndex": 7},
+                "widthPixels": 500,
+                "heightPixels": 320,
+            }
+        },
+        expected_series=1,
     )
 
     create_chart_robust(
