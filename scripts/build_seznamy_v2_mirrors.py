@@ -70,11 +70,16 @@ def main() -> None:
     meta = service.spreadsheets().get(spreadsheetId=v2_id).execute()
     titles = {s["properties"]["title"]: s["properties"]["sheetId"] for s in meta["sheets"]}
 
-    # První list v tabulce (výchozí "List 1") přejmenovat na první zrcadlo,
-    # ať v tabulce nezůstane prázdný list navíc.
+    # První list v tabulce (výchozí "List 1") přejmenovat na první zrcadlo, ať
+    # v tabulce nezůstane prázdný list navíc – ale JEN při úplně prvním běhu
+    # na čerstvě založené tabulce (jediný list = default). Dřívější verze
+    # brala natvrdo sheets[0] bez ohledu na to, kolik listů už existuje – při
+    # doplňování chybějícího mirroru do už rozjeté tabulky to jednou omylem
+    # přejmenovalo a přepsalo reálný list v Liga 2.0 (viz build_league_v2_
+    # mirrors.py, PLAN.MD) – stejná past by hrozila i tady.
     requests = []
     remaining = list(sheet_names)
-    if remaining and remaining[0] not in titles and meta["sheets"]:
+    if remaining and remaining[0] not in titles and len(meta["sheets"]) == 1:
         first_sheet_id = meta["sheets"][0]["properties"]["sheetId"]
         requests.append(
             {
