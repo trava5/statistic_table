@@ -9,6 +9,7 @@ from statistic_table.league_scraper import (
 FIXTURES = Path(__file__).parent / "fixtures" / "league"
 GAMES_LIST_HTML = (FIXTURES / "games_list_page1.html").read_text(encoding="utf-8")
 GAME_DETAIL_HTML = (FIXTURES / "game_detail_180718.html").read_text(encoding="utf-8")
+GAME_DETAIL_SHOOTOUT_HTML = (FIXTURES / "game_detail_180727.html").read_text(encoding="utf-8")
 
 
 def test_parse_played_games_only_returns_played_games_with_round():
@@ -43,6 +44,20 @@ def test_parse_game_detail_game_summary():
     assert game.ending is None
     assert game.attendance == 85
     assert game.referees == "Alexandr Kapitanov, Tomáš Kučera (PE95), Jakub Teršíp"
+
+
+def test_parse_game_detail_shootout_suffix_two_letters():
+    """Zápas #180727 (Příbram–Warriors Brno, 28. 9. 2026) má v <h2> skóre
+    "1:2SN" – dřívější regex počítal jen s 0-1 písmenem přípony (odhad "S"
+    nebo "N" zvlášť) a na dvoupísmenné "SN" spadl s AttributeError, protože
+    `re.match` vůbec nenamatchoval (viz PLAN.MD/league_scraper.py)."""
+    game, _goals, _penalties, _skaters, _goalies = parse_game_detail(
+        GAME_DETAIL_SHOOTOUT_HTML, 180727, round_number=3
+    )
+
+    assert game.home_score == 1
+    assert game.away_score == 2
+    assert game.ending == "sn"
 
 
 def test_parse_game_detail_goals_and_situations():

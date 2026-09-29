@@ -18,11 +18,13 @@ GAMES_LIST_URL = "https://ceskyhokej.cz/competition/games/{competition_id}"
 GAME_DETAIL_URL = "https://ceskyhokej.cz/game/detail/{game_id}"
 HEADERS = {"User-Agent": "Mozilla/5.0"}
 
-# Písmeno za skóre v <h2> (např. "3:2P") – "P" je ověřené (prodloužení), "S"/"N"
-# jsou nájezdy jen odhadem (v dostupných fixture datech se nevyskytl příklad).
-# Neznámé písmeno se neignoruje potichu, jen se nepřevede na pp/sn (viz `Game.ending`
-# v model.py, kde neznámý stav dřív znamenal zastavit import, ne hádat).
-ENDING_SUFFIXES = {"P": "pp", "S": "sn", "N": "sn"}
+# Písmena za skóre v <h2>: "P" = prodloužení (např. "3:2P"), "SN" = samostatné
+# nájezdy (např. "1:2SN") – obojí ověřeno na živých datech 28. 9. 2026 (zápas
+# #180727 Příbram–Warriors Brno 1:2SN). Dřívější odhad ("S"/"N" zvlášť, jedno
+# písmeno) byl mimo – nájezdy mají obě písmena dohromady, proto regex níže
+# musí povolit 0–2 písmena, ne jen 0–1. Neznámá přípona se neignoruje potichu,
+# jen se nepřevede na pp/sn (viz `Game.ending` v model.py).
+ENDING_SUFFIXES = {"P": "pp", "SN": "sn"}
 
 
 def fetch_games_list_html(competition_id: str, page: int = 1) -> str:
@@ -252,7 +254,7 @@ def parse_game_detail(html: str, game_id: int, round_number: int | None = None) 
     periods_text = header_card.find_all("p")[-1].get_text(strip=True)
     period_scores, ot_score = _parse_period_scores(periods_text)
 
-    score_match = re.match(r"(\d+):(\d+)([A-Z]?)$", score_h2.get_text(strip=True))
+    score_match = re.match(r"(\d+):(\d+)([A-Z]{0,2})$", score_h2.get_text(strip=True))
     home_score, away_score, suffix = score_match.groups()
     ending = ENDING_SUFFIXES.get(suffix) if suffix else None
 
