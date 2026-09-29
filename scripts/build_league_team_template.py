@@ -95,8 +95,17 @@ def build_value_updates() -> dict[str, list[list]]:
     put("F13", '=IF($A$5=0;"";D13/$A$5)')
 
     # --- Podkladová data pro graf „Skóre po zápasech" (sloupce N:P) ----------
+    # `order by D` je nutné – řádky v Zápasy - liga (tým) jsou v pořadí, v jakém
+    # je scraper zapsal (podle kola a pořadí na webové stránce), ne chronologicky
+    # podle data (jeden `league sync-games` běh klidně zapíše zápasy napříč
+    # několika daty v libovolném pořadí). Bez řazení LINE graf spojoval body
+    # napřeskáčku (viz PLAN.MD). QUERY řadí sloupec D jako text, ne jako datum –
+    # funguje to jen tak dlouho, dokud web píše den dvoumístně (ve všech
+    # dosavadních zápasech ano, "20. 09."/"25. 09." apod.). Nepotvrzeno, jestli
+    # web píše dvoumístně i jednociferné dny (např. "1. 10.") – pokud ne, řazení
+    # napříč měsíci se rozbije, až přijdou první říjnové zápasy.
     put_row("N4", ["Datum", "Skóre tým", "Skóre soupeř"])
-    put("N5", f"=QUERY({ZT}!A:S;\"select D, F, G where B = '\"&$B$1&\"'\";0)")
+    put("N5", f"=QUERY({ZT}!A:S;\"select D, F, G where B = '\"&$B$1&\"' order by D\";0)")
 
     # --- Podkladová data pro graf „Skóre po třetinách" (sloupce R:T) ---------
     put("A15", "SKÓRE PO ZÁPASECH")
