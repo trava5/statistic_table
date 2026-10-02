@@ -342,12 +342,45 @@ v tabulce“ (směr osy i pevný rozsah 1–8) i přehled Skupina 1/2 na listu
      tím zůstanou stejné.
    - **Produkční `Seznamy`** zůstává beze změny a v provozu (trenér ji
      používá v sezóně), dokud Seznamy 2.0 není hotová a ověřená.
-6. **Odloženo na později (po odladění Seznamy 2.0):** `Seznam hráčů`
-   a `Trenéři` obsahují citlivé osobní údaje (rodné číslo, pojišťovna,
+6. ✅ **`Seznam hráčů`/`Trenéři` přesunuty do soukromé tabulky (2. 10. 2026),
+   dokončeno.** Obsahují citlivé osobní údaje (rodné číslo, pojišťovna,
    telefon, e-mail hráčů i rodičů; PIN a kontakty trenérů) – jiná kategorie
-   dat než cokoli v Liga 2.0. Přesunou se do samostatné **nesdílené**
-   tabulky, napojené jako DB (analogie k `LEAGUE_DB_SPREADSHEET_ID`), ne do
-   veřejně sdílené DB spolu se zápasovými daty.
+   dat než cokoli v Liga 2.0. Uživatel založil novou čistě soukromou
+   tabulku (`SEZNAMY_PRIVATE_SPREADSHEET_ID`) a ručně (Sheets „Kopírovat
+   do") do ní přesunul oba listy – API ani tenhle skript se k osobním
+   údajům při přesunu vůbec nedostaly. Nasdílena servisnímu účtu jen jako
+   **Prohlížeč** (na rozdíl od ostatních DB tabulek se do ní nikdy
+   nezapisuje – `require_seznamy_private_spreadsheet_id` v `config.py`).
+   `build_seznamy_v2_mirrors.py` přepojen, aby odtud (ne z produkční
+   Seznamy) četl neosobní sloupce B:F pro Seznamy 2.0. `sheets.
+   read_player_registry` dostal parametr `spreadsheet_id`, `cmd_check`
+   ho teď volá s touto tabulkou.
+
+   Listy `Seznam hráčů`/`Trenéři` pak byly z produkční Seznamy smazány
+   (osobní údaje nemají být na dvou místech zároveň) – to ale rozbilo
+   vzorce v **produkční** `Bodování`/`Brankáři` (INDEX/MATCH proti
+   `'Seznam hráčů'!...`, které tam pořád existují jako historický záznam
+   sezóny, i když se do nich od cutoveru nic nového nezapisuje). Oprava:
+   nový `scripts/restore_production_seznam_hracu.py` znovu založí list
+   `Seznam hráčů` v produkční tabulce, ale **ne** jako čistý IMPORTRANGE
+   mirror – sloupce A:F a H:I (neosobní administrativní údaje) jsou
+   `IMPORTRANGE` ze soukromé tabulky, sloupec `G` („Z“ = odehrané zápasy)
+   a `P:S` (pomocné sloupce góly/asistence/body/klíč řazení pro řazení
+   v Bodování) jsou **místní vzorce** počítané z produkční `Sestavy`/
+   `Zápasy` – přesně stejné znění, jaké mělo původní smazané `Seznam
+   hráčů` (dohledáno z formulí zachovaných i v soukromé kopii, kde ale
+   po přesunu ukazují `#REF!`, protože tam `Sestavy`/`Zápasy` nejsou).
+   Osobní sloupce (J+) se do produkční tabulky nevrací.
+
+   **Past:** po obnovení listu stejného jména zůstaly `Bodování`/
+   `Brankáři` chvíli ukazovat staré `#REF!`/„Nenalezeno“, i když zdrojová
+   data už byla v pořádku a formule správně odkazovaly na obnovený list –
+   Sheets evidentně cachuje výsledek array formulí napříč listy a
+   znovuzaložení listu stejného jména ho samo nepřepočítá. Řešení: přepsat
+   dotčené buňky přes API stejným textem vzorce (`values().update` s
+   formulí přečtenou přes `valueRenderOption=FORMULA` a zapsanou beze
+   změny) – to recalculaci "postrčí". Při podobném zásahu příště počítat
+   s tímhle krokem navíc, ne jen s obnovením zdrojového listu.
 
 ✅ **Seznamy DB naplněná a ověřená (25. 9.):** uživatel založil `Seznamy DB`
 (`19YrbX36JG3dpv-_Deqaf9TZlopw1cxAJKpZbjhSqGo8`) a `Seznamy 2.0`

@@ -23,7 +23,9 @@ Důsledek: změna vzhledu nebo vzorců statistik se dělá v tabulce, změna zp�
 
 ## Tabulka „Seznamy“ (produkční, částečně zamrzlá od 26. 9. 2026)
 
-Listy: Zápasy, Sestavy, Bodování, Brankáři, Tým, Seznam hráčů, Trenéři.
+Listy: Zápasy, Sestavy, Bodování, Brankáři, Tým, Seznam hráčů (od 2. 10. 2026
+obnovený, viz níže), Import log. **`Trenéři` v produkční tabulce už není** –
+přesunut beze zbytku do soukromé tabulky.
 
 Statistiky na listech Bodování a Brankáři se tvoří z listů Zápasy, Sestavy a Seznam hráčů.
 
@@ -32,9 +34,26 @@ a Sestavy níže už nezapisuje** – nové zápasy jdou jen do `SEZNAMY_DB_SPRE
 (sekce „LIT Seznamy 2.0“ níže). Popis vstupních buněk zůstává jako historický
 záznam toho, jak byla tabulka naplněná do 26. 9. 2026 (zápasy č. 4002–4026),
 a jako reference pro `importer.build_import` (netknutý, ale nevolaný z živé
-cesty). Listy **Seznam hráčů** a **Trenéři** zůstávají v produkční tabulce
-živé a ručně editované trenérem i nadále – Seznamy 2.0 si z nich jen čte
-neosobní sloupce (viz níže).
+cesty).
+
+**List `Seznam hráčů`** (a `Trenéři`, ten ale úplně) se 2. 10. 2026 přesunul
+do nové, čistě soukromé tabulky (`SEZNAMY_PRIVATE_SPREADSHEET_ID`, viz
+PLAN.MD) – citlivé osobní údaje (rodné číslo, pojišťovna, telefon, e-mail,
+PIN trenérů) nemají ležet ve sdílené tabulce vedle zápasových dat. Trenér ji
+dál edituje ručně, servisní účet k ní má jen roli **Prohlížeč**. Protože
+`Bodování`/`Brankáři` v produkční tabulce (viz výš) na `Seznam hráčů`
+formulově závisí (INDEX/MATCH), list byl v produkční tabulce znovu
+obnoven jako **hybrid**, ne čistý mirror:
+- sloupce A:F a H:I (neosobní administrativní údaje – příjmení, jméno,
+  č. reg., číslo, post, „Z“-status, poznámka) jsou `IMPORTRANGE` ze soukromé
+  tabulky,
+- sloupec `G` („Z“ = odehrané zápasy) a pomocné sloupce `P:S` (góly/
+  asistence/body/klíč řazení pro řazení v Bodování) jsou **místní vzorce**
+  počítané přímo z produkční `Sestavy`/`Zápasy` – tahle část se z definice
+  nedá importovat odjinud, musí se počítat proti aktuální (byť zamrzlé)
+  produkční tabulce.
+
+Skript k tomu: `scripts/restore_production_seznam_hracu.py` (jednorázový).
 
 ### Vstupní buňky (zapisuje skript)
 
@@ -210,10 +229,10 @@ nevolají odnikud za běhu.
   místo, které trenérský štáb sleduje po cutoveru. `IMPORTRANGE` mirror
   syrových listů z DB (`scripts/build_seznamy_v2_mirrors.py`, spill `A:L`
   u `Zápasy` – zahrnuje i „pořadí po kole“) + neosobních sloupců B:F
-  (Příjmení, Jméno, č. reg., číslo, post) `Seznam hráčů` z produkční
-  `Seznamy` (**nikdy** celý `Seznam hráčů`, od sloupce J má citlivé osobní
-  údaje – ten list v produkční tabulce zůstává jediný, který se dál ručně
-  edituje). Mirror listu `Zápasy` má navíc mimo spill sloupce `M:N`
+  (Příjmení, Jméno, č. reg., číslo, post) `Seznam hráčů` ze **soukromé**
+  tabulky (`SEZNAMY_PRIVATE_SPREADSHEET_ID`, od 2. 10. 2026 – viz výše
+  a PLAN.MD; **nikdy** celý `Seznam hráčů`, od sloupce J má citlivé osobní
+  údaje). Mirror listu `Zápasy` má navíc mimo spill sloupce `M:N`
   („Góly“/„Asistence“ – střelci/nahrávači LIT za daný zápas, FILTER+TEXTJOIN
   nad `Góly`) a mirror `Brankáři (zápasy)` sloupce `K:L` („výsledek“/
   „vychytaná výhra“, MATCH proti `Zápasy (tým)`), obojí po řádcích, ne jako
@@ -286,6 +305,8 @@ statistic_table/
     build_seznamy_aggregate_sheets.py jednorázové postavení Bodování/Brankáři v Seznamy 2.0
     build_seznamy_tym_sheet.py        jednorázové postavení listu Tým v Seznamy 2.0
     build_seznamy_dashboard.py        jednorázové postavení listu Dashboard v Seznamy 2.0
+    restore_production_seznam_hracu.py obnova listu Seznam hráčů v produkční
+                                       tabulce po přesunu do soukromé tabulky
   tests/
     fixtures/         PDF zápisy, uložené kopie hlaviček a stránky Ligy
     fixtures/league/  uložené stránky ceskyhokej.cz pro testy league_scraper.py

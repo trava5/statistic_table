@@ -35,6 +35,7 @@ class Config:
     league_v2_spreadsheet_id: str | None = None
     seznamy_db_spreadsheet_id: str | None = None
     seznamy_v2_spreadsheet_id: str | None = None
+    seznamy_private_spreadsheet_id: str | None = None
 
 
 def load_config(env_file: str | Path = ".env") -> Config:
@@ -57,6 +58,7 @@ def load_config(env_file: str | Path = ".env") -> Config:
         league_v2_spreadsheet_id=os.getenv("LEAGUE_V2_SPREADSHEET_ID"),
         seznamy_db_spreadsheet_id=os.getenv("SEZNAMY_DB_SPREADSHEET_ID"),
         seznamy_v2_spreadsheet_id=os.getenv("SEZNAMY_V2_SPREADSHEET_ID"),
+        seznamy_private_spreadsheet_id=os.getenv("SEZNAMY_PRIVATE_SPREADSHEET_ID"),
     )
 
 
@@ -99,6 +101,18 @@ def require_seznamy_v2_spreadsheet_id(config: Config) -> str:
     if not config.seznamy_v2_spreadsheet_id:
         raise RuntimeError("Chybí SEZNAMY_V2_SPREADSHEET_ID v .env (viz README, sekce Seznamy)")
     return config.seznamy_v2_spreadsheet_id
+
+
+def require_seznamy_private_spreadsheet_id(config: Config) -> str:
+    """Čistě soukromá tabulka pro `Seznam hráčů`/`Trenéři` (citlivé osobní
+    údaje – rodné číslo, pojišťovna, telefon, e-mail, PIN trenérů), oddělená
+    i od produkční `Seznamy` i od Seznamy DB. Servisní účet k ní má jen
+    Prohlížeč – nikdy se do ní nezapisuje přes API, viz PLAN.MD (2. 10. 2026)."""
+    if not config.seznamy_private_spreadsheet_id:
+        raise RuntimeError(
+            "Chybí SEZNAMY_PRIVATE_SPREADSHEET_ID v .env (viz README, sekce Seznamy)"
+        )
+    return config.seznamy_private_spreadsheet_id
 
 
 def get_credentials(config: Config):

@@ -11,6 +11,7 @@ from statistic_table.config import (
     require_league_db_spreadsheet_id,
     require_league_v2_spreadsheet_id,
     require_seznamy_db_spreadsheet_id,
+    require_seznamy_private_spreadsheet_id,
 )
 from statistic_table.drive import list_pdf_files
 from statistic_table.importer import (
@@ -70,7 +71,8 @@ def cmd_check(_args: argparse.Namespace) -> int:
         return 1
     print("Rozložení tabulky: OK")
 
-    players = read_player_registry(config)
+    private_id = require_seznamy_private_spreadsheet_id(config)
+    players = read_player_registry(config, spreadsheet_id=private_id)
     print(f"Seznam hráčů: {len(players)} hráčů")
 
     return 0

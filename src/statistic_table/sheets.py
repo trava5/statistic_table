@@ -179,9 +179,16 @@ def append_import_log(
     ).execute()
 
 
-def read_player_registry(config: Config) -> list[RosterPlayer]:
+def read_player_registry(
+    config: Config, spreadsheet_id: str | None = None
+) -> list[RosterPlayer]:
+    """Bez `spreadsheet_id` čte z produkční tabulky – od přesunu Seznamu
+    hráčů do soukromé tabulky (viz PLAN.MD) volá `cmd_check` s explicitním
+    `spreadsheet_id` (SEZNAMY_PRIVATE_SPREADSHEET_ID)."""
     values = read_range(
-        config, f"{SEZNAM_HRACU_SHEET}!A{SEZNAM_HRACU_DATA_START_ROW}:F1000"
+        config,
+        f"{SEZNAM_HRACU_SHEET}!A{SEZNAM_HRACU_DATA_START_ROW}:F1000",
+        spreadsheet_id=spreadsheet_id,
     )
     players = []
     for row in values:

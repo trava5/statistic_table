@@ -142,9 +142,7 @@ se zapsalo, beze změny tabulky.
 Od 26. 9. 2026 (cutover, viz PLAN.MD) je tohle **jediná** cesta zápisu pro
 LIT – `cli import` a `cli standings` zapisují výhradně do
 `SEZNAMY_DB_SPREADSHEET_ID`, přímý zápis do produkční tabulky „Seznamy“
-(`SPREADSHEET_ID`) skončil. Produkční tabulka zůstává v provozu jen pro
-listy **Seznam hráčů** a **Trenéři** (trenér je dál edituje ručně) a jako
-zdroj neosobních sloupců pro Seznamy 2.0.
+(`SPREADSHEET_ID`) skončil.
 
 Stejný DB → prezentace vzor jako u Ligy:
 
@@ -159,6 +157,15 @@ Stejný DB → prezentace vzor jako u Ligy:
   (`scripts/build_seznamy_v2_mirrors.py`), stejný princip jako u Liga 2.0.
   Po každé změně tvaru syrových dat (nový sloupec v DB) je potřeba tenhle
   skript znovu spustit, ať se rozšíří i mirrorovaný rozsah.
+- **Soukromá tabulka** (`SEZNAMY_PRIVATE_SPREADSHEET_ID`, od 2. 10. 2026) –
+  listy `Seznam hráčů`/`Trenéři` s citlivými osobními údaji, oddělené
+  i od produkční `Seznamy` i od Seznamy DB. Trenér ji edituje ručně,
+  servisní účet má jen roli **Prohlížeč**. Seznamy 2.0 z ní čte jen
+  neosobní sloupce B:F Seznamu hráčů. Produkční `Bodování`/`Brankáři`
+  (historický záznam do 26. 9.) na tenhle list formulově závisí – po
+  přesunu bylo nutné list `Seznam hráčů` obnovit i v produkční tabulce
+  jako hybrid (neosobní sloupce mirrorem odtud, zbytek místními vzorci) –
+  viz `scripts/restore_production_seznam_hracu.py` a PLAN.MD.
 
 Podrobný popis listů a vzorců je v PROJECT.MD, sekce „LIT Seznamy 2.0“.
 

@@ -5,19 +5,20 @@ Listy mají záměrně STEJNÁ jména jako v DB (Zápasy, Góly, Vyloučení, Br
 (zápasy), Brankáři (zápasy)), aby na ně šly napojit formule Bodování/
 Brankáři/Tým/Dashboard stejným způsobem jako u Ligy.
 
-Navíc zrcadlí `Seznam hráčů` z PRODUKČNÍ tabulky Seznamy (SPREADSHEET_ID) –
-ale JEN neosobní sloupce B:F (Příjmení, Jméno, č. reg., číslo, post), NE
-celý list. Od sloupce J má produkční Seznam hráčů citlivé osobní údaje
-(pojišťovna, rodné číslo, telefon, e-mail hráčů i rodičů) – ty se nesmí
-dostat do Seznamy 2.0, viz PLAN.MD bod 6 (přesunou se později do samostatné
-nesdílené tabulky, teprve pak se zdroj IMPORTRANGE přepne tam). `Trenéři`
-se nezrcadlí vůbec – žádná formule v Bodování/Brankáři/Tým/Dashboard ho
+Navíc zrcadlí `Seznam hráčů` ze SOUKROMÉ tabulky (SEZNAMY_PRIVATE_SPREADSHEET_ID,
+viz PLAN.MD 2. 10. 2026) – ale JEN neosobní sloupce B:F (Příjmení, Jméno,
+č. reg., číslo, post), NE celý list. Od sloupce J má Seznam hráčů citlivé
+osobní údaje (pojišťovna, rodné číslo, telefon, e-mail hráčů i rodičů) – ty
+se nesmí dostat do Seznamy 2.0. Soukromá tabulka je oddělená i od produkční
+`Seznamy` (ta `Seznam hráčů`/`Trenéři` po přesunu už vůbec nemá) – servisní
+účet k ní má jen Prohlížeč, nikdy se do ní nezapisuje. `Trenéři` se
+nezrcadlí vůbec – žádná formule v Bodování/Brankáři/Tým/Dashboard ho
 nepotřebuje a je celý citlivý (PIN, telefon, e-mail).
 
 Po prvním spuštění je potřeba **ručně** otevřít Seznamy 2.0 v prohlížeči
 a kliknout na „Povolit přístup“ u IMPORTRANGE vzorců (jednou za dvojici
-tabulek, pro DB → Seznamy 2.0 i pro Seznamy (produkční) → Seznamy 2.0
-zvlášť) – Google to nejde autorizovat přes API.
+tabulek, pro DB → Seznamy 2.0 i pro soukromou tabulku → Seznamy 2.0 zvlášť)
+– Google to nejde autorizovat přes API.
 
 Použití:
     .venv\\Scripts\\python.exe scripts\\build_seznamy_v2_mirrors.py
@@ -38,6 +39,7 @@ from statistic_table.config import (
     get_credentials,
     load_config,
     require_seznamy_db_spreadsheet_id,
+    require_seznamy_private_spreadsheet_id,
     require_seznamy_v2_spreadsheet_id,
 )
 
@@ -63,7 +65,7 @@ def main() -> None:
     config = load_config()
     db_id = require_seznamy_db_spreadsheet_id(config)
     v2_id = require_seznamy_v2_spreadsheet_id(config)
-    production_id = config.spreadsheet_id
+    private_id = require_seznamy_private_spreadsheet_id(config)
     service = build("sheets", "v4", credentials=get_credentials(config))
 
     sheet_names = [*DB_MIRRORS, SEZNAM_HRACU_SHEET]
@@ -116,7 +118,7 @@ def main() -> None:
         data.append({"range": f"'{name}'!A1", "values": [[formula]]})
 
     data.append({"range": f"'{SEZNAM_HRACU_SHEET}'!A1", "values": [SEZNAM_HRACU_HEADER]})
-    hraci_formula = f'=IMPORTRANGE("{production_id}"; "\'{SEZNAM_HRACU_SHEET}\'!B3:F1000")'
+    hraci_formula = f'=IMPORTRANGE("{private_id}"; "\'{SEZNAM_HRACU_SHEET}\'!B3:F1000")'
     data.append({"range": f"'{SEZNAM_HRACU_SHEET}'!A2", "values": [[hraci_formula]]})
 
     # --- Zápasy!M:N – střelci/nahrávači LIT za daný zápas (mimo IMPORTRANGE
@@ -174,7 +176,8 @@ def main() -> None:
     print(f"Zapsáno {len(data)} vzorců/hlaviček do Seznamy 2.0.")
     print(
         "Teď otevři Seznamy 2.0 v prohlížeči a klikni na „Povolit přístup“ – "
-        "jednou za DB -> Seznamy 2.0, jednou za produkční Seznamy -> Seznamy 2.0."
+        "jednou za DB -> Seznamy 2.0, jednou za soukromou tabulku (Seznam "
+        "hráčů) -> Seznamy 2.0."
     )
 
 
