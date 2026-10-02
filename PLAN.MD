@@ -548,6 +548,65 @@ pozici přímo do Seznamy DB, ne do produkční tabulky:
   v lize“ = 6, `INDEX+COUNTA` nad `Zápasy!L`) sedí přesně na hodnotu
   zapsanou `cli standings`.
 
+## Ladění po prvním ostrém provozu (26. 9. – 2. 10. 2026)
+
+Cutover byl hotový, ale první skutečné použití po pár dnech v provozu
+odhalilo několik věcí, které žádný test nezachytí (síťová volání, živá
+data z webu, ruční obsluha menu):
+
+- **Web import se dva týdny vůbec nezapisoval.** `cli league sync-games`
+  se přes `main.py` spouští tak, že se nejdřív zeptá na dry-run a pak na
+  „Pokračovat k zápisu?“ s **výchozí odpovědí Ne** – stačí prázdný Enter
+  a zápis se tiše neprovede, i když dry-run proběhl v pořádku a vypadá to,
+  že import proběhl. Liga DB tak zůstala 2 kola pozadu (16 zápasů místo
+  31), než se to odhalilo kontrolou stavu tabulky. Menu samo neupravováno
+  (UX riziko zůstává, pro vědomí při příštím ladění).
+- **Oprava parsování skóre s nájezdy:** zápas s textem skóre `"1:2SN"`
+  (nájezdy) spadl na `AttributeError` – starší regex počítal jen s 0–1
+  písmenem přípony (`"S"`/`"N"` zvlášť byl jen odhad, bez živého příkladu
+  v datech). Skutečná přípona má obě písmena dohromady. Opraveno
+  (`[A-Z]{0,2}`, `ENDING_SUFFIXES = {"P": "pp", "SN": "sn"}`), regresní test
+  s uloženým fixture HTML. Důležité: chyba u jednoho zápasu **nezastavila**
+  zbytek dávky (14 z 15 nových zápasů se zapsalo i tak) – potvrdilo to
+  smysl dřívější opravy izolace chyb na zápas v `cmd_league_sync_games`.
+- **Bug v mirror skriptech přepsal reálný list:** `build_league_v2_mirrors.py`
+  i `build_seznamy_v2_mirrors.py` měly logiku „přejmenuj první list
+  v tabulce, pokud chybí náš mirror“ – platilo jen při úplně prvním běhu
+  na prázdné tabulce. Při doplňování chybějícího mirroru do už rozjeté
+  Liga 2.0 to omylem přejmenovalo a přepsalo buňku A1 reálného týmového
+  listu „Valašský hokejový klub“. Napraveno ručně (list přejmenován zpět,
+  A1 obnoveno na „Tým:“, nový mirror list založen čistě) a opraveno v kódu
+  (podmínka vyžaduje `len(sheets) == 1`, ne jen „náš list chybí“).
+- **Graf „Pořadí po kole“ doplněn do Seznamy 2.0 Dashboardu** – produkční
+  Dashboard ho měl, do `build_seznamy_dashboard.py` se ale nikdy nedostal.
+  Stejný vzor jako Liga 2.0 (záporná hodnota + formát buňky „0;0“ pro
+  obrácenou osu). Zatím řídký (jeden bod po posledním zápase), protože
+  `cli standings` doplňuje pořadí jen k poslednímu řádku, ne zpětně.
+- **Zápasy v Liga 2.0 ve špatném pořadí:** dvě `QUERY` formule v
+  `build_league_team_template.py` (zdroj grafu „Skóre po zápasech“ i
+  tabulka „Odehrané zápasy“ pod ním) neměly `order by D` – řádky
+  v `Zápasy - liga (tým)` jsou v pořadí, v jakém je scraper zapsal (podle
+  kola a pořadí na webové stránce), ne chronologicky. Graf proto spojoval
+  body napřeskáčku. Opraveno (`order by D`) ve skriptu i naživo ve všech
+  16 už existujících týmových listech (ne jen v šabloně pro budoucí
+  klony). **Pozn.:** `QUERY` řadí datum jako text – funguje jen díky
+  dvoumístnému zápisu dne na webu, nepotvrzeno pro jednociferné dny
+  (říjnové zápasy teprve ukážou, jestli je to problém).
+- **Data na webu se mohou dodatečně opravit – naše DB to nezachytí.**
+  Zápas #181018 (Valašský–IHC Královo Písek) jsme naimportovali jako
+  rozhodnutý v prodloužení (`"7:2P"` nebo podobně), web si ale výsledek
+  později opravil na čisté `"7:2"` (bez prodloužení). Naše `Pořadí - liga`
+  (vlastní přepočet z uložených výsledků) tak počítalo s jiným bodovým
+  ziskem, než je teď oficiálně platný – LIT kvůli tomu vycházelo 8. místo
+  místo správného 7. (ověřeno proti živé oficiální stránce, kterou čte
+  `cli standings` pro Seznamy DB – ta měla správně). Oprava: smazat
+  všechny řádky daného zápasu napříč syrovými listy a znovu zasynchronizovat
+  (`league sync-games` ho pak stáhne čerstvě). **Dedup `league sync-games`
+  (podle přítomnosti `game_id` v `Zápasy - liga`) nerozpozná, že se
+  už-synchronizovaný zápas na webu později změnil** – žádný mechanismus na
+  to zatím neupozorní, jde jen o ruční nápravu po nahlášení nesrovnalosti.
+  Otevřené riziko do budoucna, neřešeno systémově.
+
 ## Potvrzená rozhodnutí (21. 9. 2026)
 
 - Skript **pouze importuje** vstupní data, veškerá logika statistik zůstává ve vzorcích sešitu.

@@ -170,6 +170,11 @@ za vysvětlení, protože počítají víc než jen přepis naškrábaných čí
   (`Skupiny - liga`) obnovuje `league_sheets.refresh_group_membership`
   živým scrapem při každém `league sync-games` – uložené jako fakt v DB,
   aby přepočet pořadí nemusel scrapovat znovu a šlo to použít i odjinud.
+  **Známé omezení** (narazilo 2. 10. 2026, viz PLAN.MD): přepočet vychází
+  jen z výsledků uložených při prvním stažení zápasu – pokud web výsledek
+  dodatečně opraví (např. prodloužení → regulérní výsledek), dedup podle
+  `game_id` to nerozpozná a DB zůstane s neplatnými daty, dokud to někdo
+  nenahlásí a zápas se ručně nesmaže a znovu nezasynchronizuje.
 
 Až se do dat budou napojovat další analytické nástroje, tohle rozdělení
 (syrová fakta vs. odvozené pohledy) je i důvod, proč zvažujeme samostatný

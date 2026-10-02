@@ -176,6 +176,12 @@ konkrétní soubor nebo celá složka Zápisy), pořadí po kole, import z webu
 (Liga: nové odehrané zápasy) a Liga: založení listů pro nové týmy. U zápisu
 se vždy nejdřív zeptá na dry-run a pak na potvrzení.
 
+**Pozor:** otázka „Pokračovat k zápisu?“ má **výchozí odpověď Ne** – stačí
+prázdný Enter po dry-run a zápis se tiše neprovede, i když dry-run proběhl
+v pořádku. Tahle past jednou způsobila, že se import z webu dva týdny vůbec
+nezapisoval, aniž by to bylo na první pohled poznat (viz PLAN.MD, 2. 10. 2026).
+Po dry-run je potřeba výslovně napsat „a“/„ano“, ne jen potvrdit Enterem.
+
 ## Co skript dělá a co ne
 
 - Skript zapisuje **jen syrová vstupní data** (soupisky, góly, přihrávky,
