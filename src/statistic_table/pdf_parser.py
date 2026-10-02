@@ -17,6 +17,13 @@ TEAM_TABLE_FIELDS = [
 
 SUMMARY_TABLE_FIELDS = ["GÓLY\nA:B", "BA", "Min", "OB", "BB", "min", "OB"]
 
+# Nečíselné kódy ve sloupci "Min." (místo počtu trestných minut) – ověřeno
+# s uživatelem, ne odhad. "TS" = trestné střílení: hráč je vyloučen za
+# zmaření vyložené šance, ale za to se nesedí v boxu žádný čas (proto i
+# sloupce Od/Do v PDF mají "---", ne časy) – TM se tím nepřičítají. Neznámý
+# kód se nemá tiše převést na 0, proto zůstává jen tenhle jeden, explicitní.
+PENALTY_MINUTES_CODES = {"TS": 0}
+
 
 class ParseError(Exception):
     """Zápis nemá očekávaný formát – import se má zastavit, ne hádat."""
@@ -36,6 +43,24 @@ def _sequential_column_map(header_row: list, fields: list[str]) -> list[int]:
         mapping.append(idx)
         search_start = idx + 1
     return mapping
+
+
+def _parse_penalty_minutes(raw: str, context: str) -> int:
+    try:
+        return int(raw)
+    except ValueError as exc:
+        if raw in PENALTY_MINUTES_CODES:
+            return PENALTY_MINUTES_CODES[raw]
+        raise ParseError(
+            f"{context}: neznámý kód trestu ve sloupci Min. ({raw!r}) – doplň "
+            "význam do PENALTY_MINUTES_CODES v pdf_parser.py, nehádat"
+        ) from exc
+
+
+def _normalize_dash(value: str) -> str:
+    """PDF píše "---" tam, kde trest nemá časový interval (např. trestné
+    střílení) – na prázdný řetězec, ne na doslovné pomlčky."""
+    return "" if value == "---" else value
 
 
 def _find_marker_row(table: list[list], marker: str) -> int:
@@ -121,14 +146,15 @@ def _parse_team_block(table: list[list], marker: str) -> TeamSheet:
             served_by = None
             if len(row) > served_by_col and row[served_by_col]:
                 served_by = row[served_by_col].strip("() ") or None
+            penalty_context = f"{name}, trest hráče č. {row[pen_player_col]} ({row[pen_time_col]})"
             penalties.append(
                 Penalty(
                     time=row[pen_time_col],
                     player_number=row[pen_player_col] or "",
-                    minutes=int(row[min_col]),
+                    minutes=_parse_penalty_minutes(row[min_col], penalty_context),
                     reason=row[reason_col] or "",
-                    start=row[od_col] or "",
-                    end=row[do_col] or "",
+                    start=_normalize_dash(row[od_col] or ""),
+                    end=_normalize_dash(row[do_col] or ""),
                     served_by_number=served_by,
                 )
             )

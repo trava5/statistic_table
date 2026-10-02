@@ -581,7 +581,7 @@ pozici přímo do Seznamy DB, ne do produkční tabulky:
   v lize“ = 6, `INDEX+COUNTA` nad `Zápasy!L`) sedí přesně na hodnotu
   zapsanou `cli standings`.
 
-## Ladění po prvním ostrém provozu (26. 9. – 2. 10. 2026)
+## Ladění po prvním ostrém provozu (26. 9. – 3. 10. 2026)
 
 Cutover byl hotový, ale první skutečné použití po pár dnech v provozu
 odhalilo několik věcí, které žádný test nezachytí (síťová volání, živá
@@ -639,6 +639,32 @@ data z webu, ruční obsluha menu):
   už-synchronizovaný zápas na webu později změnil** – žádný mechanismus na
   to zatím neupozorní, jde jen o ruční nápravu po nahlášení nesrovnalosti.
   Otevřené riziko do budoucna, neřešeno systémově.
+- **Stejný druh chyby podruhé – zápas #180736 (LIT–Hvězda Praha, 3. 10.):**
+  web u detailu tohoto zápasu ukazoval skóre po třetinách `5:0, 1:3, 0:1`
+  (to už samo dává přesně konečné skóre 6:4) a navíc ještě přilepený
+  segment „- 0:0“ (prodloužení) a příponu „P“ – vnitřně rozporné (zápas byl
+  jasně rozhodnutý v řádné hrací době, žádné prodloužení dávalo smysl).
+  Potvrzeno proti dvěma nezávislým zdrojům (PDF zápisu i oficiální
+  přehledové stránce ligy, kterou čte `cli standings` – obě correctly
+  ukazovaly V/3 body, ne VP/2). Narozdíl od #181018 tentokrát web
+  nesrovnalost sám neopravil (ověřeno opakovaně), takže oprava proběhla
+  rovnou: `parse_game_detail` výstup přepsaný přes `dataclasses.replace`
+  (`ending=None, ot_score=None`), staré řádky smazány napříč syrovými listy
+  a zápas zapsán znovu přes `league_sheets.append_game` (ne ruční patch
+  jednotlivých buněk – zajistí, že i odvozené hodnoty jako „výsledek týmu“
+  u brankářů v logu zůstanou konzistentní). Pořadí po přepočtu sedí na
+  oficiální stránku (6. místo).
+- **Nový typ trestu v PDF – „TS“ (trestné střílení):** `_parse_team_block`
+  dřív dělalo `int(row[min_col])` bez ošetření – trestné střílení nemá
+  počet minut (ani časový interval Od/Do, PDF tam píše „---“), takže
+  sloupec „Min.“ obsahuje text „TS“ místo čísla a import spadl na
+  `ValueError`. Potvrzeno s uživatelem (ne odhad): `PENALTY_MINUTES_CODES =
+  {"TS": 0}` v `pdf_parser.py`, neznámý kód jinak pořád zastaví import
+  s chybou (nehádat). Zároveň `_normalize_dash` převádí „---“ v Od/Do na
+  prázdný řetězec, ne na doslovné pomlčky v DB.
+- Při obou nálezech potvrzeno i doplnění `TEAM_ALIASES` o nového soupeře
+  (HC Hvězda Praha → Hvězda) – rutinní krok při každém novém soupeři,
+  stejně jako u Olomouce/Šumperku dřív.
 
 ## Potvrzená rozhodnutí (21. 9. 2026)
 
