@@ -1,9 +1,16 @@
 """Jednorázový skript: postaví v SEZNAMY_V2_SPREADSHEET_ID („Seznamy 2.0“)
 list `Last 5` – stejné kategorie a rozložení jako Dashboard (sezónní
-přehled, přesilovky/oslabení, vyloučení a TM), jen počítané z
-**posledních 5 odehraných zápasů LIT** místo celé sezóny, ať je vidět
-aktuální forma týmu. Bez grafů a bez Bodování/Brankáři (odsouhlaseno
-s uživatelem) – jen týmové souhrny.
+přehled, přesilovky/oslabení, vyloučení a TM, pod tím Bodování a Brankáři
+vedle sebe), jen počítané z **posledních 5 odehraných zápasů LIT** místo
+celé sezóny, ať je vidět aktuální forma týmu. Bez grafů (odsouhlaseno
+s uživatelem).
+
+Bodování/Brankáři NEčtou ze sezónních agregátů `Bodování`/`Brankáři`
+(postavené `build_seznamy_aggregate_sheets.py`) – ty jsou vždy za celou
+sezónu, nejde je dodatečně omezit na posledních 5 zápasů. Místo toho
+počítají znovu přímo z `Bruslaři (zápasy)`/`Brankáři (zápasy)` (stejný
+zdroj, stejné QUERY group by), jen s navíc podmínkou na posledních 5 čísel
+zápisu – stejný princip jako u týmových statistik níž.
 
 Zdroj dat je stejný list `Zápasy (tým)` jako u `Tým`/Dashboardu, ale ten
 nemá sloupec s datem (viz `SEZNAMY_ZAPASY_TYM_HEADER`) – pro „posledních
@@ -30,7 +37,9 @@ from __future__ import annotations
 from googleapiclient.discovery import build
 
 from statistic_table.config import (
+    SEZNAMY_GOALIES_LOG_SHEET,
     SEZNAMY_LAST5_SHEET,
+    SEZNAMY_SKATERS_LOG_SHEET,
     SEZNAMY_ZAPASY_TYM_SHEET,
     get_credentials,
     load_config,
@@ -38,6 +47,8 @@ from statistic_table.config import (
 )
 
 ZT = f"'{SEZNAMY_ZAPASY_TYM_SHEET}'"
+SKATERS_LOG = f"'{SEZNAMY_SKATERS_LOG_SHEET}'"
+GOALIES_LOG = f"'{SEZNAMY_GOALIES_LOG_SHEET}'"
 ROWS = 5000
 LIT_CRIT = '"LIT"'
 LAST5_RANGE = "$N$2:$N$6"
@@ -61,6 +72,26 @@ def _count_result(result_value: str) -> str:
         f"=SUMPRODUCT(({LIT_FILTER})*{IN_LAST5}*"
         f'({ZT}!$G$2:$G${ROWS}="{result_value}"))'
     )
+
+
+def _last5_or_tokens(col: str) -> list[str]:
+    """Vzorcové tokeny, které po spojení "&" dají text (jako součást query
+    stringu) `(col='" & N2 & "' or col='" & N3 & "' or ... or col='" & N6 &
+    "')` – QUERY neumí přímo "je hodnota v rozsahu N2:N6", takže se musí
+    sestavit jako dynamický řetězec místo 5 čísel napevno."""
+    tokens = [f'"({col}=\'"']
+    for row in range(2, 7):
+        tokens.append(f"N{row}")
+        tokens.append('"\' or {col}=\'"'.format(col=col) if row < 6 else '"\')"')
+    return tokens
+
+
+def _query_formula(sheet: str, last_col: str, select_and_label: str) -> str:
+    """`select_and_label` obsahuje `{FILTER}` tam, kam patří podmínka na
+    posledních 5 čísel zápisu (viz `_last5_or_tokens`)."""
+    before, after = select_and_label.split("{FILTER}")
+    tokens = [f'"{before}"', *_last5_or_tokens("A"), f'"{after}"']
+    return f"=QUERY({sheet}!A:{last_col};{'&'.join(tokens)};1)"
 
 
 def main() -> None:
@@ -158,6 +189,28 @@ def main() -> None:
     put("E13", '=IF($A$5=0;"";C13/$A$5)')
     put("F13", '=IF($A$5=0;"";D13/$A$5)')
 
+    # --- Bodování a Brankáři (vedle sebe, jen posledních 5 zápasů) -------------
+    # Stejné rozložení jako na Dashboardu (BODOVÁNÍ vlevo, BRANKÁŘI o pár
+    # sloupců vpravo), ale počítané přímo z Bruslaři/Brankáři (zápasy) se
+    # stejnou "posledních 5 čísel zápisu" podmínkou jako výš - ne ze
+    # sezónních agregátů Bodování/Brankáři, ty se nedají dodatečně omezit.
+    put("A16", "BODOVÁNÍ (POSLEDNÍCH 5 ZÁPASŮ)")
+    skater_select = (
+        "select D, sum(G), sum(H), sum(I), sum(J) where B = 'LIT' and {FILTER} "
+        "group by D order by sum(J) desc "
+        "label D 'Hráč', sum(G) 'Z', sum(H) 'G', sum(I) 'A', sum(J) 'B'"
+    )
+    put("A17", _query_formula(SKATERS_LOG, "K", skater_select))
+
+    put("I16", "BRANKÁŘI (POSLEDNÍCH 5 ZÁPASŮ)")
+    goalie_select = (
+        "select D, sum(F), sum(G), sum(G)/sum(F), sum(L), sum(L)/sum(F) "
+        "where B = 'LIT' and {FILTER} group by D order by sum(F) desc "
+        "label D 'Hráč', sum(F) 'Z', sum(G) 'obdržené góly', sum(G)/sum(F) 'průměr', "
+        "sum(L) 'Vychytané výhry', sum(L)/sum(F) '% výher'"
+    )
+    put("I17", _query_formula(GOALIES_LOG, "L", goalie_select))
+
     data = [{"range": f"{sheet}!{cell}", "values": values} for cell, values in updates.items()]
     service.spreadsheets().values().batchUpdate(
         spreadsheetId=spreadsheet_id, body={"valueInputOption": "USER_ENTERED", "data": data}
@@ -176,7 +229,10 @@ def main() -> None:
             "endColumnIndex": col_end,
         }
 
-    bold_ranges = ["A1:A1", "A3:A3", "A7:A7", "A11:A11", "A4:G4", "A8:F8", "A12:F12"]
+    bold_ranges = [
+        "A1:A1", "A3:A3", "A7:A7", "A11:A11", "A16:A16", "I16:I16",
+        "A4:G4", "A8:F8", "A12:F12",
+    ]
     format_requests = [
         {
             "repeatCell": {
@@ -196,7 +252,7 @@ def main() -> None:
                 "fields": "userEnteredFormat.numberFormat",
             }
         }
-        for rng in ("B9:B9", "D9:D9")
+        for rng in ("B9:B9", "D9:D9", "N18:N50")
     ]
     # N (pomocný seznam čísel zápisu) a J (pomocný čitatel pro Využití PP)
     # skryté, ať nepletou pohled na list.

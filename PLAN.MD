@@ -725,10 +725,10 @@ K{row}="VP"))`. Ověřeno živě: Weber 1/3 (33,3 %), Krátký 1/2 (50 %),
 součet přesně odpovídá 2 skutečným výhrám LIT v sezóně.
 
 ✅ **List `Last 5` v Seznamy 2.0 (3. 10. 2026).** Nový list s aktuální
-formou týmu – stejné tabulkové sekce jako Dashboard (sezónní přehled,
-přesilovky/oslabení, vyloučení a TM), ale spočítané jen z **posledních 5
-odehraných zápasů LIT**, ne z celé sezóny. Odsouhlaseno s uživatelem: bez
-grafů a bez Bodování/Brankáři, jen týmové souhrny.
+formou týmu – stejné tabulkové sekce a rozložení jako Dashboard (sezónní
+přehled, přesilovky/oslabení, vyloučení a TM, pod tím Bodování a Brankáři
+vedle sebe), ale spočítané jen z **posledních 5 odehraných zápasů LIT**,
+ne z celé sezóny. Odsouhlaseno s uživatelem: bez grafů.
 
 `scripts/build_seznamy_last5_sheet.py`:
 - `Zápasy (tým)` nemá sloupec s datem (viz `SEZNAMY_ZAPASY_TYM_HEADER`) –
@@ -757,6 +757,21 @@ grafů a bez Bodování/Brankáři, jen týmové souhrny.
   V2/P3, body 6, skóre 15:27, přesilovky 29/13,79 %, oslabení 36/80,56 %,
   vyloučení 42:34, TM 90:76/18,0:15,2) – až se odehraje 6. zápas, začnou se
   rozcházet, jak se očekává.
+
+✅ **Doplněno Bodování/Brankáři do `Last 5` (3. 10. 2026).** Pod týmové
+souhrny přibyly hráčské statistiky za posledních 5 zápasů, vedle sebe
+stejně jako na Dashboardu (Bodování vlevo bez sloupce Post/TM – stejná
+redukce jako Dashboard vlastní embed, Brankáři vpravo kompletní vč. „%
+výher“). Nečtou ze sezónních agregátů `Bodování`/`Brankáři` (ty nejdou
+dodatečně omezit na 5 zápasů) – počítají znovu přímo z `Bruslaři/Brankáři
+(zápasy)` stejným `QUERY group by` vzorem, jen s navíc podmínkou na
+posledních 5 čísel zápisu. `QUERY` ale neumí "hodnota je v rozsahu N2:N6"
+přímo, proto se podmínka sestavuje jako **dynamický řetězec** zřetězením
+`"(A='"&N2&"' or A='"&N3&"' or ... or A='"&N6&"')"` přímo ve vzorci (stejný
+princip jako `'" & $B$1 & "'` u Liga 2.0 team template, jen s pěti
+proměnnými místo jedné). Ověřeno živě proti sezónním hodnotám (5
+odehraných = celá dosavadní sezóna): Bodování i Brankáři (Weber 1/3 =
+33,33 %, Krátký 1/2 = 50,00 %) sedí přesně.
 
 ## Potvrzená rozhodnutí (21. 9. 2026)
 
