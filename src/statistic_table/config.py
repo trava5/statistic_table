@@ -337,3 +337,9 @@ SEZNAMY_TYM_SHEET = "Tým"
 # Přehledový list pro trenérský štáb – vzorec nad Tým/Zápasy (tým)/Zápasy/
 # Bodování/Brankáři, postavený jednorázově scripts/build_seznamy_dashboard.py.
 SEZNAMY_DASHBOARD_SHEET = "Dashboard"
+
+# Stejné kategorie jako Tým (sezónní přehled/přesilovky-oslabení/vyloučení-TM),
+# jen počítané z posledních 5 odehraných zápasů LIT – aktuální forma týmu.
+# Vzorec nad SEZNAMY_ZAPASY_TYM_SHEET, postavený jednorázově
+# scripts/build_seznamy_last5_sheet.py.
+SEZNAMY_LAST5_SHEET = "Last 5"

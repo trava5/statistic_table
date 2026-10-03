@@ -724,6 +724,40 @@ rozšířena o `F{row}=1` (sloupec „chytal“) – `AND(F{row}=1;OR(K{row}="V"
 K{row}="VP"))`. Ověřeno živě: Weber 1/3 (33,3 %), Krátký 1/2 (50 %),
 součet přesně odpovídá 2 skutečným výhrám LIT v sezóně.
 
+✅ **List `Last 5` v Seznamy 2.0 (3. 10. 2026).** Nový list s aktuální
+formou týmu – stejné tabulkové sekce jako Dashboard (sezónní přehled,
+přesilovky/oslabení, vyloučení a TM), ale spočítané jen z **posledních 5
+odehraných zápasů LIT**, ne z celé sezóny. Odsouhlaseno s uživatelem: bez
+grafů a bez Bodování/Brankáři, jen týmové souhrny.
+
+`scripts/build_seznamy_last5_sheet.py`:
+- `Zápasy (tým)` nemá sloupec s datem (viz `SEZNAMY_ZAPASY_TYM_HEADER`) –
+  „posledních 5“ se vybírá podle sloupce A („číslo zápisu“), ne podle
+  data. Čísla zápisů přiděluje svaz postupně podle termínu utkání, takže
+  `order by A desc limit 5` dá stejné pořadí jako chronologicky – a `QUERY`
+  sloupec se samými čísly automaticky vyhodnotí jako číselný typ, takže na
+  rozdíl od řazení data jako textu (past u Liga 2.0, viz výš) tu nehrozí
+  problém s různým počtem znaků mezi měsíci. Posledních 5 čísel zápisů je
+  skrytý pomocný sloupec `N2:N6`.
+- Všechny součty filtrují `Zápasy (tým)` přes `SUMPRODUCT` s `COUNTIF`
+  proti `N2:N6` jako „je toto číslo zápisu mezi posledními pěti“ – `SUMIF`/
+  `COUNTIFS` neumí podmínku „je v seznamu hodnot“, jen jednu rovnost.
+- **Dvě pasti nalezené při psaní (obě opravené před commitem):**
+  1. `QUERY({ZT}!A2:A5000;"select A where B = 'LIT'...")` dávalo `#VALUE!`
+     – rozsah předaný do `QUERY` obsahoval jen sloupec A (co se vybírá),
+     ale filtrovalo se podle sloupce B, který v tom rozsahu vůbec nebyl.
+     Oprava: rozsah `A2:B5000` (oba sloupce).
+  2. Uvnitř `QUERY` jazyka je textový literál v **jednoduchých** uvozovkách
+     (`'LIT'`), ne v dvojitých – ty uzavírají celý query string. `LIT_CRIT`
+     (`'"LIT"'`, pro přímé `SUMIF`/`SUMPRODUCT` podmínky mimo `QUERY`) se
+     sem nehodí, byl by to vnořený řetězec se třemi páry uvozovek místo
+     jednoho stringu.
+- Ověřeno živě: protože LIT má zatím odehraných přesně 5 zápasů, „Last 5“
+  teď sedí do posledního čísla na sezónní součty v listu `Tým` (Odehráno 5,
+  V2/P3, body 6, skóre 15:27, přesilovky 29/13,79 %, oslabení 36/80,56 %,
+  vyloučení 42:34, TM 90:76/18,0:15,2) – až se odehraje 6. zápas, začnou se
+  rozcházet, jak se očekává.
+
 ## Potvrzená rozhodnutí (21. 9. 2026)
 
 - Skript **pouze importuje** vstupní data, veškerá logika statistik zůstává ve vzorcích sešitu.

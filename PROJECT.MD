@@ -261,6 +261,19 @@ nevolají odnikud za běhu.
   vlastní syrová data) – sezónní přehled vč. „Pořadí v lize“
   (`INDEX`+`COUNTA` nad mirrored `Zápasy!L`), přesilovky/oslabení,
   vyloučení/TM, grafy Skóre po zápasech/po třetinách, Bodování, Brankáři.
+  `Last 5` (`scripts/build_seznamy_last5_sheet.py`, 3. 10. 2026) má stejné
+  tabulkové sekce jako Dashboard (sezónní přehled/přesilovky-oslabení/
+  vyloučení-TM), ale spočítané jen z **posledních 5 odehraných zápasů LIT**
+  místo celé sezóny – aktuální forma týmu. Bez grafů a bez Bodování/
+  Brankáři (vědomě, odsouhlaseno s uživatelem). `Zápasy (tým)` nemá sloupec
+  s datem, takže „posledních 5“ se vybírá podle čísla zápisu (`QUERY ...
+  order by A desc limit 5` do skrytého pomocného sloupce N2:N6) – čísla
+  zápisů přiděluje svaz postupně podle termínu, takže to dá stejné pořadí
+  jako datum, a `QUERY` sloupec se samými čísly automaticky vyhodnotí jako
+  číselný typ (na rozdíl od řazení data jako textu u Liga 2.0, viz výš, tu
+  tedy nehrozí problém s různým počtem znaků). Ostatní součty filtrují
+  `Zápasy (tým)` přes `SUMPRODUCT` s `COUNTIF` proti tomuhle seznamu (ne
+  `SUMIF`/`COUNTIFS`, ty neumí podmínku „je v seznamu hodnot“).
 - Modul: `seznamy_sheets.py` (`build_seznamy_rows` – čistá funkce, žádná
   síť; `append_game` – I/O, dedup podle čísla zápisu; `sync_poradi_from_liga`
   – zápis pořadí po kole ze sdíleného zdroje Liga DB).
@@ -317,6 +330,8 @@ statistic_table/
     build_seznamy_aggregate_sheets.py jednorázové postavení Bodování/Brankáři v Seznamy 2.0
     build_seznamy_tym_sheet.py        jednorázové postavení listu Tým v Seznamy 2.0
     build_seznamy_dashboard.py        jednorázové postavení listu Dashboard v Seznamy 2.0
+    build_seznamy_last5_sheet.py      jednorázové postavení listu Last 5 (forma
+                                       za posledních 5 zápasů) v Seznamy 2.0
     restore_production_seznam_hracu.py obnova listu Seznam hráčů v produkční
                                        tabulce po přesunu do soukromé tabulky
   tests/
