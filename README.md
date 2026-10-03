@@ -46,9 +46,11 @@ celé sdílecí odkazy – např. z `.../folders/1k364.../` jen `1k364...`.
 
 ## Použití
 
-Od 26. 9. 2026 `import` i `standings` zapisují do **Seznamy DB**
-(`SEZNAMY_DB_SPREADSHEET_ID`), ne do produkční tabulky „Seznamy“ – viz sekce
-„LIT Seznamy 2.0“ níže a PROJECT.MD/PLAN.MD.
+Od 26. 9. 2026 `import` zapisuje do **Seznamy DB** (`SEZNAMY_DB_SPREADSHEET_ID`),
+ne do produkční tabulky „Seznamy“ – viz sekce „LIT Seznamy 2.0“ níže a
+PROJECT.MD/PLAN.MD. „Pořadí po kole“ od 3. 10. 2026 doplňuje do Seznamy DB
+`league sync-games` (ze sdíleného zdroje Liga DB, viz níže) – `standings`
+už nic nezapisuje, je to jen nezávislá kontrola věrohodnosti.
 
 ```powershell
 # Ověří přístup k Disku i Tabulce a rozložení sloupců
@@ -62,10 +64,9 @@ Od 26. 9. 2026 `import` i `standings` zapisují do **Seznamy DB**
 .venv\Scripts\python.exe -m statistic_table.cli import
 .venv\Scripts\python.exe -m statistic_table.cli import --dry-run
 
-# Zjistí pořadí LIT na stránce Ligy juniorů a po potvrzení ho zapíše do Seznamy DB
+# Porovná pořadí LIT na oficiální stránce Ligy juniorů s vlastním záznamem
+# (diagnostika, nic nezapisuje - "pořadí po kole" doplňuje league sync-games)
 .venv\Scripts\python.exe -m statistic_table.cli standings
-.venv\Scripts\python.exe -m statistic_table.cli standings --dry-run
-.venv\Scripts\python.exe -m statistic_table.cli standings --yes   # bez dotazu
 
 # Liga: stáhne nové odehrané zápasy VŠECH týmů (ne jen LIT) do DB tabulky
 # LEAGUE_DB_SPREADSHEET_ID a založí chybějící listy jednotlivých týmů
@@ -140,17 +141,20 @@ se zapsalo, beze změny tabulky.
 ### LIT Seznamy 2.0
 
 Od 26. 9. 2026 (cutover, viz PLAN.MD) je tohle **jediná** cesta zápisu pro
-LIT – `cli import` a `cli standings` zapisují výhradně do
-`SEZNAMY_DB_SPREADSHEET_ID`, přímý zápis do produkční tabulky „Seznamy“
-(`SPREADSHEET_ID`) skončil.
+LIT – `cli import` zapisuje výhradně do `SEZNAMY_DB_SPREADSHEET_ID`, přímý
+zápis do produkční tabulky „Seznamy“ (`SPREADSHEET_ID`) skončil.
 
 Stejný DB → prezentace vzor jako u Ligy:
 
 - **Seznamy DB** (`SEZNAMY_DB_SPREADSHEET_ID`) – 6 syrových listů (`Zápasy`,
   `Zápasy (tým)`, `Góly`, `Vyloučení`, `Bruslaři (zápasy)`, `Brankáři
   (zápasy)`) symetricky pro oba týmy, plus sloupec `Zápasy!L` „pořadí po
-  kole“ zapisovaný `cli standings`. `SEZNAMY_DB_SPREADSHEET_ID` je od
-  cutoveru **povinná** – bez ní `cli import`/`cli standings` skončí chybou.
+  kole“. `SEZNAMY_DB_SPREADSHEET_ID` je od cutoveru **povinná** – bez ní
+  `cli import` skončí chybou. Pořadí po kole od 3. 10. 2026 doplňuje
+  `cli league sync-games` ze sdíleného zdroje Liga DB (`Pořadí - liga`,
+  jediný úplný zdroj historie pořadí – web nezveřejňuje historii tabulky,
+  takže se musí dopočítat ze všech výsledků kola, a Liga DB to už dělá
+  pro všechny týmy včetně LIT) – `cli standings` je jen diagnostika.
 - **Seznamy 2.0** (`SEZNAMY_V2_SPREADSHEET_ID`) – prezentační tabulka
   (Dashboard, Tým, Bodování, Brankáři), kterou sleduje trenérský štáb.
   Syrové listy jsou v ní `IMPORTRANGE` mirror nad DB
@@ -179,9 +183,11 @@ počítači) stačí:
 ```
 
 Nabídne pět akcí – ověřit přístup, import z PDF (zeptá se, jestli jeden
-konkrétní soubor nebo celá složka Zápisy), pořadí po kole, import z webu
-(Liga: nové odehrané zápasy) a Liga: založení listů pro nové týmy. U zápisu
-se vždy nejdřív zeptá na dry-run a pak na potvrzení.
+konkrétní soubor nebo celá složka Zápisy), kontrola pořadí LIT proti
+oficiální stránce (jen diagnostika, nic nezapisuje), import z webu (Liga:
+nové odehrané zápasy – ten mimo jiné doplní i „pořadí po kole“ pro LIT) a
+Liga: založení listů pro nové týmy. U zápisu (import z PDF/z webu) se
+vždy nejdřív zeptá na dry-run a pak na potvrzení.
 
 **Pozor:** otázka „Pokračovat k zápisu?“ má **výchozí odpověď Ne** – stačí
 prázdný Enter po dry-run a zápis se tiše neprovede, i když dry-run proběhl

@@ -220,10 +220,15 @@ nevolají odnikud za běhu.
   při chybě uprostřed zápisu – zápas skončí zapsaný celý, nebo vůbec).
   Identita hráče (jméno, registrace) je soběstačná v rámci jednoho PDF,
   nepotřebuje `Seznam hráčů`. `Zápasy` má navíc sloupec `L` „pořadí po
-  kole“ – na rozdíl od zbytku řádku (zapisuje `cli import`) ho doplňuje až
-  `cli standings` po dohrání kola (`seznamy_sheets.last_game_row`/
-  `write_poradi`, append-only list, poslední řádek = poslední odehraný
-  zápas). `Zápasy (tým)` (výsledek, body, přesilovky/oslabení za zápas
+  kole“ – na rozdíl od zbytku řádku (zapisuje `cli import`) ho doplňuje
+  `cli league sync-games` (`seznamy_sheets.sync_poradi_from_liga`, viz
+  PLAN.MD 3. 10. 2026): Liga DB `Pořadí - liga` je jediný úplný zdroj
+  historie pořadí (přepočítává ji pro všechny týmy včetně LIT při každém
+  novém zápase), takže se LIT pořadí páruje přes číslo utkání a doplňuje
+  pro všechny odehrané zápasy najednou, ne jen pro poslední. `cli
+  standings` (scrape aktuální pozice z oficiální stránky) od téhle změny
+  nic nezapisuje, slouží jen jako nezávislá kontrola věrohodnosti proti
+  vlastnímu záznamu. `Zápasy (tým)` (výsledek, body, přesilovky/oslabení za zápas
   z pohledu daného týmu) počítá Python stejným principem jako `Zápasy -
   liga (tým)` u Ligy – composite pravidlo s časovým párováním trestů, ne
   vzorec (viz „Co je záměrně v Pythonu“ níže).
@@ -253,8 +258,8 @@ nevolají odnikud za běhu.
   (`INDEX`+`COUNTA` nad mirrored `Zápasy!L`), přesilovky/oslabení,
   vyloučení/TM, grafy Skóre po zápasech/po třetinách, Bodování, Brankáři.
 - Modul: `seznamy_sheets.py` (`build_seznamy_rows` – čistá funkce, žádná
-  síť; `append_game` – I/O, dedup podle čísla zápisu; `last_game_row`/
-  `write_poradi` – zápis pořadí po kole).
+  síť; `append_game` – I/O, dedup podle čísla zápisu; `sync_poradi_from_liga`
+  – zápis pořadí po kole ze sdíleného zdroje Liga DB).
 - `stats.third_and_relative_time` – PDF má čas gólu/trestu jako průběžný
   čas zápasu, ne čas od začátku třetiny; tahle funkce ho rozdělí.
 - **Otevřené:** Ročníky v `Tým` a shutout v `Brankáři` zatím chybí (viz
@@ -285,7 +290,8 @@ statistic_table/
     importer.py       orchestrace: PDF (jeden nebo celá složka) -> Seznamy DB;
                        `build_import`/`ImportPlan` (stará produkční cesta)
                        netknuté jako referenční/legacy kód, nevolané za běhu
-    standings.py      pořadí po kole z ceskyhokej.cz (volitelné, čistá logika)
+    standings.py      kontrola věrohodnosti pořadí LIT proti oficiální
+                       stránce ceskyhokej.cz (diagnostické, čistá logika)
     backup.py         záloha řádku produkční tabulky před přepsáním
                        (backups/, mimo git) – používá jen legacy `build_import`
     logging_config.py logování do logs/ (mimo git)
@@ -296,7 +302,7 @@ statistic_table/
     league_sheets.py  zápis do Liga DB, listy per tým v Liga 2.0
                        (`_append_all_or_nothing` – rollback při chybě uprostřed zápisu)
     seznamy_sheets.py zápis do Seznamy DB (6 syrových listů, oba týmy, z PDF;
-                       `last_game_row`/`write_poradi` pro pořadí po kole)
+                       `sync_poradi_from_liga` doplňuje pořadí po kole z Liga DB)
     cli.py            check / import / standings / league sync-games / league sync-teams
   scripts/
     build_league_team_template.py     jednorázové postavení listu „Tým – šablona“

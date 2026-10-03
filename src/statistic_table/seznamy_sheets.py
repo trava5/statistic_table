@@ -6,6 +6,8 @@ from collections import Counter
 from googleapiclient.discovery import build
 
 from statistic_table.config import (
+    LEAGUE_PORADI_SHEET,
+    LEAGUE_ZAPASY_SHEET,
     SEZNAMY_GOALIES_LOG_HEADER,
     SEZNAMY_GOALIES_LOG_SHEET,
     SEZNAMY_GOLY_HEADER,
@@ -148,31 +150,73 @@ def read_known_game_numbers(config: Config, spreadsheet_id: str) -> set[str]:
     return {row[0] for row in values if row and row[0]}
 
 
-def last_game_row(config: Config, spreadsheet_id: str) -> int | None:
-    """Poslední řádek s daty v listu Zápasy (append-only – poslední řádek je
-    poslední naimportovaný, tedy i poslední odehraný zápas). Použito pro zápis
-    „pořadí po kole“ (`write_poradi`), které se dozví teprve po importu, ne
-    při něm, viz `cli.cmd_standings`."""
-    values = (
-        _service(config)
-        .spreadsheets()
+def sync_poradi_from_liga(
+    config: Config, spreadsheet_id: str, league_db_spreadsheet_id: str
+) -> int:
+    """Doplní/přepíše „pořadí po kole“ (sloupec `SEZNAMY_PORADI_PO_KOLE_COLUMN`)
+    pro VŠECHNY zápasy LIT v Seznamy DB podle Liga DB `Pořadí - liga` – to je
+    jediný úplný zdroj historie pořadí (web nezveřejňuje historii tabulky,
+    takže se musí dopočítat ze všech výsledků kola; Seznamy DB to samo
+    o sobě neumí, protože drží jen zápasy LIT, ne celou ligu). Páruje přes
+    „číslo utkání“/„číslo zápisu“ – stejné číslo v obou DB. Nahrazuje dřívější
+    `write_poradi`/`last_game_row`, které psaly jen do posledního řádku podle
+    scrapu aktuální pozice (viz PLAN.MD) – odtud plynula jen řídká historie.
+    Vrací počet aktualizovaných řádků."""
+    service = _service(config)
+
+    zapasy_rows = (
+        service.spreadsheets()
         .values()
         .get(spreadsheetId=spreadsheet_id, range=f"'{SEZNAMY_ZAPASY_SHEET}'!A2:A1000000")
         .execute()
         .get("values", [])
     )
-    return len(values) + 1 if values else None
+    if not zapasy_rows:
+        return 0
 
-
-def write_poradi(config: Config, spreadsheet_id: str, row: int, position: int) -> None:
-    """Zapíše „pořadí po kole“ (sloupec `SEZNAMY_PORADI_PO_KOLE_COLUMN`) pro
-    daný řádek listu Zápasy."""
-    _write_row(
-        config,
-        spreadsheet_id,
-        f"'{SEZNAMY_ZAPASY_SHEET}'!{SEZNAMY_PORADI_PO_KOLE_COLUMN}{row}",
-        [str(position)],
+    # Zápasy - liga: B = číslo utkání, O = kolo (viz LEAGUE_ZAPASY_HEADER).
+    liga_zapasy = (
+        service.spreadsheets()
+        .values()
+        .get(spreadsheetId=league_db_spreadsheet_id, range=f"'{LEAGUE_ZAPASY_SHEET}'!B2:O1000000")
+        .execute()
+        .get("values", [])
     )
+    cislo_to_kolo = {row[0]: row[13] for row in liga_zapasy if len(row) > 13 and row[0] and row[13]}
+
+    # Pořadí - liga: A = kolo, C = tým, D = pořadí (viz LEAGUE_PORADI_HEADER).
+    poradi_rows = (
+        service.spreadsheets()
+        .values()
+        .get(spreadsheetId=league_db_spreadsheet_id, range=f"'{LEAGUE_PORADI_SHEET}'!A2:D1000000")
+        .execute()
+        .get("values", [])
+    )
+    kolo_to_poradi = {
+        row[0]: row[3]
+        for row in poradi_rows
+        if len(row) > 3 and row[2] == config.team_name_in_pdf
+    }
+
+    updates = []
+    for i, row in enumerate(zapasy_rows):
+        cislo = row[0] if row else ""
+        if not cislo:
+            continue
+        poradi = kolo_to_poradi.get(cislo_to_kolo.get(cislo, ""))
+        if poradi:
+            updates.append(
+                {
+                    "range": f"'{SEZNAMY_ZAPASY_SHEET}'!{SEZNAMY_PORADI_PO_KOLE_COLUMN}{i + 2}",
+                    "values": [[poradi]],
+                }
+            )
+
+    if updates:
+        service.spreadsheets().values().batchUpdate(
+            spreadsheetId=spreadsheet_id, body={"valueInputOption": "RAW", "data": updates}
+        ).execute()
+    return len(updates)
 
 
 def _format_date(pdf_date: str) -> str:

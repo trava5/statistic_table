@@ -5,7 +5,6 @@ import sys
 
 from statistic_table.config import (
     LEAGUE_COMPETITION_ID,
-    SEZNAMY_PORADI_PO_KOLE_COLUMN,
     SEZNAMY_ZAPASY_SHEET,
     load_config,
     require_league_db_spreadsheet_id,
@@ -38,7 +37,7 @@ from statistic_table.league_sheets import (
     team_sheet_title,
 )
 from statistic_table.logging_config import setup_logging
-from statistic_table.seznamy_sheets import build_seznamy_rows, last_game_row, write_poradi
+from statistic_table.seznamy_sheets import build_seznamy_rows, sync_poradi_from_liga
 from statistic_table.sheets import check_headers, read_player_registry, read_range
 from statistic_table.standings import (
     arithmetic_issues,
@@ -113,7 +112,13 @@ def cmd_import(args: argparse.Namespace) -> int:
     return 0
 
 
-def cmd_standings(args: argparse.Namespace) -> int:
+def cmd_standings(_args: argparse.Namespace) -> int:
+    """Čistě diagnostický příkaz – porovná oficiální přehledovou stránku Ligy
+    juniorů s vlastním záznamem v Seznamy DB. Pořadí po kole se do Seznamy DB
+    už nezapisuje odtud (vzorek z téhle stránky by dal jen aktuální pozici,
+    ne historii po kolech) – zapisuje ho `cli league sync-games` komplet pro
+    všechna kola z Liga DB `Pořadí - liga` (`sync_poradi_from_liga`, viz
+    PLAN.MD). Tenhle příkaz zůstává jako nezávislá kontrola věrohodnosti."""
     config = load_config()
 
     try:
@@ -136,10 +141,6 @@ def cmd_standings(args: argparse.Namespace) -> int:
     )
 
     issues = arithmetic_issues(standing)
-    # Bilance i zápis pořadí jdou od cutoveru na Seznamy DB (viz PLAN.MD) –
-    # produkční `Zápasy` už nové zápasy nedostává. Sloupce B:G (datum, domácí,
-    # hosté, skóre domácí, skóre hosté, pozn.) mají stejný tvar jako dřív A:F
-    # v produkční tabulce, `compute_record_from_rows` beze změny.
     seznamy_db_id = require_seznamy_db_spreadsheet_id(config)
     rows = read_range(
         config, f"{SEZNAMY_ZAPASY_SHEET}!B2:G100000", spreadsheet_id=seznamy_db_id
@@ -148,39 +149,12 @@ def cmd_standings(args: argparse.Namespace) -> int:
     issues += cross_check_issues(standing, record)
 
     if issues:
-        print("Nevěrohodné – nesouhlasí s vlastní tabulkou, pořadí se nezapíše:")
+        print("Nevěrohodné – nesouhlasí s vlastní tabulkou:")
         for issue in issues:
             print(f"  - {issue}")
         return 1
 
-    row = last_game_row(config, seznamy_db_id)
-    if row is None:
-        print("V Seznamy DB zatím není žádný odehraný zápas.")
-        return 1
-
-    current = read_range(
-        config,
-        f"{SEZNAMY_ZAPASY_SHEET}!{SEZNAMY_PORADI_PO_KOLE_COLUMN}{row}",
-        spreadsheet_id=seznamy_db_id,
-    )
-    current_value = current[0][0] if current and current[0] else ""
-    print(
-        f"Navrhovaný zápis: {SEZNAMY_ZAPASY_SHEET}!{SEZNAMY_PORADI_PO_KOLE_COLUMN}{row} = "
-        f"{standing.position} (nyní: {current_value!r})"
-    )
-
-    if args.dry_run:
-        print("(--dry-run: nic se nezapsalo)")
-        return 0
-
-    if not args.yes:
-        answer = input("Zapsat? [y/N] ").strip().lower()
-        if answer != "y":
-            print("Zrušeno.")
-            return 0
-
-    write_poradi(config, seznamy_db_id, row, standing.position)
-    print("Zapsáno.")
+    print("Věrohodné – souhlasí s vlastní tabulkou.")
     return 0
 
 
@@ -240,6 +214,19 @@ def cmd_league_sync_games(args: argparse.Namespace) -> int:
         recompute_standings_history(config, spreadsheet_id)
         print("Pořadí po kolech přepočítáno.")
 
+        # Liga DB je jediný úplný zdroj historie pořadí (viz PLAN.MD) – po
+        # každém přepočtu promítnout LIT pořadí i do Seznamy DB, ať
+        # Seznamy 2.0 ukazuje stejná, kompletní data jako Liga 2.0. Volitelné
+        # (ne každé nasazení řeší i LIT), nesmí shodit Liga sync.
+        if config.seznamy_db_spreadsheet_id:
+            try:
+                updated = sync_poradi_from_liga(
+                    config, config.seznamy_db_spreadsheet_id, spreadsheet_id
+                )
+                print(f"Pořadí LIT promítnuto do Seznamy DB ({updated} zápasů).")
+            except Exception as exc:  # noqa: BLE001 – doplňkový krok, nesmí shodit Liga sync
+                print(f"Promítnutí pořadí do Seznamy DB selhalo: {exc}")
+
     if args.dry_run:
         print("(--dry-run: nic se nezapsalo)")
     return 0
@@ -287,13 +274,8 @@ def build_parser() -> argparse.ArgumentParser:
     import_cmd.set_defaults(func=cmd_import)
 
     standings_cmd = subparsers.add_parser(
-        "standings", help="Zjistí pořadí LIT na stránce Ligy juniorů a nabídne zápis"
-    )
-    standings_cmd.add_argument(
-        "--dry-run", action="store_true", help="Jen vypsat, co by se zapsalo"
-    )
-    standings_cmd.add_argument(
-        "-y", "--yes", action="store_true", help="Nezobrazovat potvrzovací dotaz"
+        "standings",
+        help="Porovná oficiální pořadí LIT na stránce Ligy juniorů s vlastní tabulkou",
     )
     standings_cmd.set_defaults(func=cmd_standings)
 

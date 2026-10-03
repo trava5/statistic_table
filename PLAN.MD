@@ -666,6 +666,49 @@ data z webu, ruční obsluha menu):
   (HC Hvězda Praha → Hvězda) – rutinní krok při každém novém soupeři,
   stejně jako u Olomouce/Šumperku dřív.
 
+✅ **„Pořadí po kole" sjednoceno na jeden zdroj pravdy (3. 10. 2026).**
+Uživatel si všiml, že graf v Seznamy 2.0 ukazoval jen poslední 2 kola,
+zatímco Liga 2.0 měl kompletní historii – zkoumání odhalilo, že to
+**nebyl jeden zdroj dat, jak se předpokládalo**, ale dva nezávislé
+mechanismy:
+- Seznamy DB: `cli standings` scrapoval **aktuální** pozici z oficiální
+  stránky a zapisoval ji jen do **posledního** řádku – stránka historii
+  nezveřejňuje, takže starší kola zůstávala navždy prázdná.
+- Liga DB: `league sync-games` → `recompute_standings_history` po každém
+  novém zápase **přepočítá kompletní historii** (všechna kola, všechny
+  týmy) ze surových výsledků + členství ve skupině – a LIT je v tom jen
+  jeden z 16 týmů, takže historie pro LIT tam **už existovala správně**.
+
+Rozhodnuto s uživatelem: přepojit vše, co dává smysl, na tenhle jediný
+úplný zdroj (Liga DB), Seznamy DB nechat jen pro data, která Liga DB
+nemá (registrační čísla, Od/Do u trestů – PDF je pořád jediný zdroj pro
+vlastní zápasová data LIT, to se neruší, viz bod 1 výše z 25. 9.). Pro
+pořadí po kole to šlo udělat, protože obě DB sdílí stejné „číslo
+utkání"/„číslo zápisu".
+
+Implementace:
+- `seznamy_sheets.sync_poradi_from_liga(config, seznamy_db_id,
+  league_db_id)` – pro každý zápas LIT v Seznamy DB najde podle čísla
+  utkání odpovídající řádek v Liga DB `Zápasy - liga` (sloupec „kolo"),
+  pak podle kola dohledá pozici LIT v `Pořadí - liga`, a zapíše ji do
+  `Zápasy!L` – pro **všechny** řádky najednou (backfill), ne jen poslední.
+  Nahrazuje `last_game_row`/`write_poradi` (smazány, byly to jediní
+  volající).
+- `cmd_league_sync_games` volá `sync_poradi_from_liga` automaticky po
+  každém přepočtu Liga pořadí (jen když byly nové zápasy, best-effort –
+  chybí-li `SEZNAMY_DB_SPREADSHEET_ID`, krok se přeskočí, nesmí shodit
+  Liga sync). Seznamy DB tak zůstává v synchronu s Liga DB bez ručního
+  kroku navíc.
+- `cmd_standings` zjednodušen na čistě diagnostický příkaz – porovná
+  oficiální stránku s vlastním záznamem (`arithmetic_issues`/
+  `cross_check_issues`), nic už nezapisuje. `--dry-run`/`-y` přepínače
+  odstraněny (byly jen pro zápis). `main.py` menu upraveno (bez
+  dry-run/potvrzovací otázky, přejmenováno na „Zkontrolovat pořadí LIT
+  proti oficiální stránce").
+- Zpětně doplněno pro všech 5 dosavadních zápasů LIT (8, 4, 6, 7, 6) –
+  ověřeno živě, Seznamy 2.0 Dashboard teď ukazuje kompletní historii
+  shodnou s Liga 2.0.
+
 ## Potvrzená rozhodnutí (21. 9. 2026)
 
 - Skript **pouze importuje** vstupní data, veškerá logika statistik zůstává ve vzorcích sešitu.
