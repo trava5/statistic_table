@@ -244,6 +244,10 @@ nevolají odnikud za běhu.
   nad `Góly`) a mirror `Brankáři (zápasy)` sloupce `K:L` („výsledek“/
   „vychytaná výhra“, MATCH proti `Zápasy (tým)`), obojí po řádcích, ne jako
   `ARRAYFORMULA` (nespolehlivé se zřetězeným polem jako lookup, viz skript).
+  „Vychytaná výhra“ navíc podmíněná sloupcem `F` („chytal“, 0/1) – list má
+  pro každý zápas řádek pro oba brankáře v soupisce, i náhradníka, takže
+  bez týhle podmínky dostal kredit za výhru i ten, co vůbec nechytal
+  (oprava 3. 10. 2026, viz PLAN.MD).
   `Bodování` (nativní Sheets Tabulka, řazení kliknutím na hlavičku) a
   `Brankáři` (vč. „Vychytané výhry“/„% výher“ ze sloupců výše, zatím bez
   shutoutu) jsou `QUERY group by` nad `Bruslaři/Brankáři (zápasy)`

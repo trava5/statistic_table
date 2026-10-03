@@ -153,6 +153,13 @@ def main() -> None:
     # výše: obyčejný (ne ARRAYFORMULA) vzorec po řádcích, se skalárním
     # lookup_value (jen $A{row}/$B{row}), ne polem – MATCH se skalárem je
     # spolehlivý stejně jako všude jinde v projektu.
+    #
+    # Past (nalezeno 3. 10. 2026): `Brankáři (zápasy)` má pro každý zápas
+    # řádek pro VŠECHNY brankáře v soupisce, ne jen pro toho, co chytal
+    # (sloupec F = "chytal", 0/1) – `seznamy_sheets.build_seznamy_rows`
+    # zapisuje i náhradníka. "vychytaná výhra" bez podmínky na F=1 proto
+    # připsala výhru/prohru oběma brankářům v zápase, i tomu, co vůbec
+    # nenastoupil – Krátký i Weber tak měli dvojnásobek skutečných výher.
     data.append(
         {
             "range": f"'{SEZNAMY_GOALIES_LOG_SHEET}'!K1",
@@ -166,7 +173,12 @@ def main() -> None:
             f'MATCH($A{row}&"|"&$B{row};'
             f'{ZAPASY_TYM}!$A$2:$A${ROWS}&"|"&{ZAPASY_TYM}!$B$2:$B${ROWS};0));""))'
         )
-        vychytana_vyhra = f'=IF(K{row}="";"";IF(OR(K{row}="V";K{row}="VP");1;0))'
+        # F = "chytal" (0/1, viz Seznamy DB Brankáři (zápasy)) – bez téhle
+        # podmínky dostal výhru/prohru i náhradní brankář, co vůbec
+        # nenastoupil (viz past výše).
+        vychytana_vyhra = (
+            f'=IF(K{row}="";"";IF(AND(F{row}=1;OR(K{row}="V";K{row}="VP"));1;0))'
+        )
         goalies_extra_rows.append([vysledek, vychytana_vyhra])
     data.append({"range": f"'{SEZNAMY_GOALIES_LOG_SHEET}'!K2", "values": goalies_extra_rows})
 

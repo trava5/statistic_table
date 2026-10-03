@@ -709,6 +709,21 @@ Implementace:
   ověřeno živě, Seznamy 2.0 Dashboard teď ukazuje kompletní historii
   shodnou s Liga 2.0.
 
+✅ **Oprava „vychytaných výher“ u brankářů v Seznamy 2.0 (3. 10. 2026).**
+Uživatel si všiml, že Krátký měl v listu `Brankáři` nesmyslně vysoký počet
+výher. Příčina: `Brankáři (zápasy)` má pro každý zápas řádek pro **oba**
+brankáře v soupisce (i náhradníka, co vůbec nechytal – `seznamy_sheets.
+build_seznamy_rows` zapisuje sloupec „chytal“ 0/1, ale pořád vytvoří
+řádek), zatímco vzorec „vychytaná výhra“ v `build_seznamy_v2_mirrors.py`
+kontroloval jen výsledek týmu v daném zápase (`K{row}="V"/"VP"`), ne
+jestli ten konkrétní brankář opravdu chytal. Výsledek: oba brankáři (ten,
+co hrál, i náhradník na lavičce) dostali kredit za každou výhru týmu –
+Krátký i Weber tak měli dvojnásobek skutečných výher (2 místo 1 u obou,
+celkem 4 místo skutečných 2 výher LIT v sezóně). Oprava: podmínka
+rozšířena o `F{row}=1` (sloupec „chytal“) – `AND(F{row}=1;OR(K{row}="V";
+K{row}="VP"))`. Ověřeno živě: Weber 1/3 (33,3 %), Krátký 1/2 (50 %),
+součet přesně odpovídá 2 skutečným výhrám LIT v sezóně.
+
 ## Potvrzená rozhodnutí (21. 9. 2026)
 
 - Skript **pouze importuje** vstupní data, veškerá logika statistik zůstává ve vzorcích sešitu.
