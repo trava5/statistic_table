@@ -782,6 +782,25 @@ položku. Doplněno `"SC Retia Kolín": "Kolín"`. Ověřeno živě: `cli import
 --dry-run` i ostrý běh teď zápis 06 zapíší bez chyby, řádek v Seznamy DB
 `Zápasy` (4044, 4.10.2026, LIT–Kolín 4:3) sedí.
 
+✅ **„Seznamy 2.0“ přejmenována na „HC LIT jun 2026/27“ (5. 10. 2026).**
+Uživatel přejmenoval prezentační tabulku (`SEZNAMY_V2_SPREADSHEET_ID`) v
+Google Tabulkách – jen titulek souboru, ID i obsah beze změny, žádný
+zásah do kódu nebo `.env` potřeba (tabulka se v kódu adresuje jen přes
+ID, ne přes název). PROJECT.MD/README.md/`.env.example` aktualizované na
+nový název (PLAN.MD jako chronologický log si historické zápisy pod
+starým názvem „Seznamy 2.0“ záměrně ponechává beze změny). **Aktuální
+seznam tabulek, které se používají v provozu:**
+- **„HC LIT jun 2026/27“** (`SEZNAMY_V2_SPREADSHEET_ID`) – prezentační
+  tabulka pro LIT, sleduje trenérský štáb.
+- **„Liga 2.0“** (`LEAGUE_V2_SPREADSHEET_ID`) – prezentační tabulka pro
+  celou ligu.
+- **„Seznam hráčů“** (`SEZNAMY_PRIVATE_SPREADSHEET_ID`) – soukromá
+  tabulka s osobními údaji hráčů/trenérů, edituje se ručně.
+
+Zbylé tabulky (Seznamy DB, Liga DB, produkční „Seznamy“) zůstávají jen
+jako datová/historická vrstva, nikdo je běžně neotevírá (viz rozhodnutí
+2. 10. 2026 výše).
+
 ## Potvrzená rozhodnutí (21. 9. 2026)
 
 - Skript **pouze importuje** vstupní data, veškerá logika statistik zůstává ve vzorcích sešitu.

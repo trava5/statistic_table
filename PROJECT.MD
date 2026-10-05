@@ -31,7 +31,7 @@ Statistiky na listech Bodování a Brankáři se tvoří z listů Zápasy, Sesta
 
 **Od cutoveru na Seznamy DB (26. 9. 2026, viz PLAN.MD) skript do listů Zápasy
 a Sestavy níže už nezapisuje** – nové zápasy jdou jen do `SEZNAMY_DB_SPREADSHEET_ID`
-(sekce „LIT Seznamy 2.0“ níže). Popis vstupních buněk zůstává jako historický
+(sekce „HC LIT jun 2026/27“ níže). Popis vstupních buněk zůstává jako historický
 záznam toho, jak byla tabulka naplněná do 26. 9. 2026 (zápasy č. 4002–4026),
 a jako reference pro `importer.build_import` (netknutý, ale nevolaný z živé
 cesty).
@@ -201,7 +201,7 @@ Až se do dat budou napojovat další analytické nástroje, tohle rozdělení
 (syrová fakta vs. odvozené pohledy) je i důvod, proč zvažujeme samostatný
 Google Sheet jako „databázovou“ vrstvu – viz diskuze v historii projektu.
 
-## LIT Seznamy 2.0 (od 26. 9. 2026 živá architektura, dřívější „Seznamy“ nahradila)
+## LIT „HC LIT jun 2026/27“ (od 26. 9. 2026 živá architektura, dřívější „Seznamy“ nahradila; tabulka přejmenována z „Seznamy 2.0“ 5. 10. 2026 – jen titulek, ID/obsah beze změny)
 
 Stejný DB → prezentace vzor jako u Ligy, tentokrát nad daty LIT z PDF
 (`import_pdf`/`import_folder`), ne z webu. **Cutover dokončen 26. 9. 2026**
@@ -232,8 +232,9 @@ nevolají odnikud za běhu.
   z pohledu daného týmu) počítá Python stejným principem jako `Zápasy -
   liga (tým)` u Ligy – composite pravidlo s časovým párováním trestů, ne
   vzorec (viz „Co je záměrně v Pythonu“ níže).
-- **Seznamy 2.0** (`SEZNAMY_V2_SPREADSHEET_ID`) – prezentační tabulka, jediné
-  místo, které trenérský štáb sleduje po cutoveru. `IMPORTRANGE` mirror
+- **HC LIT jun 2026/27** (`SEZNAMY_V2_SPREADSHEET_ID`, dříve „Seznamy 2.0“) –
+  prezentační tabulka, jediné místo, které trenérský štáb sleduje po
+  cutoveru. `IMPORTRANGE` mirror
   syrových listů z DB (`scripts/build_seznamy_v2_mirrors.py`, spill `A:L`
   u `Zápasy` – zahrnuje i „pořadí po kole“) + neosobních sloupců B:F
   (Příjmení, Jméno, č. reg., číslo, post) `Seznam hráčů` ze **soukromé**
@@ -331,12 +332,12 @@ statistic_table/
     build_league_aggregate_sheets.py  jednorázové postavení Bruslaři/Brankáři - liga
     build_league_v2_mirrors.py        jednorázové IMPORTRANGE zrcadlo DB v Liga 2.0
     build_league_poradi_view.py       přehled Skupina 1/2 na listu Pořadí - liga
-    build_seznamy_v2_mirrors.py       jednorázové IMPORTRANGE zrcadlo DB v Seznamy 2.0
-    build_seznamy_aggregate_sheets.py jednorázové postavení Bodování/Brankáři v Seznamy 2.0
-    build_seznamy_tym_sheet.py        jednorázové postavení listu Tým v Seznamy 2.0
-    build_seznamy_dashboard.py        jednorázové postavení listu Dashboard v Seznamy 2.0
+    build_seznamy_v2_mirrors.py       jednorázové IMPORTRANGE zrcadlo DB v HC LIT jun 2026/27
+    build_seznamy_aggregate_sheets.py jednorázové postavení Bodování/Brankáři v HC LIT jun 2026/27
+    build_seznamy_tym_sheet.py        jednorázové postavení listu Tým v HC LIT jun 2026/27
+    build_seznamy_dashboard.py        jednorázové postavení listu Dashboard v HC LIT jun 2026/27
     build_seznamy_last5_sheet.py      jednorázové postavení listu Last 5 (forma
-                                       za posledních 5 zápasů) v Seznamy 2.0
+                                       za posledních 5 zápasů) v HC LIT jun 2026/27
     restore_production_seznam_hracu.py obnova listu Seznam hráčů v produkční
                                        tabulce po přesunu do soukromé tabulky
   tests/

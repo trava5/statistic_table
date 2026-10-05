@@ -47,7 +47,7 @@ celé sdílecí odkazy – např. z `.../folders/1k364.../` jen `1k364...`.
 ## Použití
 
 Od 26. 9. 2026 `import` zapisuje do **Seznamy DB** (`SEZNAMY_DB_SPREADSHEET_ID`),
-ne do produkční tabulky „Seznamy“ – viz sekce „LIT Seznamy 2.0“ níže a
+ne do produkční tabulky „Seznamy“ – viz sekce „HC LIT jun 2026/27“ níže a
 PROJECT.MD/PLAN.MD. „Pořadí po kole“ od 3. 10. 2026 doplňuje do Seznamy DB
 `league sync-games` (ze sdíleného zdroje Liga DB, viz níže) – `standings`
 už nic nezapisuje, je to jen nezávislá kontrola věrohodnosti.
@@ -138,7 +138,7 @@ Python počítá i něco navíc, jsou vysvětlené a zdůvodněné v PROJECT.MD)
 `import` bez zápisu vyžaduje `--dry-run`, aby šlo předem zkontrolovat, co by
 se zapsalo, beze změny tabulky.
 
-### LIT Seznamy 2.0
+### LIT „HC LIT jun 2026/27“ (dříve „Seznamy 2.0“, přejmenováno 5. 10. 2026)
 
 Od 26. 9. 2026 (cutover, viz PLAN.MD) je tohle **jediná** cesta zápisu pro
 LIT – `cli import` zapisuje výhradně do `SEZNAMY_DB_SPREADSHEET_ID`, přímý
@@ -155,8 +155,9 @@ Stejný DB → prezentace vzor jako u Ligy:
   jediný úplný zdroj historie pořadí – web nezveřejňuje historii tabulky,
   takže se musí dopočítat ze všech výsledků kola, a Liga DB to už dělá
   pro všechny týmy včetně LIT) – `cli standings` je jen diagnostika.
-- **Seznamy 2.0** (`SEZNAMY_V2_SPREADSHEET_ID`) – prezentační tabulka
-  (Dashboard, Tým, Bodování, Brankáři), kterou sleduje trenérský štáb.
+- **HC LIT jun 2026/27** (`SEZNAMY_V2_SPREADSHEET_ID`, dříve „Seznamy 2.0“) –
+  prezentační tabulka (Dashboard, Tým, Bodování, Brankáři), kterou sleduje
+  trenérský štáb.
   Syrové listy jsou v ní `IMPORTRANGE` mirror nad DB
   (`scripts/build_seznamy_v2_mirrors.py`), stejný princip jako u Liga 2.0.
   Po každé změně tvaru syrových dat (nový sloupec v DB) je potřeba tenhle
@@ -164,14 +165,14 @@ Stejný DB → prezentace vzor jako u Ligy:
 - **Soukromá tabulka** (`SEZNAMY_PRIVATE_SPREADSHEET_ID`, od 2. 10. 2026) –
   listy `Seznam hráčů`/`Trenéři` s citlivými osobními údaji, oddělené
   i od produkční `Seznamy` i od Seznamy DB. Trenér ji edituje ručně,
-  servisní účet má jen roli **Prohlížeč**. Seznamy 2.0 z ní čte jen
+  servisní účet má jen roli **Prohlížeč**. HC LIT jun 2026/27 z ní čte jen
   neosobní sloupce B:F Seznamu hráčů. Produkční `Bodování`/`Brankáři`
   (historický záznam do 26. 9.) na tenhle list formulově závisí – po
   přesunu bylo nutné list `Seznam hráčů` obnovit i v produkční tabulce
   jako hybrid (neosobní sloupce mirrorem odtud, zbytek místními vzorci) –
   viz `scripts/restore_production_seznam_hracu.py` a PLAN.MD.
 
-Podrobný popis listů a vzorců je v PROJECT.MD, sekce „LIT Seznamy 2.0“.
+Podrobný popis listů a vzorců je v PROJECT.MD, sekce „HC LIT jun 2026/27“.
 
 ### Textové menu
 
@@ -200,7 +201,7 @@ Po dry-run je potřeba výslovně napsat „a“/„ano“, ne jen potvrdit Ente
 - Skript zapisuje **jen syrová vstupní data** (soupisky, góly, přihrávky,
   tresty – viz PROJECT.MD) do Seznamy DB, formou append (nikdy nepřepisuje
   cizí řádek). Veškeré výpočty a prezentace (Bodování, Brankáři, Tým,
-  Dashboard) zůstávají ve vzorcích Seznamy 2.0 nad touhle DB.
+  Dashboard) zůstávají ve vzorcích HC LIT jun 2026/27 nad touhle DB.
 - Evidence importovaných souborů je na skrytém listu **Import log** přímo
   v Seznamy DB (ne v produkční tabulce) – přežije změnu počítače. Druhé
   spuštění `import` nad stejnou složkou nic nezmění (soubory se stejným
