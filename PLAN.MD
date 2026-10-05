@@ -773,6 +773,15 @@ proměnnými místo jedné). Ověřeno živě proti sezónním hodnotám (5
 odehraných = celá dosavadní sezóna): Bodování i Brankáři (Weber 1/3 =
 33,33 %, Krátký 1/2 = 50,00 %) sedí přesně.
 
+✅ **Chybějící alias soupeře při PDF importu (5. 10. 2026).** Import
+zápisu 06 (4. 10. 2026, LIT–Kolín 4:3) spadl na chybu „Soupeř 'SC Retia
+Kolín' nemá v `TEAM_ALIASES` zkratku pro tabulku Zápasy“ – `TEAM_ALIASES`
+je záměrně bez automatického odvození (různé kluby mají různé předpony,
+viz komentář u slovníku), nový soupeř tedy vždy znamená novou ruční
+položku. Doplněno `"SC Retia Kolín": "Kolín"`. Ověřeno živě: `cli import
+--dry-run` i ostrý běh teď zápis 06 zapíší bez chyby, řádek v Seznamy DB
+`Zápasy` (4044, 4.10.2026, LIT–Kolín 4:3) sedí.
+
 ## Potvrzená rozhodnutí (21. 9. 2026)
 
 - Skript **pouze importuje** vstupní data, veškerá logika statistik zůstává ve vzorcích sešitu.

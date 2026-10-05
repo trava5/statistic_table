@@ -200,6 +200,7 @@ TEAM_ALIASES = {
     "HC Olomouc": "Olomouc",
     "HK MD Šumperk": "Šumperk",
     "HC Hvězda Praha": "Hvězda",
+    "SC Retia Kolín": "Kolín",
 }
 
 IMPORT_LOG_SHEET = "Import log"
