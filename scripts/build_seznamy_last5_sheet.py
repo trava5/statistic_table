@@ -26,6 +26,10 @@ ostatní vzorce ho používají jako "je tohle číslo zápisu mezi posledními
 pěti" filtr přes `COUNTIF` uvnitř `SUMPRODUCT` (`SUMIF`/`COUNTIFS` neumí
 filtrovat podle "je v seznamu hodnot", jen podle jedné rovnosti).
 
+„Bodový zisk“ (H5, `=F5/(A5*3)`) – stejná buňka jako na Liga 2.0 team
+template, jen přes okno posledních 5 zápasů – doplněno 5. 10. 2026 na
+žádost uživatele.
+
 Vzorce používají `;` jako oddělovač argumentů (tabulka je v cs_CZ locale).
 
 Použití:
@@ -146,7 +150,10 @@ def main() -> None:
 
     # --- Sezónní přehled (posledních 5 zápasů) -------------------------------
     put("A3", "SEZÓNNÍ PŘEHLED (POSLEDNÍCH 5 ZÁPASŮ)")
-    put_row("A4", ["Odehráno", "V", "VP", "PP", "P", "Body", "Skóre (LIT:soupeř)"])
+    put_row(
+        "A4",
+        ["Odehráno", "V", "VP", "PP", "P", "Body", "Skóre (LIT:soupeř)", "Bodový zisk"],
+    )
     put("A5", "=COUNTA($N$2:$N$6)")
     put("B5", _count_result("V"))
     put("C5", _count_result("VP"))
@@ -157,6 +164,11 @@ def main() -> None:
     # jako samostatná buňka) - při vnořování do jiného výrazu (zřetězení
     # skóre) musí "=" odpadnout, jinak vznikne neplatný zápis "==...".
     put("G5", f'={_sum_lit("E")[1:]}&":"&{_sum_opp("E")[1:]}')
+    # Bodový zisk = podíl ze zisku maximálně možných bodů (3 za zápas) ze
+    # stejného okna posledních 5 zápasů jako zbytek listu – stejná buňka
+    # jako na Liga 2.0 team template, doplněno 5. 10. 2026 na žádost
+    # uživatele.
+    put("H5", "=F5/(A5*3)")
 
     # --- Přesilovky / oslabení ------------------------------------------------
     put("A7", "PŘESILOVKY / OSLABENÍ (POSLEDNÍCH 5 ZÁPASŮ)")
@@ -231,7 +243,7 @@ def main() -> None:
 
     bold_ranges = [
         "A1:A1", "A3:A3", "A7:A7", "A11:A11", "A16:A16", "I16:I16",
-        "A4:G4", "A8:F8", "A12:F12",
+        "A4:H4", "A8:F8", "A12:F12",
     ]
     format_requests = [
         {
@@ -252,7 +264,7 @@ def main() -> None:
                 "fields": "userEnteredFormat.numberFormat",
             }
         }
-        for rng in ("B9:B9", "D9:D9", "N18:N50")
+        for rng in ("B9:B9", "D9:D9", "N18:N50", "H5:H5")
     ]
     # N (pomocný seznam čísel zápisu) a J (pomocný čitatel pro Využití PP)
     # skryté, ať nepletou pohled na list.

@@ -157,10 +157,14 @@ samostatných** Google Tabulkách, ne v „Seznamy“:
   vzorec nad mirror listem `*-liga (zápasy)`, jednorázově postavený
   `scripts/build_league_aggregate_sheets.py` – Python do nich nezapisuje.
   List „Tým – šablona“ vzorci `QUERY`/`SUMIF` nad sezónními součty (Sezónní
-  přehled, Přesilovky/oslabení, Vyloučení a TM, grafy, a dole vedle sebe
-  Odehrané zápasy/Bodování s kompletní soupiskou vč. čísla dresu/Brankáři),
-  naklonovaný skriptem pro každý tým zvlášť (`league sync-teams`). Šablonu
-  samotnou staví jednorázově `scripts/build_league_team_template.py`.
+  přehled vč. „Bodového zisku“ – `H5`, `=F5/(A5*3)`, podíl ze zisku
+  maximálně možných bodů, od 5. 10. 2026 – Přesilovky/oslabení, Vyloučení
+  a TM, grafy, a dole vedle sebe Odehrané zápasy/Bodování s kompletní
+  soupiskou vč. čísla dresu/Brankáři), naklonovaný skriptem pro každý tým
+  zvlášť (`league sync-teams`). Šablonu samotnou staví jednorázově
+  `scripts/build_league_team_template.py` – `sync-teams` klonuje šablonu
+  jen pro nové týmy, dodatečná změna šablony (jako „Bodový zisk“) se do
+  existujících listů týmů musí doplnit ručním patchem (viz PLAN.MD).
   Stará tabulka `LEAGUE_SPREADSHEET_ID` (Liga) je zamrzlá, nahrazená
   Liga 2.0. Použití viz README, sekce „Liga: statistiky všech týmů“; moduly:
   `league_model.py`, `league_scraper.py`, `league_stats.py`
@@ -260,17 +264,21 @@ nevolají odnikud za běhu.
   zatím bez sekce Ročníky. `Dashboard` (`scripts/build_seznamy_dashboard.py`)
   je přehled pro trenérský štáb nad `Tým`/`Bodování`/`Brankáři` (žádná
   vlastní syrová data) – sezónní přehled vč. „Pořadí v lize“
-  (`INDEX`+`COUNTA` nad mirrored `Zápasy!L`), přesilovky/oslabení,
-  vyloučení/TM, grafy Skóre po zápasech/po třetinách, a pod tím (od
+  (`INDEX`+`COUNTA` nad mirrored `Zápasy!L`) a „Bodového zisku“ (`I5`,
+  `=F5/(A5*3)`, stejná buňka jako na Liga 2.0, posunutá na `I`, protože
+  `H` zabírá „Pořadí v lize“), přesilovky/oslabení, vyloučení/TM, grafy
+  Skóre po zápasech/po třetinách, a pod tím (od
   5. 10. 2026, stejné rozložení jako Liga 2.0 team template) Odehrané
   zápasy/Bodování/Brankáři vedle sebe – zjednodušený seznam odehraných
   zápasů dohledává „Datum“ přes `VLOOKUP` do `Zápasy` (`Zápasy (tým)`
   nemá sloupec s datem), zbytek z pole skrytého raw helperu `QUERY`.
   `Last 5` (`scripts/build_seznamy_last5_sheet.py`, 3. 10. 2026) má stejné
-  tabulkové sekce a rozložení jako Dashboard (sezónní přehled/přesilovky-
-  oslabení/vyloučení-TM, pod tím Bodování a Brankáři vedle sebe), ale
-  spočítané jen z **posledních 5 odehraných zápasů LIT** místo celé sezóny
-  – aktuální forma týmu. Bez grafů (vědomě, odsouhlaseno s uživatelem).
+  tabulkové sekce a rozložení jako Dashboard (sezónní přehled vč.
+  „Bodového zisku“ na `H5` – tady `H` volné, žádné „Pořadí v lize“ –
+  /přesilovky-oslabení/vyloučení-TM, pod tím Bodování a Brankáři vedle
+  sebe), ale spočítané jen z **posledních 5 odehraných zápasů LIT**
+  místo celé sezóny – aktuální forma týmu. Bez grafů (vědomě,
+  odsouhlaseno s uživatelem).
   `Zápasy (tým)` nemá sloupec s datem, takže „posledních 5“ se vybírá podle
   čísla zápisu (`QUERY ... order by A desc limit 5` do skrytého pomocného
   sloupce N2:N6) – čísla zápisů přiděluje svaz postupně podle termínu,

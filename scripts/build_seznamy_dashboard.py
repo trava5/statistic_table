@@ -12,6 +12,10 @@ stejný vzor jako produkční Dashboard) – ten sloupec doplňuje
 `cli league sync-games` (`seznamy_sheets.sync_poradi_from_liga`), ne `cli
 standings` (jen diagnostika, nic nezapisuje) – viz PLAN.MD.
 
+„Bodový zisk“ (I5, `=F5/(A5*3)`) – stejná buňka jako na Liga 2.0 team
+template (tam H5, tady I5, protože H už zabírá „Pořadí v lize“) –
+doplněno 5. 10. 2026 na žádost uživatele.
+
 Vzorce používají `;` jako oddělovač argumentů (tabulka je v cs_CZ locale).
 Pozn. k `endRowIndex` u grafů: viz build_league_team_template.py – Sheets
 API tiše zahazuje `series` grafu nad moc velkým zdrojovým rozsahem, proto
@@ -60,7 +64,10 @@ def build_value_updates() -> dict[str, list[list]]:
     put("A3", "SEZÓNNÍ PŘEHLED")
     put_row(
         "A4",
-        ["Odehráno", "V", "VP", "PP", "P", "Body", "Skóre (LIT:soupeř)", "Pořadí v lize"],
+        [
+            "Odehráno", "V", "VP", "PP", "P", "Body", "Skóre (LIT:soupeř)",
+            "Pořadí v lize", "Bodový zisk",
+        ],
     )
     put("A5", f"={TYM}!B4")
     put("B5", f'=COUNTIFS({ZT}!$B:$B;{LIT};{ZT}!$G:$G;"V")')
@@ -69,9 +76,14 @@ def build_value_updates() -> dict[str, list[list]]:
     put("E5", f'=COUNTIFS({ZT}!$B:$B;{LIT};{ZT}!$G:$G;"P")')
     put("F5", f"=SUMIF({ZT}!$B:$B;{LIT};{ZT}!$H:$H)")
     put("G5", f'={TYM}!B5&":"&{TYM}!C5')
-    # Poslední vyplněná hodnota Zápasy!L (zapisuje cli.cmd_standings po každém
-    # kole, ne cli import) – stejný INDEX+COUNTA vzor jako produkční Dashboard.
+    # Poslední vyplněná hodnota Zápasy!L (doplňuje cli league sync-games,
+    # seznamy_sheets.sync_poradi_from_liga, ne cli standings – ten je jen
+    # diagnostika) – stejný INDEX+COUNTA vzor jako produkční Dashboard.
     put("H5", f'=IFERROR(INDEX({Z}!$L$2:$L$5000;COUNTA({Z}!$A$2:$A$5000));"")')
+    # Bodový zisk = podíl ze zisku maximálně možných bodů (3 za zápas),
+    # stejná buňka jako na Liga 2.0 team template (tam H5, tady I5, protože
+    # H už zabírá "Pořadí v lize") – doplněno 5. 10. 2026 na žádost uživatele.
+    put("I5", "=F5/(A5*3)")
 
     # --- Přesilovky / oslabení -------------------------------------------------
     put("A7", "PŘESILOVKY / OSLABENÍ")
@@ -238,7 +250,7 @@ def main() -> None:
     bold_ranges = [
         "A1:A1", "A3:A3", "A7:A7", "A11:A11", "A15:A15", "A32:A32",
         "A49:A49", "I49:I49", "T49:T49",
-        "A4:H4", "A8:F8", "A12:F12", "A50:G50",
+        "A4:I4", "A8:F8", "A12:F12", "A50:G50",
     ]
 
     def range_to_grid(a1: str) -> dict:
@@ -273,7 +285,7 @@ def main() -> None:
                 "fields": "userEnteredFormat.numberFormat",
             }
         }
-        for rng in ("B9:B9", "D9:D9")
+        for rng in ("B9:B9", "D9:D9", "I5:I5")
     ]
 
     # "0;0" = druhá sekce formátu (záporná čísla) bez znaménka – R má záporné

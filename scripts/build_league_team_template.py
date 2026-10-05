@@ -49,7 +49,10 @@ def build_value_updates() -> dict[str, list[list]]:
 
     # --- Sezónní přehled ----------------------------------------------------
     put("A3", "SEZÓNNÍ PŘEHLED")
-    put_row("A4", ["Odehráno", "V", "VP", "PP", "P", "Body", "Skóre (tým:soupeř)"])
+    put_row(
+        "A4",
+        ["Odehráno", "V", "VP", "PP", "P", "Body", "Skóre (tým:soupeř)", "Bodový zisk"],
+    )
     put("A5", f"=COUNTIF({ZT}!$B:$B;$B$1)")
     put("B5", f'=COUNTIFS({ZT}!$B:$B;$B$1;{ZT}!$H:$H;"V")')
     put("C5", f'=COUNTIFS({ZT}!$B:$B;$B$1;{ZT}!$H:$H;"VP")')
@@ -60,6 +63,11 @@ def build_value_updates() -> dict[str, list[list]]:
         "G5",
         f"=SUMIF({ZT}!$B:$B;$B$1;{ZT}!$F:$F)&\":\"&SUMIF({ZT}!$B:$B;$B$1;{ZT}!$G:$G)",
     )
+    # Bodový zisk = podíl ze zisku maximálně možných bodů (3 za zápas) –
+    # doplněno 5. 10. 2026 na žádost uživatele, stejná buňka H5 na všech
+    # listech jednotlivých týmů (relativní odkazy A5/F5 jsou na každém listu
+    # týmu správně, nemusí se upravovat per-tým).
+    put("H5", "=F5/(A5*3)")
 
     # --- Přesilovky / oslabení -----------------------------------------------
     put("A7", "PŘESILOVKY / OSLABENÍ")
@@ -224,7 +232,7 @@ def main() -> None:
     bold_ranges = [
         "A1:A1", "A3:A3", "A7:A7", "A11:A11", "A15:A15", "A32:A32",
         "A49:A49", "I49:I49", "P49:P49",
-        "A4:G4", "A8:F8", "A12:F12", "A50:G50", "I50:O50", "P50:U50",
+        "A4:H4", "A8:F8", "A12:F12", "A50:G50", "I50:O50", "P50:U50",
     ]
 
     def range_to_grid(a1: str) -> dict:
@@ -251,9 +259,10 @@ def main() -> None:
         for rng in bold_ranges
     ]
 
-    # Využití PP (B9) a Úspěšnost PK (D9) jsou podíly – bez tohoto formátu se
-    # zobrazují jako syrové desetinné číslo (0,1666...) místo procent.
-    percent_ranges = ["B9:B9", "D9:D9"]
+    # Využití PP (B9), Úspěšnost PK (D9) a Bodový zisk (H5) jsou podíly – bez
+    # tohoto formátu se zobrazují jako syrové desetinné číslo (0,1666...)
+    # místo procent.
+    percent_ranges = ["B9:B9", "D9:D9", "H5:H5"]
     percent_format = {"type": "PERCENT", "pattern": "0.00%"}
     format_requests += [
         {

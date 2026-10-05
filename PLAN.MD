@@ -847,6 +847,27 @@ Příbram 1:3 P, 20. 9. Chomutov–LIT 5:4 V pro LIT, … 4. 10. LIT–Kolín
 přidaný zápas Kolín) – grafy (Skóre po zápasech/Pořadí po kole/Skóre po
 třetinách) po přesunu beze změny, všechny 3 série ověřené skriptem OK.
 
+✅ **„Bodový zisk“ doplněn do Liga 2.0, Dashboardu a Last 5 (5. 10. 2026).**
+Nová buňka `=F5/(A5*3)` (zisk bodů jako podíl z maximálně možných, 3 za
+zápas), zobrazená jako procento:
+- **Liga 2.0 team template** – `H4`/`H5`, header „Bodový zisk“.
+  `league sync-teams` klonuje šablonu jen pro nové týmy, existující
+  listy nepřepisuje (stejná past jako u dřívějšího „order by D“ fixu) –
+  proto krom úpravy `build_league_team_template.py` (a jeho přeběhnutí,
+  což přepsalo i samotnou šablonu) proběhl i jednorázový patch přímo na
+  všech 16 už existujících listů týmů (transientní skript, nebyl
+  commitnutý do repa – stejný přístup jako u „order by D“).
+- **„HC LIT jun 2026/27“, Dashboard** – `I5` (ne `H5`, to už zabírá
+  „Pořadí v lize“), header „Bodový zisk“ v `I4`.
+- **„HC LIT jun 2026/27“, Last 5** – `H5` (tady je `H` volné, žádné
+  „Pořadí v lize“), přes stejné okno posledních 5 zápasů jako zbytek
+  listu.
+
+Ověřeno živě: LIT na Liga 2.0 (9 bodů / 18 = 50,00 %) sedí přesně na
+Dashboard `I5` (taky 50,00 %, stejná sezóna, nezávislý výpočet nad
+Seznamy daty) – dobrá vzájemná kontrola. Last 5 `H5` = 60,00 % (9/15,
+5 zápasů v okně). Příbram na Liga 2.0 8/18 = 44,44 % pro orientaci.
+
 ## Potvrzená rozhodnutí (21. 9. 2026)
 
 - Skript **pouze importuje** vstupní data, veškerá logika statistik zůstává ve vzorcích sešitu.
