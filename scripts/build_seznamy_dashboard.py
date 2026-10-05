@@ -1,10 +1,16 @@
 """Jednorázový skript: postaví list `Dashboard` v SEZNAMY_V2_SPREADSHEET_ID
-(„Seznamy 2.0“) – přehled pro trenérský štáb nad už hotovými listy `Tým`,
-`Zápasy (tým)`, `Zápasy`, `Bodování`, `Brankáři`.
+(„HC LIT jun 2026/27“, dříve „Seznamy 2.0“) – přehled pro trenérský štáb nad
+už hotovými listy `Tým`, `Zápasy (tým)`, `Zápasy`, `Bodování`, `Brankáři`.
+
+Spodní část (od řádku 49) má stejné rozložení jako Liga 2.0 team template
+(`build_league_team_template.py`): ODEHRANÉ ZÁPASY vlevo (zjednodušený
+seznam, A:G), BODOVÁNÍ uprostřed (I:M) a BRANKÁŘI vpravo (T:Y) – doplněno
+5. 10. 2026 na žádost uživatele, ať obě tabulky mají stejný formát.
 
 „Pořadí v lize“ (H5) čte poslední vyplněnou hodnotu `Zápasy!L` (INDEX+COUNTA,
-stejný vzor jako produkční Dashboard) – ten sloupec zapisuje `cli standings`
-přímo do Seznamy DB (ne `cli import`), viz PLAN.MD.
+stejný vzor jako produkční Dashboard) – ten sloupec doplňuje
+`cli league sync-games` (`seznamy_sheets.sync_poradi_from_liga`), ne `cli
+standings` (jen diagnostika, nic nezapisuje) – viz PLAN.MD.
 
 Vzorce používají `;` jako oddělovač argumentů (tabulka je v cs_CZ locale).
 Pozn. k `endRowIndex` u grafů: viz build_league_team_template.py – Sheets
@@ -130,14 +136,47 @@ def build_value_updates() -> dict[str, list[list]]:
     put("R4", "Pořadí (záporně, pro graf)")
     put("R5", '=ARRAYFORMULA(IF($Q$5:$Q$40="";"";-$Q$5:$Q$40))')
 
-    # --- Bodování (všichni hráči) a Brankáři (vedle sebe) ----------------------
-    put("A49", "BODOVÁNÍ")
-    put(
+    # --- Odehrané zápasy / Bodování / Brankáři (vedle sebe) --------------------
+    # Stejné rozložení jako Liga 2.0 team template (ODEHRANÉ ZÁPASY vlevo,
+    # BODOVÁNÍ uprostřed, BRANKÁŘI vpravo) – Bodování/Brankáři posunuty
+    # doprava, ať mezi ně přibyl zjednodušený seznam odehraných zápasů
+    # (uživatelský požadavek 5. 10. 2026, viz PLAN.MD).
+    put("A49", "ODEHRANÉ ZÁPASY")
+    put_row(
         "A50",
+        ["Datum", "Soupeř", "D/V", "Skóre LIT", "Skóre soupeř", "Výsledek", "Body"],
+    )
+    # Zápasy (tým) nemá sloupec s datem (viz PROJECT.MD) – Datum se dohledává
+    # VLOOKUPem do Zápasy podle čísla zápisu ze skrytého raw helperu AA:AG
+    # (stejný FILTER/VLOOKUP přes pole jako u N5 výš – jednoduché kritérium,
+    # na rozdíl od MATCH se zřetězeným klíčem je tohle ověřeně spolehlivé).
+    # Zbylé sloupce jsou prostá kopie odpovídajícího sloupce helperu.
+    put(
+        "A51",
+        f'=ARRAYFORMULA(IF($AA$51:$AA$200="";"";'
+        f'IFERROR(VLOOKUP($AA$51:$AA$200;{Z}!$A:$B;2;FALSE))))',
+    )
+    put("B51", '=ARRAYFORMULA(IF($AA$51:$AA$200="";"";$AB$51:$AB$200))')
+    put("C51", '=ARRAYFORMULA(IF($AA$51:$AA$200="";"";$AC$51:$AC$200))')
+    put("D51", '=ARRAYFORMULA(IF($AA$51:$AA$200="";"";$AD$51:$AD$200))')
+    put("E51", '=ARRAYFORMULA(IF($AA$51:$AA$200="";"";$AE$51:$AE$200))')
+    put("F51", '=ARRAYFORMULA(IF($AA$51:$AA$200="";"";$AF$51:$AF$200))')
+    put("G51", '=ARRAYFORMULA(IF($AA$51:$AA$200="";"";$AG$51:$AG$200))')
+    # Skrytý raw helper (číslo zápisu, soupeř, D/V, skóre tým, skóre soupeř,
+    # výsledek, body) – `order by A` = chronologicky (čísla zápisů přiděluje
+    # svaz podle termínu, stejný princip jako u Liga 2.0 team template).
+    put(
+        "AA51",
+        f"=QUERY({ZT}!A:O;\"select A, C, D, E, F, G, H where B = 'LIT' order by A\";0)",
+    )
+
+    put("I49", "BODOVÁNÍ")
+    put(
+        "I50",
         f'=QUERY({BOD}!A:G;"select A, C, D, E, F order by F desc";1)',
     )
-    put("I49", "BRANKÁŘI")
-    put("I50", f'=QUERY({GOA}!A:F;"select *";1)')
+    put("T49", "BRANKÁŘI")
+    put("T50", f'=QUERY({GOA}!A:F;"select *";1)')
 
     return updates
 
@@ -166,6 +205,25 @@ def main() -> None:
     tym_sheet_id = titles[SEZNAMY_TYM_SHEET]
     sheet = f"'{SEZNAMY_DASHBOARD_SHEET}'"
 
+    # Výchozí mřížka má jen 26 sloupců (A:Z) - skrytý raw helper "Odehraných
+    # zápasů" sahá až do AG (index 32), potřebuje tedy aspoň 33 sloupců.
+    service.spreadsheets().batchUpdate(
+        spreadsheetId=spreadsheet_id,
+        body={
+            "requests": [
+                {
+                    "updateSheetProperties": {
+                        "properties": {
+                            "sheetId": sheet_id,
+                            "gridProperties": {"columnCount": 35},
+                        },
+                        "fields": "gridProperties.columnCount",
+                    }
+                }
+            ]
+        },
+    ).execute()
+
     service.spreadsheets().values().clear(
         spreadsheetId=spreadsheet_id, range=f"{sheet}!A1:Z1000"
     ).execute()
@@ -178,8 +236,9 @@ def main() -> None:
     print(f"Zapsáno {len(data)} rozsahů do listu '{SEZNAMY_DASHBOARD_SHEET}'.")
 
     bold_ranges = [
-        "A1:A1", "A3:A3", "A7:A7", "A11:A11", "A15:A15", "A32:A32", "A49:A49", "I49:I49",
-        "A4:H4", "A8:F8", "A12:F12",
+        "A1:A1", "A3:A3", "A7:A7", "A11:A11", "A15:A15", "A32:A32",
+        "A49:A49", "I49:I49", "T49:T49",
+        "A4:H4", "A8:F8", "A12:F12", "A50:G50",
     ]
 
     def range_to_grid(a1: str) -> dict:
@@ -240,6 +299,23 @@ def main() -> None:
                     "dimension": "COLUMNS",
                     "startIndex": 13,
                     "endIndex": 18,
+                },
+                "properties": {"hiddenByUser": True},
+                "fields": "hiddenByUser",
+            }
+        }
+    )
+    # AA:AG = skrytý raw helper pro "Odehrané zápasy" (číslo zápisu, soupeř,
+    # D/V, skóre tým, skóre soupeř, výsledek, body) – stejný princip jako
+    # N:R výš.
+    format_requests.append(
+        {
+            "updateDimensionProperties": {
+                "range": {
+                    "sheetId": sheet_id,
+                    "dimension": "COLUMNS",
+                    "startIndex": 26,
+                    "endIndex": 33,
                 },
                 "properties": {"hiddenByUser": True},
                 "fields": "hiddenByUser",

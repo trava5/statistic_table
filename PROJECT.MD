@@ -261,7 +261,11 @@ nevolají odnikud za běhu.
   je přehled pro trenérský štáb nad `Tým`/`Bodování`/`Brankáři` (žádná
   vlastní syrová data) – sezónní přehled vč. „Pořadí v lize“
   (`INDEX`+`COUNTA` nad mirrored `Zápasy!L`), přesilovky/oslabení,
-  vyloučení/TM, grafy Skóre po zápasech/po třetinách, Bodování, Brankáři.
+  vyloučení/TM, grafy Skóre po zápasech/po třetinách, a pod tím (od
+  5. 10. 2026, stejné rozložení jako Liga 2.0 team template) Odehrané
+  zápasy/Bodování/Brankáři vedle sebe – zjednodušený seznam odehraných
+  zápasů dohledává „Datum“ přes `VLOOKUP` do `Zápasy` (`Zápasy (tým)`
+  nemá sloupec s datem), zbytek z pole skrytého raw helperu `QUERY`.
   `Last 5` (`scripts/build_seznamy_last5_sheet.py`, 3. 10. 2026) má stejné
   tabulkové sekce a rozložení jako Dashboard (sezónní přehled/přesilovky-
   oslabení/vyloučení-TM, pod tím Bodování a Brankáři vedle sebe), ale

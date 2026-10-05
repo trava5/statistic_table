@@ -820,6 +820,33 @@ smysl je přepočítávat, když se nic nezměnilo). Ověřeno živě: po oprav�
 promítnuto do Seznamy DB (6 zápasů)“ a řádek 4044 má teď `L`=4, stejně
 v mirroru „HC LIT jun 2026/27“.
 
+✅ **Dashboard v „HC LIT jun 2026/27“ sjednocený s formátem Liga 2.0
+(5. 10. 2026).** Uživatel chtěl pod týmové statistiky doplnit
+zjednodušený seznam odehraných zápasů a posunout Bodování/Brankáři
+doprava, ať je rozložení stejné jako u Liga 2.0 team template
+(`build_league_team_template.py`, sekce ODEHRANÉ ZÁPASY/BODOVÁNÍ/
+BRANKÁŘI vedle sebe). `build_seznamy_dashboard.py` upraven:
+- **ODEHRANÉ ZÁPASY** (A:G, nově) – Datum, Soupeř, D/V, Skóre LIT, Skóre
+  soupeř, Výsledek, Body. `Zápasy (tým)` nemá sloupec s datem (viz
+  PROJECT.MD), takže Datum dohledává `ARRAYFORMULA(VLOOKUP(...))` do
+  `Zápasy` podle čísla zápisu ze skrytého raw helperu ve sloupcích
+  `AA:AG` (`QUERY` nad `Zápasy (tým)`, `order by A` = chronologicky,
+  stejný princip jako u Liga). Zbylé sloupce jsou prostá kopie
+  odpovídajícího sloupce helperu – jednoduché kritérium ve `VLOOKUP`
+  (ne zřetězený klíč jako u `MATCH` v `build_seznamy_v2_mirrors.py`) je
+  přes pole ověřeně spolehlivé, stejný vzor jako existující `N5` výš.
+- **BODOVÁNÍ** přesunuto z `A49` na `I49` (I:M), **BRANKÁŘI** z `I49` na
+  `T49` (T:Y) – formule beze změny, jen nové umístění.
+- List měl jen výchozích 26 sloupců (A:Z), skrytý helper `AA:AG` je
+  mimo tenhle rozsah – skript teď na začátku nastaví `gridProperties.
+  columnCount` na 35, než začne zapisovat (past nalezená live: API
+  vrátilo 400 „Range (Dashboard!AA51) exceeds grid limits“).
+Ověřeno živě: `ODEHRANÉ ZÁPASY` sedí na známé výsledky (18. 9. LIT–
+Příbram 1:3 P, 20. 9. Chomutov–LIT 5:4 V pro LIT, … 4. 10. LIT–Kolín
+4:3 V), `BRANKÁŘI` ukazuje Krátký 2/3 = 66,67 % (vychytal i nově
+přidaný zápas Kolín) – grafy (Skóre po zápasech/Pořadí po kole/Skóre po
+třetinách) po přesunu beze změny, všechny 3 série ověřené skriptem OK.
+
 ## Potvrzená rozhodnutí (21. 9. 2026)
 
 - Skript **pouze importuje** vstupní data, veškerá logika statistik zůstává ve vzorcích sešitu.
