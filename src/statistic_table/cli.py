@@ -214,18 +214,22 @@ def cmd_league_sync_games(args: argparse.Namespace) -> int:
         recompute_standings_history(config, spreadsheet_id)
         print("Pořadí po kolech přepočítáno.")
 
-        # Liga DB je jediný úplný zdroj historie pořadí (viz PLAN.MD) – po
-        # každém přepočtu promítnout LIT pořadí i do Seznamy DB, ať
-        # Seznamy 2.0 ukazuje stejná, kompletní data jako Liga 2.0. Volitelné
-        # (ne každé nasazení řeší i LIT), nesmí shodit Liga sync.
-        if config.seznamy_db_spreadsheet_id:
-            try:
-                updated = sync_poradi_from_liga(
-                    config, config.seznamy_db_spreadsheet_id, spreadsheet_id
-                )
-                print(f"Pořadí LIT promítnuto do Seznamy DB ({updated} zápasů).")
-            except Exception as exc:  # noqa: BLE001 – doplňkový krok, nesmí shodit Liga sync
-                print(f"Promítnutí pořadí do Seznamy DB selhalo: {exc}")
+    # Liga DB je jediný úplný zdroj historie pořadí (viz PLAN.MD) – promítnout
+    # LIT pořadí do Seznamy DB při KAŽDÉM běhu, ne jen když přibyly nové
+    # zápasy z webu. `sync_poradi_from_liga` je idempotentní úplný backfill
+    # přes všechny řádky Seznamy DB, takže doplní i řádek, který mezitím
+    # přibyl přes `cli import` (PDF) – ten se do Seznamy DB zapíše bez
+    # pořadí po kole a jinak by zůstal prázdný, dokud web nepřinese nové
+    # zápasy v dalším kole (nalezeno 5. 10. 2026, viz PLAN.MD). Volitelné
+    # (ne každé nasazení řeší i LIT), nesmí shodit Liga sync.
+    if not args.dry_run and config.seznamy_db_spreadsheet_id:
+        try:
+            updated = sync_poradi_from_liga(
+                config, config.seznamy_db_spreadsheet_id, spreadsheet_id
+            )
+            print(f"Pořadí LIT promítnuto do Seznamy DB ({updated} zápasů).")
+        except Exception as exc:  # noqa: BLE001 – doplňkový krok, nesmí shodit Liga sync
+            print(f"Promítnutí pořadí do Seznamy DB selhalo: {exc}")
 
     if args.dry_run:
         print("(--dry-run: nic se nezapsalo)")

@@ -801,6 +801,25 @@ Zbylé tabulky (Seznamy DB, Liga DB, produkční „Seznamy“) zůstávají jen
 jako datová/historická vrstva, nikdo je běžně neotevírá (viz rozhodnutí
 2. 10. 2026 výše).
 
+✅ **Pořadí po kole se po PDF importu nezapsalo (5. 10. 2026).** Uživatel
+nahlásil, že zápis 06 (LIT–Kolín) se v „HC LIT jun 2026/27“ objevil bez
+pořadí po kole. Příčina: `cmd_league_sync_games` volal
+`sync_poradi_from_liga` jen v bloku `if new_games and not args.dry_run`
+– tedy jen když web sync najde NOVÉ odehrané zápasy. Zápas Kolín se do
+Seznamy DB dostal přes `cli import` (PDF), ne přes web, **po** tom, co
+web sync kola 6 už doběhl – další běh `league sync-games` proto nenašel
+žádný nový zápas (`new_games` prázdné) a backfill se vůbec nespustil,
+i když Liga DB `Pořadí - liga` už pro kolo 6 hodnotu pro LIT měla.
+Oprava: `sync_poradi_from_liga` se teď spouští při **každém** běhu
+`league sync-games` (jen ne při `--dry-run`), nezávisle na `new_games` –
+je to idempotentní úplný backfill přes všechny řádky Seznamy DB, takže
+nijak nevadí, že se spustí i „zbytečně“. `refresh_group_membership`/
+`recompute_standings_history` zůstávají gatované na `new_games` (nemá
+smysl je přepočítávat, když se nic nezměnilo). Ověřeno živě: po opravě
+`cli league sync-games` (0 nových zápasů) přesto napsal „Pořadí LIT
+promítnuto do Seznamy DB (6 zápasů)“ a řádek 4044 má teď `L`=4, stejně
+v mirroru „HC LIT jun 2026/27“.
+
 ## Potvrzená rozhodnutí (21. 9. 2026)
 
 - Skript **pouze importuje** vstupní data, veškerá logika statistik zůstává ve vzorcích sešitu.
