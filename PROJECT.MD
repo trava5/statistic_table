@@ -55,6 +55,20 @@ obnoven jako **hybrid**, ne čistý mirror:
 
 Skript k tomu: `scripts/restore_production_seznam_hracu.py` (jednorázový).
 
+**Přidávání nových hráčů** (od 9. 10. 2026) řeší formulář přímo v soukromé
+tabulce – `scripts/apps_script/seznam_hracu_pridat_hrace.gs` (Google Apps
+Script, ne Python). Servisní účet má k soukromé tabulce jen Prohlížeč,
+takže tahle repozitář do ní nemůže zapisovat ani instalovat Apps Script
+projekt – kód musí trenér vložit sám do Rozšíření → Apps Script dané
+tabulky (návod v hlavičce souboru). Nový hráč se vkládá `insertRowBefore`
+na správné místo podle abecedy (příjmení, tie-break jméno, `localeCompare`
+s českou lokalizací), sloupec A (pořadové číslo) se při každém přidání
+přepíše na vzorec `=ROW()-2&"."` (ať se sám přepočítá při dalších
+vloženích/mazáních). Sloupce G a P:S v soukromé tabulce jsou nefunkční
+`#REF!` vzorce zděděné z produkční tabulky (odkazují na listy Sestavy/
+Zápasy, co soukromá tabulka neobsahuje) – formulář je u nového řádku
+nechává prázdné, jen funkční `T` (ročník (pom.)) dopočítá.
+
 ### Vstupní buňky (zapisuje skript)
 
 Písmena sloupců odpovídají stavu k 21. 9. 2026 (po vložení sloupce „pořadí po kole“). Ve skriptu budou v konfiguraci, ne natvrdo v kódu, a při startu se ověří záhlaví.
@@ -352,6 +366,11 @@ statistic_table/
                                        za posledních 5 zápasů) v HC LIT jun 2026/27
     restore_production_seznam_hracu.py obnova listu Seznam hráčů v produkční
                                        tabulce po přesunu do soukromé tabulky
+    apps_script/
+      seznam_hracu_pridat_hrace.gs     Google Apps Script (ne Python) - formulář
+                                       "Přidat hráče" v soukromé tabulce Seznam
+                                       hráčů, vkládá ručně trenér (servisní účet
+                                       tam má jen Prohlížeč, viz výš)
   tests/
     fixtures/         PDF zápisy, uložené kopie hlaviček a stránky Ligy
     fixtures/league/  uložené stránky ceskyhokej.cz pro testy league_scraper.py

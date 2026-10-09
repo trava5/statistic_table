@@ -868,6 +868,50 @@ Dashboard `I5` (taky 50,00 %, stejná sezóna, nezávislý výpočet nad
 Seznamy daty) – dobrá vzájemná kontrola. Last 5 `H5` = 60,00 % (9/15,
 5 zápasů v okně). Příbram na Liga 2.0 8/18 = 44,44 % pro orientaci.
 
+✅ **Formulář „Přidat hráče“ pro soukromou tabulku Seznam hráčů
+(9. 10. 2026).** Uživatel chtěl do listu „Seznam hráčů" přidat formulář
+pro zápis nových hráčů, který je automaticky zařadí abecedně podle
+příjmení a seznam prodlouží. **Nejde o Python skript téhle repozitáře**
+– servisní účet má k soukromé tabulce (`SEZNAMY_PRIVATE_SPREADSHEET_ID`)
+záměrně jen roli Prohlížeč (viz 2. 10. 2026 výše), takže přes API do ní
+nejde zapisovat vůbec, ani založit Apps Script projekt. Řešení je
+`scripts/apps_script/seznam_hracu_pridat_hrace.gs` – kód pro Google Apps
+Script, který musí trenér (majitel/editor tabulky) sám vložit do
+Rozšíření → Apps Script přímo v té tabulce (návod je v hlavičce
+souboru). Po instalaci přidá do tabulky menu „Seznam hráčů“ → „Přidat
+hráče…“ s formulářem (HTML dialog, žádný druhý Google Form) pro
+všechna pole listu (jméno/příjmení/registrace/dres/post/status/
+poznámka + citlivé údaje – pojišťovna/rodné číslo/telefon/e-mail
+hráče i rodiče).
+- Nový řádek se vkládá `insertRowBefore` na správné místo (ne přepis
+  celého rozsahu) – ostatní řádky a jejich vzorce se jen posunou, nic
+  se nepřepisuje.
+- Pořadí určuje `localeCompare(..., "cs", {sensitivity:"base"})` nad
+  „příjmení jméno“ (tedy s rozlišením diakritiky a tie-breakem podle
+  jména při shodném příjmení, např. „Novotný D“/„Novotný T“ – tahle
+  dvě existující jména mají ruční rozlišovač přímo v textu příjmení
+  ze staré konvence trenéra, nový formulář na to konvenci nevyžaduje,
+  tie-break řeší automaticky přes jméno).
+- Sloupec A (pořadové číslo) se při každém přidání přepíše na vzorec
+  `=ROW()-2&"."` pro všechny řádky (idempotentní) – u existujících
+  řádků to byl pevný text, který by se při vložení uprostřed seznamu
+  neposunul správně; jako vzorec se přepočítá sám i při budoucích
+  vloženích/mazáních, bez nutnosti cokoli ve skriptu dál řešit.
+- Sloupce G a P–S (`Z`, góly/asistence/body/klíč řazení (pom.)) jsou
+  u existujících řádků nefunkční `#REF!` vzorce (odkazují na listy
+  Sestavy/Zápasy, co tahle soukromá tabulka vůbec neobsahuje – zděděné
+  z produkční Seznamy při přesunu listu 2. 10. 2026) – nový řádek je
+  nechává prázdné, ne další zkopírovaný `#REF!`. Sloupec T (ročník
+  (pom.)) funguje (počítá jen z vlastního `D`), takže se pro nový
+  řádek dopočítá stejným vzorcem jako u ostatních.
+Ověřeno: syntaxe přes `node --check`, logika vkládání (abecední pořadí
+vč. diakritiky a tie-breaku) samostatným testem nad reálným seznamem
+39 příjmení (Beránek Petr správně za Beránek Jakub, Žák až na konec,
+Aaa až na začátek). **Živé spuštění v Google Sheets UI (otevření
+formuláře, skutečný zápis) jsem neověřil** – nejde to samo o sobě
+spustit bez Apps Script editoru a lidské autorizace, trenér by si měl
+po instalaci vyzkoušet přidání jednoho zkušebního hráče.
+
 ## Potvrzená rozhodnutí (21. 9. 2026)
 
 - Skript **pouze importuje** vstupní data, veškerá logika statistik zůstává ve vzorcích sešitu.
