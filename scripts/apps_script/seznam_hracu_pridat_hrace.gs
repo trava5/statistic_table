@@ -16,9 +16,14 @@
  *   2. Smazat obsah výchozího "Code.gs" a nahradit celým obsahem tohoto
  *      souboru (jeden soubor stačí, formulář je vestavěný jako HTML šablona
  *      v `showAddPlayerDialog`, žádný druhý .html soubor není potřeba).
- *   3. Uložit (Ctrl+S), zavřít editor a znovu načíst tabulku v prohlížeči.
+ *   3. Uložit (Ctrl+S), zavřít editor a znovu načíst tabulku v prohlížeči
+ *      (F5 na záložce s tabulkou – jen uložení v editoru menu nepřidá,
+ *      záložka s tabulkou se musí sama znovu načíst).
  *   4. Při prvním použití Google vyžádá autorizaci (skript čte/píše jen do
  *      téhle jedné tabulky – "Upravit tabulky Google" je očekávaný rozsah).
+ *      Pokud se menu po reloadu stejně neobjeví, spusť funkci `onOpen`
+ *      ručně z rozbalovací nabídky funkcí v editoru (tlačítko ▷ Spustit) –
+ *      tím proběhne prvotní autorizační dialog, a pak znovu F5 na tabulce.
  *   5. V tabulce se objeví nová nabídka "Seznam hráčů" -> "Přidat hráče…".
  *
  * Sloupce G ("Z"), P–S ("góly/asistence/body/klíč řazení (pom.)") jsou u
@@ -28,6 +33,12 @@
  * ne zkopírované jako další #REF!. Sloupec T ("ročník (pom.)") naopak
  * funguje (počítá se jen z vlastního sloupce D), takže se pro nový řádek
  * dopočítá stejným vzorcem jako u ostatních řádků.
+ *
+ * MAZÁNÍ HRÁČŮ: žádný formulář/skript, prostě nativně v Sheets – pravý
+ * klik na číslo řádku -> "Odstranit řádek" (odsouhlaseno s uživatelem
+ * 9. 10. 2026). Díky tomu, že `fixRowNumbers()` dole přepisuje sloupec A
+ * na vzorec `=ROW()-2&"."`, se pořadová čísla po smazání řádku sama
+ * přepočítají – žádná ruční oprava navíc není potřeba.
  */
 
 const SHEET_NAME = "Seznam hráčů";

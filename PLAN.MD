@@ -912,6 +912,18 @@ formuláře, skutečný zápis) jsem neověřil** – nejde to samo o sobě
 spustit bez Apps Script editoru a lidské autorizace, trenér by si měl
 po instalaci vyzkoušet přidání jednoho zkušebního hráče.
 
+Živé ladění (9. 10. 2026): po vložení kódu se menu „Seznam hráčů“
+neobjevilo ani po manuálním spuštění `onOpen` v Apps Script editoru
+(proběhlo bez chyby) – důvod je, že změna menu z editoru se nepromítne
+do už otevřené záložky s tabulkou samo, je potřeba záložku s tabulkou
+samostatně znovu načíst (F5). Po reloadu menu funguje. **Mazání hráčů**:
+uživatel potvrdil, že stačí nativní Sheets (pravý klik na řádek →
+Odstranit řádek), žádný další formulář/skript k tomu nepřibude – díky
+`fixRowNumbers()` (vzorec `=ROW()-2&"."` ve sloupci A) se pořadová
+čísla po smazání řádku sama přepočítají správně, ostatní vzorce (T –
+ročník) se váží jen na vlastní řádek, takže smazání jednoho řádku nic
+jiného nerozbije.
+
 ## Potvrzená rozhodnutí (21. 9. 2026)
 
 - Skript **pouze importuje** vstupní data, veškerá logika statistik zůstává ve vzorcích sešitu.
