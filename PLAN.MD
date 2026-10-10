@@ -950,11 +950,21 @@ nahlásil, že poslední import neproběhl správně:
    `build_seznamy_rows` (čistá funkce, beze zápisu) a report "error"
    místo "imported", pokud by zápis skutečně skončil chybou – dry-run
    jako skutečná nápoveda, ne jen echo vstupu. Doplněn alias
-   `"BK Havlíčkův Brod": "Havlíčkův Brod"`.
+   `"BK Havlíčkův Brod": "H.BR"` (uživatel upřesnil zkratku dodatečně –
+   původně jsem doplnil plné `"Havlíčkův Brod"` podle vzoru „Příbram“/
+   „Chomutov“, ale u dvouslovného názvu klubu dala přednost krátké
+   zkratce jako u ostatních sloupců tabulky Zápasy, ne úplnému názvu).
+   Zápas 07 byl v tu dobu už naimportovaný se starým aliasem – oprava
+   proto přepsala i živá data: 29 buněk přes 6 listů Seznamy DB
+   (`Zápasy` C8, `Zápasy (tým)` B14/C15, `Góly` B51:B54, `Vyloučení`
+   B89:B93, `Bruslaři (zápasy)` B216:B230, `Brankáři (zápasy)` B26:B27)
+   – ne nový import, přímý přepis přes `sheets.write_batch` (stejná
+   celá sada buněk, jen hodnota se mění, žádná jiná data se nedotkla).
 Ověřeno živě: `cli import --dry-run` i ostrý běh teď zápis 07 zapíší bez
-chyby, řádek v Seznamy DB `Zápasy` (4050, 9.10.2026, Havlíčkův Brod–LIT
-4:5pp, periody 0:3/2:1/2:0, OT 0:1) sedí na výsledek z PDF (LIT vyhrálo
-v prodloužení venku).
+chyby, řádek v Seznamy DB `Zápasy` (4050, 9.10.2026, H.BR–LIT 4:5pp,
+periody 0:3/2:1/2:0, OT 0:1) sedí na výsledek z PDF (LIT vyhrálo v
+prodloužení venku) a žádná z dřívějších 29 buněk se starým plným
+názvem už v DB ani v mirroru „HC LIT jun 2026/27“ nezůstala.
 
 ## Potvrzená rozhodnutí (21. 9. 2026)
 
