@@ -30,6 +30,7 @@ from statistic_table.players import (
     opponent_alias,
 )
 from statistic_table.seznamy_sheets import append_game as append_seznamy_db_game
+from statistic_table.seznamy_sheets import build_seznamy_rows
 from statistic_table.sheets import (
     append_import_log,
     ensure_import_log_sheet,
@@ -270,7 +271,15 @@ def import_folder(config: Config, *, dry_run: bool = False) -> list[FileOutcome]
         with tempfile.TemporaryDirectory() as tmp_dir:
             candidates: list[tuple[Game, dict, str]] = []
             for f in files:
-                local_path = Path(tmp_dir) / f["name"]
+                # Lokální jméno souboru je záměrně Drive ID, ne f["name"] –
+                # název souboru na Disku je libovolný text, který si zadá
+                # ten, kdo PDF nahrává, a může obsahovat znaky nepřípustné
+                # v cestě k souboru (např. ":" na Windows - nalezeno živě
+                # 10. 10. 2026 u "07 - 9.10.2026 - Havl. Brod 4::5P", import
+                # spadl na OSError dřív, než se PDF vůbec začalo parsovat).
+                # ID je vždy bezpečné, f["name"] se dál používá jen ve
+                # výpisech pro uživatele (FileOutcome níž).
+                local_path = Path(tmp_dir) / f["id"]
                 download_file(config, f["id"], local_path)
                 try:
                     game = parse_game(local_path)
@@ -323,6 +332,19 @@ def import_folder(config: Config, *, dry_run: bool = False) -> list[FileOutcome]
                         continue
                     logger.info("Zápas %s zapsán do Seznamy DB (%s)", game.number, f["name"])
                     new_log_entries.append(entry)
+                else:
+                    # I v dry-run ověřit, že by zápis neskončil chybou (např.
+                    # chybějící TEAM_ALIASES) – build_seznamy_rows je čistá
+                    # funkce beze zápisu, stejná validace jako v append_game,
+                    # jen se nic nezapisuje. Bez tohohle dry-run hlásil
+                    # "imported" i u souboru, který ostrý běh vzápětí odmítl
+                    # (nalezeno živě 10. 10. 2026).
+                    try:
+                        build_seznamy_rows(game, config)
+                    except IMPORT_ERRORS as exc:
+                        logger.error("Zápas %s (%s): %s", game.number, f["name"], exc)
+                        outcomes.append(FileOutcome(f["name"], "error", str(exc)))
+                        continue
                 outcomes.append(FileOutcome(f["name"], "imported", "Seznamy DB"))
     finally:
         # V `finally`, ne až po smyčce: pokud u některého souboru vyletí

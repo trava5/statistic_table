@@ -924,6 +924,38 @@ Odstranit řádek), žádný další formulář/skript k tomu nepřibude – dí
 ročník) se váží jen na vlastní řádek, takže smazání jednoho řádku nic
 jiného nerozbije.
 
+✅ **Import zápisu 07 spadl na dvou chybách (10. 10. 2026).** Uživatel
+nahlásil, že poslední import neproběhl správně:
+1. **`OSError` dřív, než se PDF vůbec začalo parsovat.** Soubor na Disku
+   se jmenuje `07 - 9.10.2026 - Havl. Brod 4::5P` – název souboru je
+   libovolný text, který zadá ten, kdo PDF nahrává, a `importer.
+   import_folder` ho dřív použil přímo jako jméno LOKÁLNÍHO temp souboru
+   (`Path(tmp_dir) / f["name"]`). `::` je na Windows neplatná sekvence
+   ve jméně souboru → `OSError: [Errno 22] Invalid argument`, import
+   spadl úplně, ani se nedostal k parsování obsahu. Oprava: lokální
+   jméno je teď Drive ID souboru (vždy bezpečné, jen alfanumerické znaky
+   a `-`/`_`), ne `f["name"]` – ten se dál používá jen ve výpisech pro
+   uživatele. Obecná oprava, ne jen pro `::` – chrání proti libovolnému
+   znaku nepřípustnému v cestě k souboru, který by někdo do názvu na
+   Disku zadal (uvozovky, `|`, `?`, `*`...).
+2. **`cli import --dry-run` u celé složky hlásil "imported" u souboru,
+   který ostrý běh vzápětí odmítl** (`TEAM_ALIASES` nemá zkratku pro
+   „BK Havlíčkův Brod“, stejná past jako u „SC Retia Kolín“ 5. 10. 2026
+   – nový soupeř = nová ruční položka, bez automatického odvození).
+   Příčina: `import_folder`'s dry-run větev jen simulovala zápis bez
+   reálného volání `append_game` (a tedy bez `build_seznamy_rows`, kde
+   `TEAM_ALIASES` lookup žije) – stejná validace, co run-mode hlásila
+   přes chybu, se v dry-run větvi vůbec neprováděla, takže dry-run mohl
+   lhát o tom, co by se skutečně stalo. Oprava: dry-run teď taky volá
+   `build_seznamy_rows` (čistá funkce, beze zápisu) a report "error"
+   místo "imported", pokud by zápis skutečně skončil chybou – dry-run
+   jako skutečná nápoveda, ne jen echo vstupu. Doplněn alias
+   `"BK Havlíčkův Brod": "Havlíčkův Brod"`.
+Ověřeno živě: `cli import --dry-run` i ostrý běh teď zápis 07 zapíší bez
+chyby, řádek v Seznamy DB `Zápasy` (4050, 9.10.2026, Havlíčkův Brod–LIT
+4:5pp, periody 0:3/2:1/2:0, OT 0:1) sedí na výsledek z PDF (LIT vyhrálo
+v prodloužení venku).
+
 ## Potvrzená rozhodnutí (21. 9. 2026)
 
 - Skript **pouze importuje** vstupní data, veškerá logika statistik zůstává ve vzorcích sešitu.
