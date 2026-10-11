@@ -12,6 +12,22 @@ class TeamIdentificationError(Exception):
     """Tým LIT nebo soupeře se nepodařilo v zápise rozpoznat."""
 
 
+class MissingTeamAliasError(TeamIdentificationError):
+    """Soupeř nemá v TEAM_ALIASES zkratku pro tabulku Zápasy – na rozdíl od
+    ostatních TeamIdentificationError (hlubší problém s rozpoznáním zápasu)
+    je tahle oprava přímá, jen doplnit dvojici. Vlastní podtřída, aby ji
+    `importer.call_with_alias_prompt` šlo odchytit samostatně a nabídnout
+    interaktivní doplnění místo tvrdého selhání importu (viz PLAN.MD,
+    11. 10. 2026)."""
+
+    def __init__(self, opponent_name: str) -> None:
+        self.opponent_name = opponent_name
+        super().__init__(
+            f"Soupeř {opponent_name!r} nemá v TEAM_ALIASES zkratku pro tabulku "
+            "Zápasy – doplň ji."
+        )
+
+
 def _surname_matches(roster_last_name: str, pdf_last_name: str) -> bool:
     # Seznam hráčů může mít rozlišovač navíc ("Novotný D"), PDF ho nemá ("NOVOTNÝ").
     roster_surname = roster_last_name.split(" ")[0]
@@ -75,6 +91,4 @@ def opponent_alias(opponent_name: str) -> str:
     try:
         return TEAM_ALIASES[opponent_name]
     except KeyError as exc:
-        raise TeamIdentificationError(
-            f"Soupeř {opponent_name!r} nemá v TEAM_ALIASES zkratku pro tabulku Zápasy – doplň ji."
-        ) from exc
+        raise MissingTeamAliasError(opponent_name) from exc

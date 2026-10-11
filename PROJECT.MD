@@ -309,6 +309,18 @@ nevolají odnikud za běhu.
 - Modul: `seznamy_sheets.py` (`build_seznamy_rows` – čistá funkce, žádná
   síť; `append_game` – I/O, dedup podle čísla zápisu; `sync_poradi_from_liga`
   – zápis pořadí po kole ze sdíleného zdroje Liga DB).
+- **Chybějící `TEAM_ALIASES` při importu PDF už nezastaví import tvrdou
+  chybou** (od 11. 10. 2026) – `players.opponent_alias` při neznámém
+  soupeři vyhodí `MissingTeamAliasError` (podtřída `TeamIdentificationError`,
+  nese `opponent_name`), kterou `importer.call_with_alias_prompt` odchytí
+  a (jen interaktivně, `sys.stdin.isatty()`) nabídne doplnění zkratky.
+  Zadaná dvojice se zapíše přes `config.add_team_alias` do `src/
+  statistic_table/team_aliases_extra.json` (v gitu, merguje se do
+  `TEAM_ALIASES` při startu) a import pokračuje bez restartu. Hardcoded
+  dvojice přímo v `config.py` zůstávají jediný zdroj pravdy pro běžný
+  vývoj/review – extra JSON je jen pro runtime doplnění z terminálu
+  (`cli import`/`import_folder`/`import_pdf`, všechny přes stejnou
+  `call_with_alias_prompt`).
 - `stats.third_and_relative_time` – PDF má čas gólu/trestu jako průběžný
   čas zápasu, ne čas od začátku třetiny; tahle funkce ho rozdělí.
 - **Otevřené:** Ročníky v `Tým` a shutout v `Brankáři` zatím chybí (viz
@@ -328,6 +340,9 @@ statistic_table/
   .env.example        vzor konfigurace
   src/statistic_table/
     config.py         načtení .env, mapa sloupců tabulky, aliasy soupeřů
+    team_aliases_extra.json  zkratky soupeřů doplněné interaktivně při
+                       importu (viz config.add_team_alias), mimo hardcoded
+                       TEAM_ALIASES v config.py
     drive.py          Google Drive: složka Zápisy, výpis + stahování PDF
     sheets.py         Google Sheets: čtení/zápis, kontrola záhlaví produkční
                        tabulky (`spreadsheet_id` teď parametr, ne natvrdo)

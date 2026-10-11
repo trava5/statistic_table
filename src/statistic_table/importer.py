@@ -2,11 +2,14 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import sys
 import tempfile
 from collections import Counter
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import TypeVar
 
 from statistic_table import stats
 from statistic_table.config import (
@@ -16,6 +19,7 @@ from statistic_table.config import (
     ZAPASY_SHEET,
     ColumnGroup,
     Config,
+    add_team_alias,
     check_capacity,
     require_seznamy_db_spreadsheet_id,
 )
@@ -23,6 +27,7 @@ from statistic_table.drive import download_file, list_pdf_files
 from statistic_table.model import Game, ImportLogEntry, RosterPlayer, TeamSheet
 from statistic_table.pdf_parser import ParseError, parse_game
 from statistic_table.players import (
+    MissingTeamAliasError,
     PlayerMatchError,
     TeamIdentificationError,
     identify_lit,
@@ -44,6 +49,46 @@ logger = logging.getLogger("statistic_table")
 # Chyby, které se mají vztahovat jen k jednomu zápasu/souboru – ostatní
 # soubory ve složce se mají importovat dál (viz PLAN.MD Krok 6, bod 6).
 IMPORT_ERRORS = (ParseError, PlayerMatchError, TeamIdentificationError, ValueError, KeyError)
+
+_T = TypeVar("_T")
+
+
+def _prompt_add_team_alias(opponent_name: str) -> bool:
+    """Nabídne interaktivní doplnění zkratky pro nového soupeře místo
+    tvrdého selhání importu (viz PLAN.MD, 11. 10. 2026). V neinteraktivním
+    prostředí (testy, případné budoucí spouštění bez terminálu/pipe) se
+    nesmí nikdy zaseknout na `input()` – `sys.stdin.isatty()` ale nemusí
+    tenhle stav vždy spolehlivě odhalit (nalezeno živě 11. 10. 2026: vrátilo
+    True i bez skutečného terminálu), takže EOF/přerušení při čtení se
+    chová stejně jako prázdná odpověď (přeskočit), ne jako pád."""
+    if not sys.stdin.isatty():
+        return False
+    print(f"Soupeř {opponent_name!r} nemá v TEAM_ALIASES zkratku pro tabulku Zápasy.")
+    try:
+        alias = input(f"Zadej zkratku pro {opponent_name!r} (prázdné = přeskočit): ").strip()
+    except (EOFError, KeyboardInterrupt):
+        return False
+    if not alias:
+        return False
+    add_team_alias(opponent_name, alias)
+    print(f"Doplněno: {opponent_name!r} -> {alias!r} (zapsáno do team_aliases_extra.json).")
+    return True
+
+
+def call_with_alias_prompt(fn: Callable[..., _T], *args: object, **kwargs: object) -> _T:
+    """Zavolá `fn(*args, **kwargs)`; pokud spadne na chybějící zkratku
+    soupeře (`MissingTeamAliasError`) a běžíme interaktivně, nabídne
+    doplnění (`_prompt_add_team_alias`) a zkusí to ještě jednou. Jinak
+    (nebo při druhém selhání) chybu propustí dál – stejné chování jako
+    před touhle funkcí. Používá se na obou místech, kde se volá
+    `append_game`/`build_seznamy_rows` (`import_pdf`, `import_folder`,
+    `cli.cmd_import`)."""
+    try:
+        return fn(*args, **kwargs)
+    except MissingTeamAliasError as exc:
+        if not _prompt_add_team_alias(exc.opponent_name):
+            raise
+        return fn(*args, **kwargs)
 
 
 @dataclass(frozen=True)
@@ -198,7 +243,7 @@ def import_pdf(path: str | Path, config: Config, *, dry_run: bool) -> Game:
     game = parse_game(path)
     if not dry_run:
         spreadsheet_id = require_seznamy_db_spreadsheet_id(config)
-        append_seznamy_db_game(config, spreadsheet_id, game)
+        call_with_alias_prompt(append_seznamy_db_game, config, spreadsheet_id, game)
         logger.info("Zápas %s zapsán do Seznamy DB (%s)", game.number, path)
     return game
 
@@ -316,7 +361,7 @@ def import_folder(config: Config, *, dry_run: bool = False) -> list[FileOutcome]
 
                 if not dry_run:
                     try:
-                        append_seznamy_db_game(config, spreadsheet_id, game)
+                        call_with_alias_prompt(append_seznamy_db_game, config, spreadsheet_id, game)
                     except IMPORT_ERRORS as exc:
                         logger.error("Zápas %s (%s): %s", game.number, f["name"], exc)
                         outcomes.append(FileOutcome(f["name"], "error", str(exc)))
@@ -340,7 +385,7 @@ def import_folder(config: Config, *, dry_run: bool = False) -> list[FileOutcome]
                     # "imported" i u souboru, který ostrý běh vzápětí odmítl
                     # (nalezeno živě 10. 10. 2026).
                     try:
-                        build_seznamy_rows(game, config)
+                        call_with_alias_prompt(build_seznamy_rows, game, config)
                     except IMPORT_ERRORS as exc:
                         logger.error("Zápas %s (%s): %s", game.number, f["name"], exc)
                         outcomes.append(FileOutcome(f["name"], "error", str(exc)))

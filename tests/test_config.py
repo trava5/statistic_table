@@ -1,9 +1,14 @@
+import json
+
 import pytest
 
+from statistic_table import config as config_module
 from statistic_table.config import (
     SESTAVY_COLUMNS,
+    TEAM_ALIASES,
     ZAPASY_COLUMNS,
     ColumnGroup,
+    add_team_alias,
     check_capacity,
     col_to_index,
 )
@@ -49,3 +54,37 @@ def test_check_capacity_raises_on_overflow():
     group = ColumnGroup("branky", "J", "T")
     with pytest.raises(ValueError, match="zápas 4002"):
         check_capacity(group, ["Novák"] * (group.capacity + 1), context="zápas 4002")
+
+
+def test_add_team_alias_persists_to_file_and_updates_memory(tmp_path, monkeypatch):
+    extra_file = tmp_path / "team_aliases_extra.json"
+    monkeypatch.setattr(config_module, "_TEAM_ALIASES_EXTRA_FILE", extra_file)
+
+    add_team_alias("Testovací Klub", "TK")
+    try:
+        assert TEAM_ALIASES["Testovací Klub"] == "TK"
+        assert json.loads(extra_file.read_text(encoding="utf-8")) == {"Testovací Klub": "TK"}
+    finally:
+        del TEAM_ALIASES["Testovací Klub"]
+
+
+def test_add_team_alias_keeps_other_entries_in_file(tmp_path, monkeypatch):
+    extra_file = tmp_path / "team_aliases_extra.json"
+    extra_file.write_text(json.dumps({"Starý Klub": "SK"}), encoding="utf-8")
+    monkeypatch.setattr(config_module, "_TEAM_ALIASES_EXTRA_FILE", extra_file)
+
+    add_team_alias("Testovací Klub", "TK")
+    try:
+        assert json.loads(extra_file.read_text(encoding="utf-8")) == {
+            "Starý Klub": "SK",
+            "Testovací Klub": "TK",
+        }
+    finally:
+        del TEAM_ALIASES["Testovací Klub"]
+
+
+@pytest.mark.parametrize(("name", "alias"), [("", "TK"), ("Testovací Klub", ""), ("  ", "  ")])
+def test_add_team_alias_rejects_blank_input(tmp_path, monkeypatch, name, alias):
+    monkeypatch.setattr(config_module, "_TEAM_ALIASES_EXTRA_FILE", tmp_path / "x.json")
+    with pytest.raises(ValueError):
+        add_team_alias(name, alias)

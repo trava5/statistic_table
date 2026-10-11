@@ -3,16 +3,19 @@ from pathlib import Path
 
 import pytest
 
-from statistic_table.config import Config
+from statistic_table import config as config_module
+from statistic_table.config import TEAM_ALIASES, Config
 from statistic_table.importer import (
     _classify,
     _date_sort_key,
     _period_score_cells,
     build_import,
+    call_with_alias_prompt,
     file_checksum,
 )
 from statistic_table.model import Game, ImportLogEntry, RosterPlayer, TeamSheet
 from statistic_table.pdf_parser import parse_game
+from statistic_table.players import MissingTeamAliasError
 
 FIXTURES = Path(__file__).parent / "fixtures"
 PDF_DIR = FIXTURES / "pdf"
@@ -202,3 +205,66 @@ def test_period_score_cells_overtime_game():
 def test_period_score_cells_pads_missing_periods():
     cells = _period_score_cells(_game([(1, 0)]))
     assert cells == ["1:0", "", "", ""]
+
+
+# --- call_with_alias_prompt (interaktivní doplnění TEAM_ALIASES) -----------
+
+
+def _raise_missing_alias():
+    raise MissingTeamAliasError("Nový Klub")
+
+
+def test_call_with_alias_prompt_noninteractive_reraises(monkeypatch):
+    # stdin v testech/CI není terminál - nesmí se nikdy zeptat na input(),
+    # jen propustit chybu jako dřív (žádná změna chování bez terminálu).
+    monkeypatch.setattr("sys.stdin.isatty", lambda: False)
+    with pytest.raises(MissingTeamAliasError):
+        call_with_alias_prompt(_raise_missing_alias)
+
+
+def test_call_with_alias_prompt_interactive_accepts_alias_and_retries(monkeypatch, tmp_path):
+    monkeypatch.setattr(config_module, "_TEAM_ALIASES_EXTRA_FILE", tmp_path / "extra.json")
+    monkeypatch.setattr("sys.stdin.isatty", lambda: True)
+    monkeypatch.setattr("builtins.input", lambda _prompt: "NK")
+
+    calls = {"n": 0}
+
+    def flaky():
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise MissingTeamAliasError("Nový Klub")
+        return "ok"
+
+    try:
+        assert call_with_alias_prompt(flaky) == "ok"
+        assert calls["n"] == 2
+        assert TEAM_ALIASES["Nový Klub"] == "NK"
+    finally:
+        TEAM_ALIASES.pop("Nový Klub", None)
+
+
+def test_call_with_alias_prompt_interactive_blank_input_reraises(monkeypatch, tmp_path):
+    monkeypatch.setattr(config_module, "_TEAM_ALIASES_EXTRA_FILE", tmp_path / "extra.json")
+    monkeypatch.setattr("sys.stdin.isatty", lambda: True)
+    monkeypatch.setattr("builtins.input", lambda _prompt: "")
+
+    with pytest.raises(MissingTeamAliasError):
+        call_with_alias_prompt(_raise_missing_alias)
+    assert "Nový Klub" not in TEAM_ALIASES
+
+
+def test_call_with_alias_prompt_eof_on_input_reraises_instead_of_crashing(monkeypatch, tmp_path):
+    # isatty() může vrátit True i bez skutečného terminálu (nalezeno živě
+    # 11. 10. 2026) - input() pak spadne na EOFError, což se nesmí propsat
+    # jako neočekávaný pád, jen jako "přeskočit" (stejně jako prázdný vstup).
+    monkeypatch.setattr(config_module, "_TEAM_ALIASES_EXTRA_FILE", tmp_path / "extra.json")
+    monkeypatch.setattr("sys.stdin.isatty", lambda: True)
+
+    def _raise_eof(_prompt):
+        raise EOFError
+
+    monkeypatch.setattr("builtins.input", _raise_eof)
+
+    with pytest.raises(MissingTeamAliasError):
+        call_with_alias_prompt(_raise_missing_alias)
+    assert "Nový Klub" not in TEAM_ALIASES

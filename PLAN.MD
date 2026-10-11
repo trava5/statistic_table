@@ -966,6 +966,48 @@ periody 0:3/2:1/2:0, OT 0:1) sedí na výsledek z PDF (LIT vyhrálo v
 prodloužení venku) a žádná z dřívějších 29 buněk se starým plným
 názvem už v DB ani v mirroru „HC LIT jun 2026/27“ nezůstala.
 
+✅ **Interaktivní doplnění chybějícího TEAM_ALIASES při importu PDF
+(11. 10. 2026).** Doteď každý nový soupeř (Kolín, H.BR, Tábor – viz
+výš) znamenal tvrdý pád importu a ruční zásah do `config.py` od
+vývojáře. Uživatel chtěl další stupeň ochrany: import se nemá zastavit
+chybou, ale nabídnout doplnění dvojice přímo.
+- **`players.MissingTeamAliasError`** – nová podtřída `TeamIdentificationError`
+  (jen pro chybějící alias, ne pro hlubší problém s identifikací zápasu
+  jako špatně nastavené `TEAM_NAME_IN_PDF`), nese `opponent_name`.
+- **`config.add_team_alias(name, alias)`** – zapíše dvojici do nového
+  `src/statistic_table/team_aliases_extra.json` (prázdný `{}` při
+  prvním běhu, v gitu, ne `.gitignore`) a rovnou ji doplní do běžícího
+  `TEAM_ALIASES`, ať pokračuje i aktuální import bez restartu. `config.
+  TEAM_ALIASES` se při startu merguje s obsahem tohohle souboru
+  (`_load_extra_team_aliases`) – hardcoded dvojice v `config.py` zůstávají
+  jediný zdroj pravdy pro běžný vývoj/review, extra soubor je jen pro
+  runtime doplnění z terminálu.
+- **`importer.call_with_alias_prompt(fn, *args, **kwargs)`** – zavolá
+  `fn`; při `MissingTeamAliasError` (a jen interaktivně, `sys.stdin.
+  isatty()`) nabídne `input()` na zkratku, při zadání doplní alias a
+  zkusí `fn` znovu; jinak (neinteraktivně, nebo prázdná odpověď) chybu
+  propustí jako dřív. Použito na všech 3 místech, kde se volá `append_
+  game`/`build_seznamy_rows`: `import_pdf`, obě větve `import_folder`
+  (dry-run i ostrý zápis) a `cli.cmd_import`'s dry-run větev pro jeden
+  konkrétní PDF.
+- **Past nalezená živě**: `sys.stdin.isatty()` v týhle shellové
+  obálce (Bash tool) vrátilo `True`, i když žádný skutečný terminál
+  nebyl k dispozici – `input()` pak spadlo na `EOFError`, ne na
+  očekávané zadání. Oprava: `EOFError`/`KeyboardInterrupt` kolem
+  `input()` se chovají jako prázdná odpověď (přeskočit), ne jako pád –
+  `isatty()` je tedy jen první, ne jediná pojistka.
+Ověřeno: 11 nových testů (`test_config.py` – persistamce/merge/validace
+prázdného vstupu, `test_players.py` – `MissingTeamAliasError.
+opponent_name`, `test_importer.py` – neinteraktivní re-raise, úspěšný
+retry po zadání aliasu, prázdná odpověď re-raise, `EOFError` re-raise),
+138 passed. Živě na reálném novém soupeři: PDF 08 (11. 10. 2026,
+LIT–Tábor 1:4) spadl na chybějící alias pro „HC Tábor“ přesně podle
+očekávání (bez pádu, čistý `[error]` výpis), doplněno `"HC Tábor":
+"Tábor"` (rovnou do `config.py`, ne do extra JSON – ten zůstává
+vyhrazený pro budoucí skutečné interaktivní použití z terminálu, ne
+pro mé vlastní úpravy), zápas 4059 (LIT–Tábor 1:4, periody
+0:0/1:1/0:3) se pak zapsal bez chyby.
+
 ## Potvrzená rozhodnutí (21. 9. 2026)
 
 - Skript **pouze importuje** vstupní data, veškerá logika statistik zůstává ve vzorcích sešitu.

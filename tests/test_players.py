@@ -7,6 +7,7 @@ from statistic_table.config import Config
 from statistic_table.model import GamePlayer, RosterPlayer
 from statistic_table.pdf_parser import parse_game
 from statistic_table.players import (
+    MissingTeamAliasError,
     PlayerMatchError,
     TeamIdentificationError,
     identify_lit,
@@ -92,6 +93,15 @@ def test_opponent_alias_known_teams():
 def test_opponent_alias_unknown_team_raises():
     with pytest.raises(TeamIdentificationError):
         opponent_alias("SK Nikdy Neviděný")
+
+
+def test_opponent_alias_unknown_team_raises_missing_alias_subclass():
+    # MissingTeamAliasError je podtřída TeamIdentificationError (test výš
+    # na tom nezávisí), ale importer.call_with_alias_prompt potřebuje tuhle
+    # konkrétní podtřídu a opponent_name na ní, aby šlo nabídnout doplnění.
+    with pytest.raises(MissingTeamAliasError) as exc_info:
+        opponent_alias("SK Nikdy Neviděný")
+    assert exc_info.value.opponent_name == "SK Nikdy Neviděný"
 
 
 def _game_player(

@@ -15,6 +15,7 @@ from statistic_table.config import (
 from statistic_table.drive import list_pdf_files
 from statistic_table.importer import (
     IMPORT_ERRORS,
+    call_with_alias_prompt,
     import_folder,
     import_pdf,
     print_outcomes,
@@ -92,7 +93,7 @@ def cmd_import(args: argparse.Namespace) -> int:
         )
         if args.dry_run:
             try:
-                rows_by_sheet = build_seznamy_rows(game, config)
+                rows_by_sheet = call_with_alias_prompt(build_seznamy_rows, game, config)
             except IMPORT_ERRORS as exc:
                 print(f"Import se nezdařil: {exc}")
                 return 1

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 from dataclasses import dataclass
 from pathlib import Path
@@ -202,7 +203,45 @@ TEAM_ALIASES = {
     "HC Hvězda Praha": "Hvězda",
     "SC Retia Kolín": "Kolín",
     "BK Havlíčkův Brod": "H.BR",
+    "HC Tábor": "Tábor",
 }
+
+# Zkratky doplněné interaktivně při importu (viz importer.call_with_alias_
+# prompt, PLAN.MD 11. 10. 2026) – oddělené od hardcoded TEAM_ALIASES výš,
+# ať nový soupeř během importu nevyžaduje zásah do zdrojového kódu. Soubor
+# je v gitu (ne .gitignore), takže doplnění přežije i po `git pull` na
+# jiném stroji, ale je potřeba ho pak commitnout.
+_TEAM_ALIASES_EXTRA_FILE = Path(__file__).parent / "team_aliases_extra.json"
+
+
+def _load_extra_team_aliases() -> None:
+    if not _TEAM_ALIASES_EXTRA_FILE.exists():
+        return
+    extra = json.loads(_TEAM_ALIASES_EXTRA_FILE.read_text(encoding="utf-8"))
+    TEAM_ALIASES.update(extra)
+
+
+_load_extra_team_aliases()
+
+
+def add_team_alias(name: str, alias: str) -> None:
+    """Trvale přidá dvojici (název soupeře -> zkratka pro tabulku Zápasy).
+    Zapíše do `team_aliases_extra.json` (ne přímo do TEAM_ALIASES v kódu)
+    a rovnou doplní i do běžícího `TEAM_ALIASES`, ať pokračuje i aktuální
+    import bez restartu."""
+    name = name.strip()
+    alias = alias.strip()
+    if not name or not alias:
+        raise ValueError("Název soupeře i zkratka musí být nprázdné.")
+    existing: dict[str, str] = {}
+    if _TEAM_ALIASES_EXTRA_FILE.exists():
+        existing = json.loads(_TEAM_ALIASES_EXTRA_FILE.read_text(encoding="utf-8"))
+    existing[name] = alias
+    _TEAM_ALIASES_EXTRA_FILE.write_text(
+        json.dumps(existing, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    TEAM_ALIASES[name] = alias
 
 IMPORT_LOG_SHEET = "Import log"
 IMPORT_LOG_HEADER_ROW = 1
