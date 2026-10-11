@@ -996,7 +996,7 @@ chybou, ale nabídnout doplnění dvojice přímo.
   očekávané zadání. Oprava: `EOFError`/`KeyboardInterrupt` kolem
   `input()` se chovají jako prázdná odpověď (přeskočit), ne jako pád –
   `isatty()` je tedy jen první, ne jediná pojistka.
-Ověřeno: 11 nových testů (`test_config.py` – persistamce/merge/validace
+Ověřeno: 11 nových testů (`test_config.py` – persistence/merge/validace
 prázdného vstupu, `test_players.py` – `MissingTeamAliasError.
 opponent_name`, `test_importer.py` – neinteraktivní re-raise, úspěšný
 retry po zadání aliasu, prázdná odpověď re-raise, `EOFError` re-raise),
@@ -1007,6 +1007,32 @@ očekávání (bez pádu, čistý `[error]` výpis), doplněno `"HC Tábor":
 vyhrazený pro budoucí skutečné interaktivní použití z terminálu, ne
 pro mé vlastní úpravy), zápas 4059 (LIT–Tábor 1:4, periody
 0:0/1:1/0:3) se pak zapsal bez chyby.
+
+✅ **Web ceskyhokej.cz přidal sloupce do tabulky hráčů, scraper pevné
+pozici sloupců spadl na všech 6 zápasech kola 8 (11. 10. 2026).** Při
+ověřování výše (`league sync-games` po importu zápasu LIT–Tábor) selhaly
+VŠECHNY nové zápasy kola 8 (ne jen LIT) na `ValueError: invalid literal
+for int() with base 10: '00:00'`. Příčina: web mezi tabulku hráčů
+(ne brankářů – ta je beze změny) vložil nové sloupce `TOI`/`PP TOI`/
+`SH TOI` hned za `HRÁČ` a `S`/`BL`/`BULY` na konec (8 → 14 sloupců
+celkem) – `_parse_skater_row` četla sloupec „góly“ podle pevné pozice
+`cells[3]`, což je teď `TOI` (čas na ledě, vždy `"00:00"`), ne góly.
+Ověřeno živě, že nové sloupce nikdy nenesou reálná data (`TOI`/`PP TOI`/
+`SH TOI` = `"00:00"` u všech hráčů, `S`/`BL` = `"0"`, `BULY` = prázdné) –
+jen kosmetická změna šablony webu, žádná ztráta informace.
+
+Oprava: `_parse_skater_row`/`_parse_goalie_row` čtou sloupce podle
+**názvu** z `<thead th>` (`_header_index`), ne podle pevné pozice –
+robustní i proti dalším podobným změnám webu v budoucnu (chybějící
+sloupec teď dá jasnou `ValueError` s názvem a dostupnými sloupci, ne
+tiché čtení špatné hodnoty). Goalie tabulka se touhle změnou chránit
+nemusela (sloupce beze změny), ale přepsána stejně pro konzistenci.
+Nová fixtura `tests/fixtures/league/game_detail_180758.html` (reálná
+stránka se širší tabulkou) + test, co ověřuje nejen „neshodí výjimku“,
+ale že součet gólů hráčů sedí na skutečné skóre zápasu (7:5).
+Ověřeno živě: `parse_game_detail` nad zápasem #180758 teď vrátí správné
+hodnoty (suma gólů hráčů 7:5 = skóre zápasu), `league sync-games` doběhl
+bez chyby a kolo 8 (6 zápasů) se zapsalo do Liga DB.
 
 ## Potvrzená rozhodnutí (21. 9. 2026)
 

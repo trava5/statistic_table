@@ -10,6 +10,11 @@ FIXTURES = Path(__file__).parent / "fixtures" / "league"
 GAMES_LIST_HTML = (FIXTURES / "games_list_page1.html").read_text(encoding="utf-8")
 GAME_DETAIL_HTML = (FIXTURES / "game_detail_180718.html").read_text(encoding="utf-8")
 GAME_DETAIL_SHOOTOUT_HTML = (FIXTURES / "game_detail_180727.html").read_text(encoding="utf-8")
+# Web přidal 11. 10. 2026 do tabulky hráčů nové sloupce (TOI/PP TOI/SH TOI/
+# S/BL/BULY, viz PLAN.MD) - tahle fixtura má širší tabulku, zbytek stejný.
+GAME_DETAIL_WIDE_SKATER_TABLE_HTML = (
+    FIXTURES / "game_detail_180758.html"
+).read_text(encoding="utf-8")
 
 
 def test_parse_played_games_only_returns_played_games_with_round():
@@ -106,3 +111,20 @@ def test_parse_game_detail_skater_and_goalie_rosters():
     assert chm_goalie.name == "Petr Kašpar"
     assert chm_goalie.goals_against == 5
     assert chm_goalie.time_on_ice == "59:05"
+
+
+def test_parse_game_detail_skater_table_with_extra_toi_shots_columns():
+    # Zápas #180758 (11. 10. 2026) - web mezitím přidal do tabulky hráčů
+    # sloupce TOI/PP TOI/SH TOI (vždy "00:00") a S/BL/BULY (vždy "0"/prázdné)
+    # mezi HRÁČ a G - pevné cells[N] by četlo "00:00" jako góly (nalezeno
+    # živě, viz PLAN.MD). _parse_skater_row čte podle názvu sloupce, takže
+    # i s novými sloupci čte správné hodnoty - ověřeno proti skutečnému
+    # výsledku zápasu (7:5), ne jen že neshodí výjimku.
+    game, _goals, _penalties, skaters, _goalies = parse_game_detail(
+        GAME_DETAIL_WIDE_SKATER_TABLE_HTML, "180758", 8
+    )
+    assert (game.home_score, game.away_score) == (7, 5)
+
+    home_goals = sum(s.goals for s in skaters if s.team == game.home_team)
+    away_goals = sum(s.goals for s in skaters if s.team == game.away_team)
+    assert (home_goals, away_goals) == (7, 5)

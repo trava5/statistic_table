@@ -200,36 +200,68 @@ def _table_kind(table: Tag) -> str | None:
     return None
 
 
-def _parse_skater_row(row: Tag, game_id: int, team: str) -> LeagueSkaterStat:
+def _header_index(table: Tag) -> dict[str, int]:
+    """Mapa popisek sloupce -> index v <td> podle <thead th>. Řádky hráčů/
+    brankářů se podle ní čtou jménem sloupce, ne pevnou pozicí – web
+    11. 10. 2026 přidal do tabulky hráčů nové sloupce (TOI/PP TOI/SH TOI/
+    S/BL/BULY, viz PLAN.MD), pevné `cells[N]` by se při jakékoli další
+    změně rozbilo znovu, navíc beze slova (čte by jen jiný sloupec)."""
+    return {th.get_text(strip=True): i for i, th in enumerate(table.select("thead th"))}
+
+
+def _cell(cells: list[Tag], header_index: dict[str, int], name: str) -> str:
+    try:
+        index = header_index[name]
+    except KeyError as exc:
+        raise ValueError(
+            f"Tabulka nemá sloupec {name!r} (dostupné: {sorted(header_index)}) – "
+            "změnil se web, oprav _header_index/_parse_skater_row/_parse_goalie_row."
+        ) from exc
+    return cells[index].get_text(strip=True)
+
+
+def _parse_skater_row(
+    row: Tag, game_id: int, team: str, header_index: dict[str, int]
+) -> LeagueSkaterStat:
     cells = row.find_all("td")
+
+    def cell(name: str) -> str:
+        return _cell(cells, header_index, name)
+
     return LeagueSkaterStat(
         game_id=game_id,
         team=team,
-        jersey_number=cells[0].get_text(strip=True),
-        name=cells[2].get_text(strip=True),
-        position=cells[1].get_text(strip=True),
-        goals=int(cells[3].get_text(strip=True)),
-        assists=int(cells[4].get_text(strip=True)),
-        points=int(cells[5].get_text(strip=True)),
-        penalty_minutes=int(cells[6].get_text(strip=True)),
-        plus_minus=int(cells[7].get_text(strip=True)),
+        jersey_number=cell("Č"),
+        name=cell("HRÁČ"),
+        position=cell("P"),
+        goals=int(cell("G")),
+        assists=int(cell("A")),
+        points=int(cell("B")),
+        penalty_minutes=int(cell("TM")),
+        plus_minus=int(cell("+/-")),
     )
 
 
-def _parse_goalie_row(row: Tag, game_id: int, team: str) -> LeagueGoalieStat:
+def _parse_goalie_row(
+    row: Tag, game_id: int, team: str, header_index: dict[str, int]
+) -> LeagueGoalieStat:
     cells = row.find_all("td")
+
+    def cell(name: str) -> str:
+        return _cell(cells, header_index, name)
+
     return LeagueGoalieStat(
         game_id=game_id,
         team=team,
-        jersey_number=cells[0].get_text(strip=True),
-        name=cells[2].get_text(strip=True),
-        time_on_ice=cells[3].get_text(strip=True),
-        saves=int(cells[4].get_text(strip=True)),
-        goals_against=int(cells[5].get_text(strip=True)),
-        save_percentage=cells[6].get_text(strip=True),
-        goals=int(cells[7].get_text(strip=True)),
-        assists=int(cells[8].get_text(strip=True)),
-        penalty_minutes=int(cells[9].get_text(strip=True)),
+        jersey_number=cell("Č"),
+        name=cell("BRANKÁŘ"),
+        time_on_ice=cell("TOI"),
+        saves=int(cell("Z")),
+        goals_against=int(cell("IG")),
+        save_percentage=cell("%Z"),
+        goals=int(cell("G")),
+        assists=int(cell("A")),
+        penalty_minutes=int(cell("TM")),
     )
 
 
@@ -297,10 +329,12 @@ def parse_game_detail(html: str, game_id: int, round_number: int | None = None) 
         team_name = team_block.select_one("h5").get_text(strip=True)
         tables = team_block.find_all("table", class_="table-sort")
         if len(tables) >= 1:
+            header_index = _header_index(tables[0])
             for row in tables[0].select("tbody tr"):
-                skaters.append(_parse_skater_row(row, game_id, team_name))
+                skaters.append(_parse_skater_row(row, game_id, team_name, header_index))
         if len(tables) >= 2:
+            header_index = _header_index(tables[1])
             for row in tables[1].select("tbody tr"):
-                goalies.append(_parse_goalie_row(row, game_id, team_name))
+                goalies.append(_parse_goalie_row(row, game_id, team_name, header_index))
 
     return game, goals, penalties, skaters, goalies
