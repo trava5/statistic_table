@@ -1034,6 +1034,56 @@ Ověřeno živě: `parse_game_detail` nad zápasem #180758 teď vrátí správn�
 hodnoty (suma gólů hráčů 7:5 = skóre zápasu), `league sync-games` doběhl
 bez chyby a kolo 8 (6 zápasů) se zapsalo do Liga DB.
 
+✅ **List „Tabulka“ v Liga 2.0 – tabulky obou skupin vedle sebe
+(12. 10. 2026).** Uživatel chtěl klasickou tabulku (Pořadí, Tým, Z, V,
+VP, PP, P, Skóre, Body) pro obě skupiny vedle sebe, počítanou z dat
+Liga DB, správnost kontrolovat ručně proti `STANDINGS_URL`.
+`scripts/build_league_tabulka_sheet.py`:
+- **Stage 1** (skrytý, `U:AD`) – jedna `QUERY ... group by` dá Tým/Z/
+  GF/GA/Body za všech 16 týmů najednou; `ARRAYFORMULA`+`COUNTIFS` (pole
+  týmů jako kritérium, stejný vzor jako Výhry/Shutouty brankářů v
+  `build_league_aggregate_sheets.py`) doplní V/VP/PP/P; skupina z
+  `Skupiny - liga` přes `VLOOKUP`.
+- **Stage 2** (skrytý, `AF:AN`/`AP:AX`) – druhá `QUERY` nad stage 1,
+  filtr na skupinu + `order by Body desc, (GF-GA) desc, GF desc` –
+  stejné pravidlo jako `league_sheets.recompute_standings_history`
+  (Python, pro `Pořadí - liga`), ale počítané **nezávisle** vlastním
+  vzorcem nad týmiž syrovými daty, ne čtením `Pořadí - liga` – druhý,
+  nezávislý výpočet pro porovnání s webem.
+- **Viditelné tabulky** (`A:I`/`K:S`) – jen odkaz na stage 2 po
+  sloupcích (`ARRAYFORMULA` s hlídáním prázdna), stejný princip jako
+  „Odehrané zápasy“ v `build_seznamy_dashboard.py`. Pořadí je prostě
+  pořadí řádku v už seřazeném stage 2, ne vzorec s `RANK`.
+
+**Dvě pasti nalezené živě při stavbě:**
+1. `QUERY` s agregací (`sum`/`count`/`group by`) vždy vypíše vlastní
+   syntetický hlavičkový řádek (popisky typu „sum F“) bez ohledu na
+   parametr `headers` – ten řeší jen kolik řádků VSTUPU se přeskočí, ne
+   jestli VÝSTUP má hlavičku. S `headers=0` se navíc nepřeskočí ani
+   skutečná hlavička vstupního listu („tým“ v `Zápasy - liga (tým)!B1`),
+   takže vznikl fantomový 17. „tým“ s názvem „tým“. Oprava: `headers=1`
+   (přeskočí vstupní hlavičku) + počítat s tím, že výstup má vlastní
+   hlavičkový řádek navíc (data o řádek níž, stejný vzor jako
+   `build_league_aggregate_sheets.py`).
+2. **`INDEX(rozsah;MATCH(pole;...))` pod `ARRAYFORMULA` nebroadcastuje
+   správně** – vrátí jednu hodnotu (zjevně první/poslední match) pro
+   všechny řádky pole, ne výsledek pro každý řádek zvlášť. Objeveno při
+   debugu, proč sloupec „skupina“ vycházel „2“ pro úplně všechny týmy
+   (i skupinu 1). **Při kontrole se ukázalo, že stejnou chybu má už
+   hotový `build_league_poradi_view.py`** (5. 10. 2026) – SKUPINA 1 na
+   listu `Pořadí - liga` byla od začátku prázdná a SKUPINA 2 ukazovala
+   obě skupiny zamíchané, nikdo si toho nevšiml, protože čísla pořadí
+   samotná (Python, `recompute_standings_history`) byla pořád správná,
+   jen tahle vedlejší view-vrstva rozdělení na skupiny byla rozbitá.
+   Oprava na obou místech: `VLOOKUP` místo `INDEX`/`MATCH` (stejný vzor
+   jako Dashboard/Last 5 „Datum“, ověřeně spolehlivý pod `ARRAYFORMULA`
+   s polem).
+Ověřeno živě: oba sloupce „Tabulka“ (SKUPINA 1 i SKUPINA 2) sedí přesně,
+řádek po řádku, na živě stažená data z `STANDINGS_URL` (pořadí, Z, V,
+VP, PP, P, skóre, body – všech 16 týmů). Oprava `build_league_poradi_
+view.py` ověřena stejně (SKUPINA 1/2 teď správně rozdělené, dřív SKUPINA
+1 prázdná).
+
 ## Potvrzená rozhodnutí (21. 9. 2026)
 
 - Skript **pouze importuje** vstupní data, veškerá logika statistik zůstává ve vzorcích sešitu.

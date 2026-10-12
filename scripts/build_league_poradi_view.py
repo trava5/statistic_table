@@ -50,8 +50,17 @@ def main() -> None:
         {
             "range": f"'{LEAGUE_PORADI_SHEET}'!F2",
             "values": [[
-                f"=ARRAYFORMULA(IF($A$2:$A${ROWS}=\"\";\"\";"
-                f"IFNA(INDEX({SK}!$B:$B;MATCH($C$2:$C${ROWS};{SK}!$A:$A;0)))))"
+                # VLOOKUP, ne INDEX/MATCH - INDEX(range;MATCH(pole;...)) pod
+                # ARRAYFORMULA nebroadcastuje správně (past nalezená živě
+                # 12. 10. 2026 při stavbě listu Tabulka - vrátilo jednu
+                # hodnotu pro všechny řádky, tenhle sloupec tak dlouho
+                # tiše ukazoval "2" pro úplně všechny týmy, i skupinu 1;
+                # SKUPINA 1 níž byla proto celou dobu prázdná a SKUPINA 2
+                # ukazovala obě skupiny zamíchané). VLOOKUP pod
+                # ARRAYFORMULA s polem je ověřeně spolehlivé (stejný vzor
+                # jako Dashboard/Last 5 "Datum").
+                f"=ARRAYFORMULA(IF($C$2:$C${ROWS}=\"\";\"\";"
+                f"IFERROR(VLOOKUP($C$2:$C${ROWS};{SK}!$A:$B;2;FALSE))))"
             ]],
         },
         {"range": f"'{LEAGUE_PORADI_SHEET}'!H1", "values": [["SKUPINA 1"]]},

@@ -184,6 +184,19 @@ samostatných** Google Tabulkách, ne v „Seznamy“:
   `league_model.py`, `league_scraper.py`, `league_stats.py`
   (přesilovky/oslabení z pohledu libovolného týmu, stejné pravidlo jako
   `stats.py`), `league_sheets.py`.
+- **List „Tabulka“** (od 12. 10. 2026, `scripts/build_league_tabulka_
+  sheet.py`) – klasická tabulka obou skupin vedle sebe (Pořadí, Tým, Z,
+  V, VP, PP, P, Skóre, Body), počítaná dvoustupňovým skrytým `QUERY`
+  nad `Zápasy - liga (tým)`/`Skupiny - liga` (stage 1 = všech 16 týmů
+  najednou přes `group by` + `ARRAYFORMULA`/`COUNTIFS`, stage 2 = stage
+  1 filtrovaný/seřazený po skupině). Řazení (Body desc, rozdíl skóre
+  desc, vstřelené góly desc) je stejné pravidlo jako Python `league_
+  sheets.recompute_standings_history`, ale počítané **nezávisle**
+  vlastním vzorcem – druhý výpočet pro ruční porovnání se `STANDINGS_
+  URL`, ne čtení `Pořadí - liga`. `INDEX`/`MATCH` pod `ARRAYFORMULA`
+  s polem se při stavbě ukázal nespolehlivý (nebroadcastuje, vrátí
+  jednu hodnotu pro všechny řádky – stejná past postihla i starší
+  `build_league_poradi_view.py`, opraveno zároveň), používá se `VLOOKUP`.
 
 ### Co je (záměrně) v Pythonu, co ve vzorcích
 
@@ -373,6 +386,8 @@ statistic_table/
     build_league_aggregate_sheets.py  jednorázové postavení Bruslaři/Brankáři - liga
     build_league_v2_mirrors.py        jednorázové IMPORTRANGE zrcadlo DB v Liga 2.0
     build_league_poradi_view.py       přehled Skupina 1/2 na listu Pořadí - liga
+    build_league_tabulka_sheet.py     jednorázové postavení listu Tabulka (obě
+                                       skupiny vedle sebe) v Liga 2.0
     build_seznamy_v2_mirrors.py       jednorázové IMPORTRANGE zrcadlo DB v HC LIT jun 2026/27
     build_seznamy_aggregate_sheets.py jednorázové postavení Bodování/Brankáři v HC LIT jun 2026/27
     build_seznamy_tym_sheet.py        jednorázové postavení listu Tým v HC LIT jun 2026/27

@@ -279,6 +279,12 @@ LEAGUE_GOALIES_SHEET = "Brankáři - liga"
 LEAGUE_TEAM_TEMPLATE_SHEET = "Tým – šablona"
 LEAGUE_TEAM_NAME_CELL = "B1"
 
+# Souhrnná tabulka obou skupin vedle sebe (vzorce nad Zápasy - liga (tým)/
+# Skupiny - liga, žije jen v Liga 2.0, žádný list v DB) – postaveno
+# jednorázově scripts/build_league_tabulka_sheet.py, správnost se
+# kontroluje ručně proti STANDINGS_URL (viz PLAN.MD, 12. 10. 2026).
+LEAGUE_TABULKA_SHEET = "Tabulka"
+
 LEAGUE_ZAPASY_HEADER = [
     "game_id", "číslo utkání", "datum", "domácí", "hosté",
     "skóre domácí", "skóre hosté", "1.P", "2.P", "3.P", "OT", "pozn.", "diváci", "rozhodčí",
