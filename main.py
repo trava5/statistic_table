@@ -66,12 +66,18 @@ def menu_league_sync_teams() -> None:
     _run(["league", "sync-teams"])
 
 
+def menu_pre_scout() -> None:
+    team = _ask("Název příštího soupeře (stačí část, bez diakritiky): ")
+    _run(["pre-scout", team] if team else ["pre-scout"])
+
+
 MENU: dict[str, tuple[str, Callable[[], None] | None]] = {
     "1": ("Ověřit přístup k Disku a Tabulce", menu_check),
     "2": ("Import z PDF (Zápisy)", menu_import_pdf),
     "3": ("Zkontrolovat pořadí LIT proti oficiální stránce", menu_standings),
     "4": ("Import z webu (Liga: nové odehrané zápasy)", menu_league_sync_games),
     "5": ("Liga: založit listy pro nové týmy", menu_league_sync_teams),
+    "6": ("pre-scout: klipy příštího soupeře (czechicehockey.tv)", menu_pre_scout),
     "0": ("Konec", None),
 }
 

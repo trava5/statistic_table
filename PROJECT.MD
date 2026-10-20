@@ -339,21 +339,26 @@ nevolají odnikud za běhu.
 - **Otevřené:** Ročníky v `Tým` a shutout v `Brankáři` zatím chybí (viz
   PLAN.MD, „Další krok“).
 
-## Pre-scout příštího soupeře (rozpracováno od 20. 10. 2026)
+## Pre-scout příštího soupeře (funkční od 20. 10. 2026, Disk odložen)
 
 Modul `statistic_table.prescout` (`cihtv.py`, `event_clips.py`,
-`pre_scout_lt.py`) – jiný zdroj dat než zbytek projektu: **czechicehockey.tv**
-(Live Arena Sports, placené VOD, ne ceskyhokej.cz) poskytuje oficiální
-průběh zápasu (góly/tresty s časem zápisu) a záznam utkání. Z posledního
-odehraného zápasu zadaného soupeře se bez AI analýzy obrazu vystřihnou
-MP4 klipy (vlastní/obdržené góly, vlastní/soupeřovy přesilovky) – jen
-mapování event timestamp → čas ve videu + ffmpeg remux, žádné rozpoznávání
-obrazu. List `Příští soupeř` v „HC LIT jun 2026/27“
-(`scripts/build_seznamy_next_opponent_sheet.py`) zrcadlí přes
-`IMPORTRANGE` kartu soupeře z Liga 2.0 (bez grafů – ty IMPORTRANGE
-nekopíruje), název týmu se čte z `B1`. Nahrávání klipů na Disk je
-odložené (servisní účet nemá na běžném Google účtu úložiště pro obsah
-souborů) – podrobně viz PLAN.MD.
+`pre_scout_lt.py`, `pipeline.py`) – jiný zdroj dat než zbytek projektu:
+**czechicehockey.tv** (Live Arena Sports, placené VOD, ne ceskyhokej.cz)
+poskytuje oficiální průběh zápasu (góly/tresty s časem zápisu) a záznam
+utkání. `cli pre-scout [tým]` (nebo menu `main.py`, volba „pre-scout“)
+najde poslední odehraný zápas zadaného soupeře a bez AI analýzy obrazu
+vystřihne MP4 klipy (vlastní/obdržené góly, vlastní/soupeřovy
+přesilovky) – jen mapování event timestamp → čas ve videu + ffmpeg
+remux, žádné rozpoznávání obrazu. Zároveň zapíše název týmu do `B1`
+listu `Příští soupeř` v „HC LIT jun 2026/27“
+(`scripts/build_seznamy_next_opponent_sheet.py`), který přes
+`IMPORTRANGE` zrcadlí kartu soupeře z Liga 2.0 (bez grafů – ty
+IMPORTRANGE nekopíruje). Název vrácený `cihtv.find_teams`
+(czechicehockey.tv) je u všech 16 týmů identický s názvem listu v Liga
+2.0 (ceskyhokej.cz) – žádné dodatečné párování není potřeba. Klipy se
+zatím ukládají jen lokálně (`./output/pre_scout/...`, mimo git) –
+nahrávání na Disk je odložené (servisní účet nemá na běžném Google
+účtu úložiště pro obsah souborů) – podrobně viz PLAN.MD.
 
 ## Struktura repozitáře
 
@@ -396,11 +401,13 @@ statistic_table/
                        (`_append_all_or_nothing` – rollback při chybě uprostřed zápisu)
     seznamy_sheets.py zápis do Seznamy DB (6 syrových listů, oba týmy, z PDF;
                        `sync_poradi_from_liga` doplňuje pořadí po kole z Liga DB)
-    cli.py            check / import / standings / league sync-games / league sync-teams
-    prescout/         pre-scout příštího soupeře (rozpracováno, viz PLAN.MD)
+    cli.py            check / import / standings / league sync-games / league
+                       sync-teams / pre-scout
+    prescout/         pre-scout příštího soupeře (viz PLAN.MD)
       cihtv.py          klient czechicehockey.tv (přihlášení, zápasy, HLS)
       event_clips.py    naplánování klipů z oficiálních událostí zápasu
-      pre_scout_lt.py   orchestrace: tým -> poslední zápas -> uložené MP4 klipy
+      pre_scout_lt.py   tým -> poslední zápas -> uložené MP4 klipy
+      pipeline.py       zápis týmu do listu Příští soupeř + spuštění pre_scout_lt
   scripts/
     build_league_team_template.py     jednorázové postavení listu „Tým – šablona“
     build_league_aggregate_sheets.py  jednorázové postavení Bruslaři/Brankáři - liga

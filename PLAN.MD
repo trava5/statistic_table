@@ -1151,12 +1151,29 @@ tatáž data, co dřív ověřená „Tabulka“ (8 Z, 3V/1VP/2PP/2P, 13 bodů,
 23:23, 54,17 % bodový zisk) + kompletní Odehrané zápasy/Bodování/
 Brankáři se správně naformátovaným datem.
 
-**Další krok (neprovedeno):** menu „pre-scout“ v `main.py`/`cli.py` –
-dotaz na soupeře, napárování názvu z czechicehockey.tv na přesný název
-listu v Liga 2.0 (typicky stejný, ale ne zaručeně – jiný zdroj dat),
-zápis do `B1`, spuštění `prescout.pre_scout_lt.save_team_clips` (lokální
-klipy). Nahrávání na Disk a volba mezi Google Drive Desktop / OAuth
-zůstává otevřené, viz past výš.
+✅ **Krok 3 – menu „pre-scout“ v main.py/cli.py (20. 10. 2026).**
+`prescout/pipeline.py` (`run_pre_scout`) – zeptá se na soupeře
+(`pre_scout_lt.ask_team`, přes `cihtv.find_teams`), zapíše `team["name"]`
+přímo do `B1` listu „Příští soupeř“ (`write_next_opponent`) a spustí
+`save_team_clips` (lokální klipy). **Žádné dodatečné napárování názvu
+nebylo potřeba** – živě ověřeno u všech 16 týmů Ligy juniorů, že název
+vrácený `cihtv.find_teams` (czechicehockey.tv) je identický s názvem
+listu v Liga 2.0 (ceskyhokej.cz) – stejný svaz/registr, jen jiný web.
+Nový příkaz `cli pre-scout [tým]` (`cmd_pre_scout`) a položka „6“ v menu
+`main.py`.
+
+Ověřeno živě naplno (ne jen suchý běh): `cli pre-scout pribram` →
+přihlášení na czechicehockey.tv, nalezení posledního zápasu (HC
+Příbram – HC Hvězda Praha, 11. 10. 2026, 5:3), zápis „HC Příbram“ do
+„Příští soupeř“!B1, stažení a střih **15 reálných MP4 klipů**
+(5 vlastních gólů, 3 obdržené, 3 vlastní přesilovky, 4 oslabení;
+~1,1 GB, `ffmpeg` bez překódování) do `output/pre_scout/
+pre_scout_lt_hc_pribram_20261011/` + `prehled.txt`. `output/` doplněno
+do `.gitignore` (gigabajty videa), testovací klipy po ověření smazány.
+
+**Pre-scout je tím funkčně hotový vč. Sheets integrace** (list, menu,
+klipy) – jediná odložená část je nahrávání klipů na Disk (viz past „krok
+1“ výš, Shared Drive/OAuth).
 
 ## Potvrzená rozhodnutí (21. 9. 2026)
 

@@ -38,6 +38,7 @@ from statistic_table.league_sheets import (
     team_sheet_title,
 )
 from statistic_table.logging_config import setup_logging
+from statistic_table.prescout.pipeline import run_pre_scout
 from statistic_table.seznamy_sheets import build_seznamy_rows, sync_poradi_from_liga
 from statistic_table.sheets import check_headers, read_player_registry, read_range
 from statistic_table.standings import (
@@ -256,6 +257,25 @@ def cmd_league_sync_teams(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_pre_scout(args: argparse.Namespace) -> int:
+    """Klipy gólů/přesilovek příštího soupeře z czechicehockey.tv + zápis
+    názvu týmu do listu „Příští soupeř“ v HC LIT jun 2026/27 (viz
+    PLAN.MD, 20. 10. 2026). Klipy se zatím ukládají jen lokálně (`cwd`/
+    `output/pre_scout/...`) – nahrávání na Disk je odložené."""
+    config = load_config()
+    try:
+        run_dir = run_pre_scout(config, args.team or "")
+    except KeyboardInterrupt:
+        print("\nPřerušeno.")
+        return 1
+    except RuntimeError as exc:
+        print(f"pre-scout se nezdařil: {exc}")
+        return 1
+    if run_dir:
+        print(f"\nKlipy uloženy do {run_dir}")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="statistic_table")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -304,6 +324,14 @@ def build_parser() -> argparse.ArgumentParser:
         "--dry-run", action="store_true", help="Jen vypsat, které listy chybí"
     )
     sync_teams_cmd.set_defaults(func=cmd_league_sync_teams)
+
+    pre_scout_cmd = subparsers.add_parser(
+        "pre-scout", help="Klipy gólů/přesilovek příštího soupeře z czechicehockey.tv"
+    )
+    pre_scout_cmd.add_argument(
+        "team", nargs="?", default=None, help="Název soupeře (stačí část, bez diakritiky)"
+    )
+    pre_scout_cmd.set_defaults(func=cmd_pre_scout)
 
     return parser
 
