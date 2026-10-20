@@ -25,7 +25,7 @@ from penalties:
 import re
 from datetime import datetime
 
-import cihtv
+from . import cihtv
 
 # ── Configuration ─────────────────────────────────────────────────────────────
 
@@ -39,10 +39,11 @@ OFFSETTING_WINDOW_SEC      = 30
 
 KIND_GOAL         = "gol"
 KIND_GOAL_AGAINST = "obdrzeny_gol"
-KIND_PP           = "presilovka"           # power play of the scouted team
-KIND_PP_OPPONENT  = "oslabeni"             # power play of its opponent (= scouted team shorthanded)
+KIND_PP           = "presilovka"  # power play of the scouted team
+KIND_PP_OPPONENT  = "oslabeni"     # power play of its opponent (= scouted team shorthanded)
 
-KIND_ORDER = [KIND_GOAL, KIND_GOAL_AGAINST, KIND_PP, KIND_PP_OPPONENT]   # Order of clips in the output
+# Order of clips in the output
+KIND_ORDER = [KIND_GOAL, KIND_GOAL_AGAINST, KIND_PP, KIND_PP_OPPONENT]
 
 
 def _player(event: dict) -> str:
@@ -50,7 +51,9 @@ def _player(event: dict) -> str:
     return f"{p.get('num', '?')} {p.get('lastName', '?')}"
 
 
-def plan_clips(events: list[dict], team_type: str, stream_start: datetime, offsets: dict) -> list[dict]:
+def plan_clips(
+    events: list[dict], team_type: str, stream_start: datetime, offsets: dict
+) -> list[dict]:
     """Return clips [{kind, start, end, label}] (seconds in the recording).
 
     Ordered by kind (KIND_ORDER: goals scored, goals conceded, own power
@@ -96,7 +99,9 @@ def plan_clips(events: list[dict], team_type: str, stream_start: datetime, offse
         start = t - penalty_offset
         end = t + p["durationInSecs"] * PP_WALL_CLOCK_FACTOR
         # A power-play goal is recorded after the penalty (both timeStamps lag the action similarly)
-        pp_goal = next((g for g in goals if g["teamType"] == pp_team and t < video_time(g) <= end), None)
+        pp_goal = next(
+            (g for g in goals if g["teamType"] == pp_team and t < video_time(g) <= end), None
+        )
         if pp_goal:
             end = video_time(pp_goal) + PP_GOAL_TAIL_SEC
         power_plays.append({

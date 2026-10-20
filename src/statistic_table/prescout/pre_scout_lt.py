@@ -1,29 +1,20 @@
-#!/usr/bin/env python3
 """
 pre-scout LT — clips of the next opponent's goals and power plays from czechicehockey.tv.
-
-    python pre_scout_lt.py                 # asks for the team name
-    python pre_scout_lt.py "technika"      # team name given as an argument
 
 Finds the team's last played Liga juniorů match that has a recording and
 official match events, and saves MP4 clips of its goals scored, goals
 conceded, its power plays and its opponent's power plays into
-OUTPUT_DIR/pre_scout_lt_<team>_<match date>/ together with prehled.txt.
+output_dir/pre_scout_lt_<team>_<match date>/ together with prehled.txt.
 No AI analysis is involved.
 """
 
 import re
-import sys
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
 
-import cihtv
-import event_clips
+from statistic_table.config import Config, require_web_credentials
 
-# ── Configuration ─────────────────────────────────────────────────────────────
-
-OUTPUT_DIR = Path("./output")
-
+from . import cihtv, event_clips
 
 # ── Console input ─────────────────────────────────────────────────────────────
 
@@ -61,14 +52,15 @@ def slug(text: str) -> str:
     return re.sub(r"[^a-z0-9]+", "_", cihtv.normalize(text)).strip("_")
 
 
-def save_team_clips(team: dict, output_dir: Path = OUTPUT_DIR) -> Path | None:
+def save_team_clips(team: dict, config: Config, output_dir: Path) -> Path | None:
     """Save clips of the team's goals and power plays from its last played match.
 
     `team` is {id, name} as returned by cihtv.find_teams(). Returns the
     directory with the clips, or None when the match has no goals or power plays.
     """
     print("\nPřihlašuji se na czechicehockey.tv ...")
-    token = cihtv.login()
+    web_login, web_passwd = require_web_credentials(config)
+    token = cihtv.login(web_login, web_passwd)
 
     # Last played match with a recording and official match events
     for match in cihtv.previous_matches(team["id"], datetime.now().astimezone()):
@@ -76,20 +68,23 @@ def save_team_clips(team: dict, output_dir: Path = OUTPUT_DIR) -> Path | None:
         events = cihtv.get_match_events(match, token) if video_url else []
         if video_url and events:
             break
-        print(f"  Bez {'událostí' if video_url else 'videa'}, přeskakuji: {cihtv.match_label(match)}")
+        missing = "událostí" if video_url else "videa"
+        print(f"  Bez {missing}, přeskakuji: {cihtv.match_label(match)}")
     else:
         raise RuntimeError(f"{team['name']} nemá žádný odehraný zápas s videem a událostmi.")
 
     team_type = "HOME" if match["homeTeam"]["id"] == team["id"] else "AWAY"
-    clips = event_clips.plan_clips(events, team_type,
-                                   cihtv.get_stream_start(match, token), cihtv.get_event_offset(token))
+    clips = event_clips.plan_clips(
+        events, team_type, cihtv.get_stream_start(match, token), cihtv.get_event_offset(token)
+    )
 
     print(f"\npre-scout LT — {team['name']}, poslední zápas: {cihtv.match_label(match)}")
     if not clips:
         print("V zápase nejsou žádné góly ani přesilovky týmu nebo soupeře.")
         return None
 
-    run_dir = Path(output_dir) / f"pre_scout_lt_{slug(team['name'])}_{cihtv.match_start(match):%Y%m%d}"
+    run_name = f"pre_scout_lt_{slug(team['name'])}_{cihtv.match_start(match):%Y%m%d}"
+    run_dir = Path(output_dir) / run_name
     run_dir.mkdir(parents=True, exist_ok=True)
     segments = cihtv.get_segments(video_url)
 
@@ -103,32 +98,3 @@ def save_team_clips(team: dict, output_dir: Path = OUTPUT_DIR) -> Path | None:
 
     (run_dir / "prehled.txt").write_text("\n".join(overview) + "\n", encoding="utf-8")
     return run_dir
-
-
-# ── Main ──────────────────────────────────────────────────────────────────────
-
-def main():
-    print("\n" + "=" * 60)
-    print("  PRE-SCOUT LT — czechicehockey.tv")
-    print("=" * 60)
-
-    try:
-        team = ask_team(" ".join(sys.argv[1:]))
-        run_dir = save_team_clips(team)
-    except KeyboardInterrupt:
-        print("\nInterrupted by user")
-        sys.exit(1)
-    except RuntimeError as e:
-        print(f"Error: {e}")
-        sys.exit(1)
-
-    if run_dir:
-        print("\n" + "=" * 60)
-        print("  ✅  CLIPS SAVED")
-        print("=" * 60)
-        print(f"  📁 {run_dir}  (přehled v prehled.txt)")
-        print("=" * 60 + "\n")
-
-
-if __name__ == "__main__":
-    main()

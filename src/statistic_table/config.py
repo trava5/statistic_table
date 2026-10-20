@@ -16,6 +16,13 @@ REQUIRED_VARS = (
     "SEASON_START_YEAR",
 )
 
+# Zůstává "drive.readonly" – nahrávání MP4 klipů na Disk (pre-scout) je
+# zatím odloženo (20. 10. 2026): servisní účet nemá vlastní úložiště
+# ("Service Accounts do not have storage quota"), na běžném (ne Workspace)
+# Google účtu nejde obejít ani plným scope "drive" bez Shared Drive nebo
+# OAuth přihlášení za reálného uživatele – viz PLAN.MD. `drive.
+# find_or_create_folder`/`upload_file` jsou připravené a funkční (založení
+# složky ověřeno živě), jen se zatím nikde nevolají.
 SCOPES = [
     "https://www.googleapis.com/auth/drive.readonly",
     "https://www.googleapis.com/auth/spreadsheets",
@@ -37,6 +44,9 @@ class Config:
     seznamy_db_spreadsheet_id: str | None = None
     seznamy_v2_spreadsheet_id: str | None = None
     seznamy_private_spreadsheet_id: str | None = None
+    web_login: str | None = None
+    web_passwd: str | None = None
+    pre_scout_drive_folder_id: str | None = None
 
 
 def load_config(env_file: str | Path = ".env") -> Config:
@@ -60,6 +70,9 @@ def load_config(env_file: str | Path = ".env") -> Config:
         seznamy_db_spreadsheet_id=os.getenv("SEZNAMY_DB_SPREADSHEET_ID"),
         seznamy_v2_spreadsheet_id=os.getenv("SEZNAMY_V2_SPREADSHEET_ID"),
         seznamy_private_spreadsheet_id=os.getenv("SEZNAMY_PRIVATE_SPREADSHEET_ID"),
+        web_login=os.getenv("WEB_LOGIN"),
+        web_passwd=os.getenv("WEB_PASSWD"),
+        pre_scout_drive_folder_id=os.getenv("PRE_SCOUT_DRIVE_FOLDER_ID"),
     )
 
 
@@ -114,6 +127,25 @@ def require_seznamy_private_spreadsheet_id(config: Config) -> str:
             "Chybí SEZNAMY_PRIVATE_SPREADSHEET_ID v .env (viz README, sekce Seznamy)"
         )
     return config.seznamy_private_spreadsheet_id
+
+
+def require_pre_scout_drive_folder_id(config: Config) -> str:
+    """Složka na Disku (servisní účet má Editor), do které pre-scout vytváří
+    podsložku pro každého soupeře a nahrává tam MP4 klipy – viz PLAN.MD,
+    20. 10. 2026. Založená a nasdílená ručně, stejně jako DRIVE_FOLDER_ID."""
+    if not config.pre_scout_drive_folder_id:
+        raise RuntimeError(
+            "Chybí PRE_SCOUT_DRIVE_FOLDER_ID v .env (viz README, sekce pre-scout)"
+        )
+    return config.pre_scout_drive_folder_id
+
+
+def require_web_credentials(config: Config) -> tuple[str, str]:
+    """Přihlašovací údaje pro czechicehockey.tv (pre-scout – stahování videí),
+    ne Google. Nikam se neukládá, drží se jen v paměti běžícího procesu."""
+    if not config.web_login or not config.web_passwd:
+        raise RuntimeError("Chybí WEB_LOGIN/WEB_PASSWD v .env (viz README, sekce pre-scout)")
+    return config.web_login, config.web_passwd
 
 
 def get_credentials(config: Config):

@@ -4,12 +4,15 @@ Client for czechicehockey.tv — the video source for pre_scout_lt.py.
 The site runs on the Live Arena Sports platform. Match listings come from
 its public REST API (only the `site-id` header is required); match events,
 recording details and the HLS video URL require a Bearer token obtained by
-logging in with WEB_LOGIN / WEB_PASSWD from `.env`. The token is kept in
-memory only and never written to disk.
+logging in with WEB_LOGIN / WEB_PASSWD (`Config.web_login`/`web_passwd`,
+viz config.py – na rozdíl od originální verze tohoto modulu se přihlašovací
+údaje nečtou přímo z prostředí/`.env` tady, ale chodí jako argument z
+volajícího kódu, stejně jako zbytek projektu používá `Config`). The token
+is kept in memory only and never written to disk.
 """
 
-import os
 import json
+import os
 import subprocess
 import unicodedata
 import urllib.error
@@ -17,14 +20,7 @@ import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
 
-from dotenv import load_dotenv
-
 # ── Configuration ─────────────────────────────────────────────────────────────
-
-load_dotenv()
-
-WEB_LOGIN  = os.environ.get("WEB_LOGIN")
-WEB_PASSWD = os.environ.get("WEB_PASSWD")
 
 SITE_ID         = "CZE"
 LOGIN_URL       = "https://www.czechicehockey.tv/api/user/login"
@@ -166,16 +162,16 @@ def get_event_offset(token: str, competition_id: str = LIGA_JUNIORU_ID) -> dict:
 
 # ── Video ─────────────────────────────────────────────────────────────────────
 
-def login(user: str = None, password: str = None) -> str:
+def login(user: str, password: str) -> str:
     """Log in and return the Bearer access token (valid for 14 days, kept in memory only)."""
-    user = user or WEB_LOGIN
-    password = password or WEB_PASSWD
     if not user or not password:
-        raise RuntimeError("Set WEB_LOGIN and WEB_PASSWD in .env")
+        raise RuntimeError("Chybí WEB_LOGIN/WEB_PASSWD (viz .env.example, sekce pre-scout)")
     try:
         data = _request(LOGIN_URL, data={"userName": user, "password": password})
     except urllib.error.HTTPError as e:
-        raise RuntimeError(f"czechicehockey.tv login failed (HTTP {e.code}) — check WEB_LOGIN / WEB_PASSWD") from None
+        raise RuntimeError(
+            f"czechicehockey.tv login failed (HTTP {e.code}) — check WEB_LOGIN / WEB_PASSWD"
+        ) from None
     token = (data or {}).get("accessToken")
     if not token:
         raise RuntimeError(f"czechicehockey.tv login failed: {(data or {}).get('status')}")
@@ -191,9 +187,9 @@ def get_video_url(match: dict, token: str) -> str | None:
 
 
 def get_segments(video_url: str) -> list[dict]:
-    """Segments of an HLS playlist: [{start, duration, url}], start = seconds from the recording start."""
-    with urllib.request.urlopen(urllib.request.Request(video_url, headers={"User-Agent": "Mozilla/5.0"}),
-                                timeout=30) as r:
+    """Segments of an HLS playlist: [{start, duration, url}], start = seconds from stream start."""
+    request = urllib.request.Request(video_url, headers={"User-Agent": "Mozilla/5.0"})
+    with urllib.request.urlopen(request, timeout=30) as r:
         lines = r.read().decode("utf-8", "replace").splitlines()
     segments, start = [], 0.0
     for i, line in enumerate(lines):
@@ -208,7 +204,9 @@ def get_segments(video_url: str) -> list[dict]:
     return segments
 
 
-def download_clip(segments: list[dict], start_sec: float, end_sec: float, output_path: str) -> float:
+def download_clip(
+    segments: list[dict], start_sec: float, end_sec: float, output_path: str
+) -> float:
     """Save the part of the recording between start_sec and end_sec as one MP4 file.
 
     Whole HLS segments covering the interval are downloaded and joined into
@@ -217,12 +215,14 @@ def download_clip(segments: list[dict], start_sec: float, end_sec: float, output
     boundaries are rounded outwards to the segment length (~6 s). Returns
     the clip duration in seconds.
     """
-    chosen = [s for s in segments if s["start"] + s["duration"] > start_sec and s["start"] < end_sec]
+    chosen = [
+        s for s in segments if s["start"] + s["duration"] > start_sec and s["start"] < end_sec
+    ]
     ts_path = os.path.splitext(output_path)[0] + ".ts"
     with open(ts_path, "wb") as out:
         for s in chosen:
-            with urllib.request.urlopen(urllib.request.Request(s["url"], headers={"User-Agent": "Mozilla/5.0"}),
-                                        timeout=60) as r:
+            request = urllib.request.Request(s["url"], headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(request, timeout=60) as r:
                 out.write(r.read())
 
     cmd = [
