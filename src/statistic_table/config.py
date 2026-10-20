@@ -422,3 +422,10 @@ SEZNAMY_DASHBOARD_SHEET = "Dashboard"
 # Vzorec nad SEZNAMY_ZAPASY_TYM_SHEET, postavený jednorázově
 # scripts/build_seznamy_last5_sheet.py.
 SEZNAMY_LAST5_SHEET = "Last 5"
+
+# List pro pre-scout (od 20. 10. 2026, viz PLAN.MD) – zrcadlí přes IMPORTRANGE
+# list příštího soupeře z Liga 2.0 (název týmu se čte z buňky B1, kterou
+# přepisuje `cli pre-scout`/menu main.py při výběru soupeře). Postaveno
+# jednorázově scripts/build_seznamy_next_opponent_sheet.py.
+SEZNAMY_NEXT_OPPONENT_SHEET = "Příští soupeř"
+SEZNAMY_NEXT_OPPONENT_TEAM_CELL = "B1"

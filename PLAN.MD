@@ -1084,6 +1084,80 @@ VP, PP, P, skóre, body – všech 16 týmů). Oprava `build_league_poradi_
 view.py` ověřena stejně (SKUPINA 1/2 teď správně rozdělené, dřív SKUPINA
 1 prázdná).
 
+## Pre-scout příštího soupeře (od 20. 10. 2026, probíhá)
+
+Uživatel nakopíroval do `src/ready_to_move/` hotový kód z jiného projektu
+(`hockey_analyzer`) – konzolová aplikace, co z **czechicehockey.tv**
+(Live Arena Sports, NE ceskyhokej.cz) stáhne poslední odehraný zápas
+zadaného soupeře a vystřihne MP4 klipy (góly vstřelené/obdržené,
+přesilovky vlastní/soupeřovy) z oficiálních událostí zápasu (žádná AI
+analýza obrazu). Cíl: nové menu „pre-scout“ v `main.py` – zadá se název
+příštího soupeře, zobrazí se jeho karta z Liga 2.0 na listu „Příští
+soupeř“ v „HC LIT jun 2026/27“ a (později) se MP4 klipy nahrají na Disk
+do `Pre-scout/<tým>/`. **Řízená, postupná implementace** – každý krok
+zvlášť, ověřený živě, než se jde dál.
+
+✅ **Krok 1 – kód přesunutý do balíčku (20. 10. 2026).**
+`src/ready_to_move/{cihtv,event_clips,pre_scout_lt}.py` →
+`src/statistic_table/prescout/` – relativní importy, `WEB_LOGIN`/
+`WEB_PASSWD` čtené přes `Config`/`require_web_credentials` (ne vlastní
+`load_dotenv()` v modulu). Logika (přihlášení, hledání zápasu, plánování
+klipů podle offsetů eventů, střih ffmpeg) beze změny. `drive.py` dostal
+`find_or_create_folder`/`upload_file` (připraveno na krok s Diskem).
+`src/ready_to_move/` smazáno (nahrazeno).
+
+❌→✅ **Past: servisní účet nemá úložiště na Disku.** Živý test nahrání
+souboru do sdílené složky „Pre-scout“ (`PRE_SCOUT_DRIVE_FOLDER_ID`,
+nasdílená Editor servisnímu účtu) spadl na `403 storageQuotaExceeded`:
+„Service Accounts do not have storage quota. Leverage shared drives,
+or use OAuth delegation instead.“ Založení SLOŽKY (metadata, 0 bajtů)
+proběhlo bez problému – jen vlastní OBSAH souboru (MP4) servisní účet
+nemůže vlastnit na běžném (ne Workspace) Google účtu. Shared Drive
+vyžaduje Workspace předplatné (hc.lit.juniori@gmail.com je běžný Gmail),
+OAuth delegace vyžaduje Workspace admin. **Rozhodnuto s uživatelem:
+nahrávání na Disk se odkládá** – klipy se zatím ukládají jen lokálně.
+`SCOPES` vrácen zpět na `drive.readonly` (`find_or_create_folder`/
+`upload_file` zůstávají v kódu připravené, nepoužité).
+
+✅ **Krok 2 – list „Příští soupeř“ v „HC LIT jun 2026/27“ (20. 10. 2026).**
+`scripts/build_seznamy_next_opponent_sheet.py` – `IMPORTRANGE` celého
+listu soupeře z Liga 2.0, druhý argument sestavený jako dynamický
+řetězec (`"'" & B1 & "'!A1:X120"`) podle názvu týmu v `B1` (tu buňku
+bude přepisovat menu „pre-scout“ v dalším kroku). `IMPORTRANGE` kopíruje
+jen vypočítané HODNOTY, ne grafy (vlastní objekty) – 3 grafy z karty
+týmu (Skóre po zápasech/po třetinách, Pořadí v tabulce) se proto
+nezobrazí, jen číselné přehledy (Sezónní přehled, Přesilovky/oslabení,
+Vyloučení a TM, Odehrané zápasy, Bodování, Brankáři). Vědomý kompromis
+oproti `copyTo` (ten by grafy zachoval, ale QUERY/SUMIF vzorce uvnitř by
+ukazovaly `#REF!` – odkazují na listy, co v „HC LIT jun 2026/27“
+neexistují).
+- **Past #1 (stejná jako jinde v projektu):** IMPORTRANGE mezi
+  spreadsheety vyžaduje jednorázové ruční „Povolit přístup“ v
+  **desktopovém prohlížeči** (ne mobilní appka) – do té doby vrací
+  `#REF! "Please use a desktop web browser to connect this sheet."`,
+  což `IFERROR` nezachytí (tenhle typ chyby proleze skrz).
+- **Past #2 (vlastní, při testování):** testovací vzorec zapsaný omylem
+  doprostřed spill rozsahu hlavního vzorce (`A20`, uvnitř `A3:X122`)
+  způsobil `#REF! "Array result was not expanded because it would
+  overwrite data in A20."` – smazání testovací buňky to opravilo.
+- IMPORTRANGE nekopíruje FORMÁT buňky, jen hodnotu – datum (sériové
+  číslo, např. „46283,81“) a „Bodový zisk“ (syrový podíl „0,54…“) bez
+  vlastního formátu v cílové tabulce byly nečitelné. Opraveno vlastním
+  `numberFormat` (`DATE`/`PERCENT`) na odpovídajících buňkách/sloupci v
+  „Příští soupeř“ (řádky posunuté o +2 oproti šabloně týmu, protože
+  import začíná na řádku 3, ne 1).
+Ověřeno živě: `B1` = „HC Příbram“ → „Příští soupeř“ ukazuje přesně
+tatáž data, co dřív ověřená „Tabulka“ (8 Z, 3V/1VP/2PP/2P, 13 bodů,
+23:23, 54,17 % bodový zisk) + kompletní Odehrané zápasy/Bodování/
+Brankáři se správně naformátovaným datem.
+
+**Další krok (neprovedeno):** menu „pre-scout“ v `main.py`/`cli.py` –
+dotaz na soupeře, napárování názvu z czechicehockey.tv na přesný název
+listu v Liga 2.0 (typicky stejný, ale ne zaručeně – jiný zdroj dat),
+zápis do `B1`, spuštění `prescout.pre_scout_lt.save_team_clips` (lokální
+klipy). Nahrávání na Disk a volba mezi Google Drive Desktop / OAuth
+zůstává otevřené, viz past výš.
+
 ## Potvrzená rozhodnutí (21. 9. 2026)
 
 - Skript **pouze importuje** vstupní data, veškerá logika statistik zůstává ve vzorcích sešitu.

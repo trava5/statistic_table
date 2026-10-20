@@ -339,6 +339,22 @@ nevolají odnikud za běhu.
 - **Otevřené:** Ročníky v `Tým` a shutout v `Brankáři` zatím chybí (viz
   PLAN.MD, „Další krok“).
 
+## Pre-scout příštího soupeře (rozpracováno od 20. 10. 2026)
+
+Modul `statistic_table.prescout` (`cihtv.py`, `event_clips.py`,
+`pre_scout_lt.py`) – jiný zdroj dat než zbytek projektu: **czechicehockey.tv**
+(Live Arena Sports, placené VOD, ne ceskyhokej.cz) poskytuje oficiální
+průběh zápasu (góly/tresty s časem zápisu) a záznam utkání. Z posledního
+odehraného zápasu zadaného soupeře se bez AI analýzy obrazu vystřihnou
+MP4 klipy (vlastní/obdržené góly, vlastní/soupeřovy přesilovky) – jen
+mapování event timestamp → čas ve videu + ffmpeg remux, žádné rozpoznávání
+obrazu. List `Příští soupeř` v „HC LIT jun 2026/27“
+(`scripts/build_seznamy_next_opponent_sheet.py`) zrcadlí přes
+`IMPORTRANGE` kartu soupeře z Liga 2.0 (bez grafů – ty IMPORTRANGE
+nekopíruje), název týmu se čte z `B1`. Nahrávání klipů na Disk je
+odložené (servisní účet nemá na běžném Google účtu úložiště pro obsah
+souborů) – podrobně viz PLAN.MD.
+
 ## Struktura repozitáře
 
 Stav k 26. 9. 2026 (Kroky 0–8 z PLAN.MD hotové + cutover LIT na Seznamy DB
@@ -381,6 +397,10 @@ statistic_table/
     seznamy_sheets.py zápis do Seznamy DB (6 syrových listů, oba týmy, z PDF;
                        `sync_poradi_from_liga` doplňuje pořadí po kole z Liga DB)
     cli.py            check / import / standings / league sync-games / league sync-teams
+    prescout/         pre-scout příštího soupeře (rozpracováno, viz PLAN.MD)
+      cihtv.py          klient czechicehockey.tv (přihlášení, zápasy, HLS)
+      event_clips.py    naplánování klipů z oficiálních událostí zápasu
+      pre_scout_lt.py   orchestrace: tým -> poslední zápas -> uložené MP4 klipy
   scripts/
     build_league_team_template.py     jednorázové postavení listu „Tým – šablona“
     build_league_aggregate_sheets.py  jednorázové postavení Bruslaři/Brankáři - liga
@@ -394,6 +414,8 @@ statistic_table/
     build_seznamy_dashboard.py        jednorázové postavení listu Dashboard v HC LIT jun 2026/27
     build_seznamy_last5_sheet.py      jednorázové postavení listu Last 5 (forma
                                        za posledních 5 zápasů) v HC LIT jun 2026/27
+    build_seznamy_next_opponent_sheet.py jednorázové postavení listu Příští
+                                       soupeř (pre-scout) v HC LIT jun 2026/27
     restore_production_seznam_hracu.py obnova listu Seznam hráčů v produkční
                                        tabulce po přesunu do soukromé tabulky
     apps_script/
