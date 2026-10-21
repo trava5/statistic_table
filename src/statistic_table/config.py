@@ -16,17 +16,21 @@ REQUIRED_VARS = (
     "SEASON_START_YEAR",
 )
 
-# Zůstává "drive.readonly" – nahrávání MP4 klipů na Disk (pre-scout) je
-# zatím odloženo (20. 10. 2026): servisní účet nemá vlastní úložiště
-# ("Service Accounts do not have storage quota"), na běžném (ne Workspace)
-# Google účtu nejde obejít ani plným scope "drive" bez Shared Drive nebo
-# OAuth přihlášení za reálného uživatele – viz PLAN.MD. `drive.
-# find_or_create_folder`/`upload_file` jsou připravené a funkční (založení
-# složky ověřeno živě), jen se zatím nikde nevolají.
+# Zůstává "drive.readonly" – servisní účet nemá vlastní úložiště ("Service
+# Accounts do not have storage quota"), takže nahrávání OBSAHU souborů na
+# Disk (pre-scout MP4 klipy) jde jen přes OAuth přihlášení za reálného
+# uživatele (`OAUTH_SCOPES`/`get_oauth_drive_credentials` níž), ne přes
+# servisní účet – viz PLAN.MD, 21. 10. 2026.
 SCOPES = [
     "https://www.googleapis.com/auth/drive.readonly",
     "https://www.googleapis.com/auth/spreadsheets",
 ]
+
+# Plný "drive" scope (ne jen upload) – OAuth uživatel potřebuje najít i
+# existující složku `Pre-scout` (založenou předem ručně), ne jen zapisovat
+# nové soubory do složek, co si sám vytvořil (na rozdíl od užšího
+# "drive.file").
+OAUTH_SCOPES = ["https://www.googleapis.com/auth/drive"]
 
 
 @dataclass(frozen=True)
@@ -47,6 +51,8 @@ class Config:
     web_login: str | None = None
     web_passwd: str | None = None
     pre_scout_drive_folder_id: str | None = None
+    google_oauth_client_secrets_file: str | None = None
+    google_oauth_token_file: str | None = None
 
 
 def load_config(env_file: str | Path = ".env") -> Config:
@@ -73,6 +79,8 @@ def load_config(env_file: str | Path = ".env") -> Config:
         web_login=os.getenv("WEB_LOGIN"),
         web_passwd=os.getenv("WEB_PASSWD"),
         pre_scout_drive_folder_id=os.getenv("PRE_SCOUT_DRIVE_FOLDER_ID"),
+        google_oauth_client_secrets_file=os.getenv("GOOGLE_OAUTH_CLIENT_SECRETS_FILE"),
+        google_oauth_token_file=os.getenv("GOOGLE_OAUTH_TOKEN_FILE"),
     )
 
 
@@ -158,6 +166,45 @@ def get_credentials(config: Config):
     return service_account.Credentials.from_service_account_file(
         config.google_service_account_file, scopes=SCOPES
     )
+
+
+def get_oauth_drive_credentials(config: Config):
+    """Přístup na Disk za REÁLNÉHO uživatele (ne servisní účet), jediný
+    způsob, jak nahrát OBSAH souboru na běžném (ne Workspace) Google účtu
+    – viz `OAUTH_SCOPES` výš a PLAN.MD, 21. 10. 2026.
+
+    Při prvním spuštění otevře prohlížeč k jednorázovému souhlasu
+    (`InstalledAppFlow.run_local_server`) a uloží refresh token do
+    `GOOGLE_OAUTH_TOKEN_FILE` (`secrets/oauth_token.json` – v gitu
+    ignorováno stejně jako `service_account.json`). Další spuštění token
+    jen načtou/obnoví, bez prohlížeče."""
+    from google.auth.transport.requests import Request
+    from google.oauth2.credentials import Credentials
+    from google_auth_oauthlib.flow import InstalledAppFlow
+
+    secrets_file = config.google_oauth_client_secrets_file or "./secrets/oauth_client_secrets.json"
+    token_file = Path(config.google_oauth_token_file or "./secrets/oauth_token.json")
+
+    creds = None
+    if token_file.exists():
+        creds = Credentials.from_authorized_user_file(str(token_file), OAUTH_SCOPES)
+
+    if not creds or not creds.valid:
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+        else:
+            if not Path(secrets_file).exists():
+                raise RuntimeError(
+                    f"Chybí OAuth client secrets soubor '{secrets_file}' – založ OAuth "
+                    "client ID (typ Desktop app) v Google Cloud Console pro tento "
+                    "projekt a ulož stažený JSON tam (viz README, sekce pre-scout)."
+                )
+            flow = InstalledAppFlow.from_client_secrets_file(secrets_file, OAUTH_SCOPES)
+            creds = flow.run_local_server(port=0)
+        token_file.parent.mkdir(parents=True, exist_ok=True)
+        token_file.write_text(creds.to_json(), encoding="utf-8")
+
+    return creds
 
 
 def col_to_index(letter: str) -> int:
