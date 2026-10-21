@@ -1225,6 +1225,45 @@ vyzkoušel sám za běhu (přepnul `B1` na „TECHNIKA HOCKEY BRNO“ zatímco
 jsem ověřoval) – „Příští soupeř“ i grafy se podle toho správně
 přepočítaly (10 Z, 2V/2VP/0PP/6P, 10 bodů, 25:43, 33,33 % bodový zisk).
 
+✅ **List „Příští soupeř Last 5“ (21. 10. 2026).** Stejné kategorie a
+rozložení jako `Last 5` (LIT), ale forma **kteréhokoli soupeře** vybraného
+na `Příští soupeř`!`B1` za posledních 5 zápasů. LIT Last 5 počítá
+z Seznamy DB (zná jen LIT) – soupeř může být libovolný z 16 týmů ligy,
+takže zdroj musí být Liga DB. `scripts/build_seznamy_next_opponent_
+last5_sheet.py`:
+- Tři skryté `IMPORTRANGE` mirrory z Liga 2.0 (`Zápasy - liga (tým)`
+  sloupce AA:AT, `Bruslaři - liga (zápasy)` BA:BJ, `Brankáři - liga
+  (zápasy)` CA:CL) + místní pomocný sloupec `CM` („vychytaná výhra“ –
+  log má na rozdíl od Seznamy DB jen jeden řádek na brankáře, co v
+  zápase skutečně chytal, takže bez potřeby podmínky na „chytal“).
+- Tým se filtruje dynamickým odkazem na `'Příští soupeř'!$B$1` (ne
+  napevno jako LIT), „posledních 5 zápasů“ podle **kola** (`Zápasy -
+  liga (tým)` ho má) – každý tým hraje v lize přesně 1 zápas na kolo,
+  bez rizika textového řazení data (past u Liga 2.0 team template, viz
+  výš).
+**Tři pasti nalezené živě:**
+1. Absolutní odkazy na `$5000.` řádek (`$AB$5000` apod.) se po zápisu
+   samy přepsaly na `$7014` – mřížka listu měla míň řádků, než
+   vyžadovaly vzorce, Sheets ji musela zvětšit a při tom (vložením
+   řádků, ne jen změnou `rowCount`) posunula už zapsané absolutní
+   odkazy. Oprava: `gridProperties.rowCount` nastavený napevno na
+   `ROWS + 100` PŘED zápisem vzorců (stejný princip jako `columnCount`
+   u Dashboardu/Tabulky, jen pro řádky).
+2. `QUERY` s podmínkou `BA='" & N2 & "'"` (uvozovky kolem `game_id`)
+   tiše vrátilo 0 řádků, bez chyby – `game_id` je v Liga DB **číslo**
+   (`league_scraper.py` ho parsuje přes `int()`), ne text jako LIT
+   „číslo zápisu“, takže textové porovnání proti číselnému sloupci
+   v GViz Query nikdy nesedí. Oprava: `_last5_or_tokens` sestavuje
+   podmínku bez uvozovek (`BA=181025`, ne `BA='181025'`).
+3. (Vedlejší, při ladění) `AND (A OR B)` s uvozovkami i bez nich vracelo
+   stejně 0 řádků dokud nebyla opravena past č. 2 – nebyl to problém se
+   závorkami samými, jak se zprvu zdálo, jen s typem porovnávané
+   hodnoty uvnitř nich.
+Ověřeno živě na dvou týmech: „HCM Warriors Brno“ (5 Z, 0V/0VP/1PP/4P,
+1 bod, 9:32, oba brankáři 0 % výher – sedí na 0 výher v okně) a „Berani
+Zlín“ (5 Z, 4V/1VP/0PP/0P, 14 bodů, 26:10, oba brankáři 100 % výher –
+sedí na to, že tým vyhrál všech 5 zápasů v okně).
+
 ## Potvrzená rozhodnutí (21. 9. 2026)
 
 - Skript **pouze importuje** vstupní data, veškerá logika statistik zůstává ve vzorcích sešitu.

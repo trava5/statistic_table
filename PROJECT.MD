@@ -371,6 +371,20 @@ mimo git) –
 nahrávání na Disk je odložené (servisní účet nemá na běžném Google
 účtu úložiště pro obsah souborů) – podrobně viz PLAN.MD.
 
+List `Příští soupeř Last 5` (`scripts/build_seznamy_next_opponent_
+last5_sheet.py`) ukazuje formu vybraného soupeře za posledních 5 zápasů
+– stejné kategorie jako `Last 5` (LIT), ale nad daty **Liga DB**
+(`Zápasy - liga (tým)`, `Bruslaři/Brankáři - liga (zápasy)`, tři skryté
+`IMPORTRANGE` mirrory z Liga 2.0), ne Seznamy DB, protože soupeř může
+být kterýkoli ze 16 týmů ligy, ne jen LIT. Tým se filtruje dynamickým
+odkazem na `'Příští soupeř'!$B$1`, „posledních 5“ se řadí podle **kola**
+(na rozdíl od LIT má `Zápasy - liga (tým)` sloupec „kolo“ – každý tým
+hraje 1 zápas na kolo). `game_id` je v Liga DB číslo (`league_scraper.py`
+ho parsuje přes `int()`), takže dynamický `QUERY` filtr na „posledních
+5 game_id“ musí porovnávat bez uvozovek (`BA=181025`, ne `BA='181025'`)
+– s uvozovkami `QUERY` tiše vrátí 0 řádků, bez chyby (past nalezená
+živě, viz PLAN.MD).
+
 ## Struktura repozitáře
 
 Stav k 26. 9. 2026 (Kroky 0–8 z PLAN.MD hotové + cutover LIT na Seznamy DB
@@ -434,6 +448,8 @@ statistic_table/
                                        za posledních 5 zápasů) v HC LIT jun 2026/27
     build_seznamy_next_opponent_sheet.py jednorázové postavení listu Příští
                                        soupeř (pre-scout) v HC LIT jun 2026/27
+    build_seznamy_next_opponent_last5_sheet.py jednorázové postavení listu
+                                       Příští soupeř Last 5 v HC LIT jun 2026/27
     restore_production_seznam_hracu.py obnova listu Seznam hráčů v produkční
                                        tabulce po přesunu do soukromé tabulky
     apps_script/
