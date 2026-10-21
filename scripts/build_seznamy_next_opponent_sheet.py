@@ -12,15 +12,17 @@ Druhý argument `IMPORTRANGE` je proto sestavený jako dynamický řetězec
 template), jen pro `IMPORTRANGE`.
 
 `IMPORTRANGE` kopíruje jen VYPOČÍTANÉ HODNOTY buněk, ne grafy (vlastní
-objekty, ne data) – 3 grafy z karty týmu (Skóre po zápasech/po třetinách,
-Pořadí v tabulce) se proto na „Příští soupeř“ nezobrazí, jen číselné
-přehledy (Sezónní přehled, Přesilovky/oslabení, Vyloučení a TM, Odehrané
-zápasy, Bodování, Brankáři). Vedlejší efekt, který tenhle přístup řeší bez
-rizika rozbitých vzorců: přímé zkopírování listu (`copyTo`) by grafy
-zachovalo, ale QUERY/SUMIF vzorce uvnitř by ukazovaly #REF! (odkazují na
-listy Zápasy - liga (tým)/Skupiny - liga, které v „HC LIT jun 2026/27“
-neexistují) – IMPORTRANGE se naopak žádné formule nedotýká, jen čte její
-výsledek.
+objekty, ne data) – proto se 3 grafy z karty týmu (Skóre po zápasech/po
+třetinách, Pořadí v tabulce) musí postavit znovu, nativně, na „Příští
+soupeř“ – stejné zdrojové sloupce (N:P, R:T, V:X) jako šablona
+(`build_league_team_template.py`), jen posunuté o +2 řádky (import
+začíná na řádku 3, ne 1). Vedlejší efekt, který tenhle přístup (mirror
+hodnot + vlastní grafy) řeší bez rizika rozbitých vzorců: přímé
+zkopírování listu (`copyTo`) by grafy zachovalo, ale QUERY/SUMIF vzorce
+uvnitř by ukazovaly #REF! (odkazují na listy Zápasy - liga (tým)/
+Skupiny - liga, které v „HC LIT jun 2026/27“ neexistují) – IMPORTRANGE
+se naopak žádné formule nedotýká, jen čte její výsledek; grafy nad
+hodnotami samými zůstávají platné i po přepnutí soupeře v `B1`.
 
 Použití:
     .venv\\Scripts\\python.exe scripts\\build_seznamy_next_opponent_sheet.py
@@ -81,6 +83,14 @@ def main() -> None:
     )
     data = [
         {"range": f"{sheet}!A1", "values": [["Příští soupeř:"]]},
+        # B1 musí po tomhle skriptu zůstat vyplněné nějakým reálným týmem
+        # natrvalo, ne prázdné – `cli pre-scout` ho při výběru soupeře
+        # přepíše, ale pokud by teď zůstalo prázdné, IMPORTRANGE by vrátil
+        # jen chybovou hlášku a grafy níž by se stavěly nad prázdnými daty
+        # (Sheets API v takovém případě tiše zahodí `series`, viz past u
+        # "Skóre po třetinách" - stejný důvod, proč i Liga 2.0 team
+        # template (`PLACEHOLDER_TEAM`) nechává B1 vyplněné natrvalo).
+        {"range": f"{sheet}!{team_cell}", "values": [["HC Stadion Litoměřice"]]},
         {"range": f"{sheet}!A3", "values": [[import_formula]]},
     ]
     service.spreadsheets().values().batchUpdate(
@@ -146,6 +156,181 @@ def main() -> None:
         spreadsheetId=spreadsheet_id, body={"requests": format_requests}
     ).execute()
     print(f"List '{SEZNAMY_NEXT_OPPONENT_SHEET}' postaven.")
+
+    # Staré grafy smazat před znovupostavením (opakované spuštění skriptu by
+    # jinak hromadilo duplicity – `values().clear()` výš se grafů netýká,
+    # to jsou vlastní objekty, ne hodnoty buněk).
+    existing_charts = (
+        service.spreadsheets()
+        .get(spreadsheetId=spreadsheet_id, ranges=[sheet], fields="sheets(charts.chartId)")
+        .execute()["sheets"][0]
+        .get("charts", [])
+    )
+    if existing_charts:
+        service.spreadsheets().batchUpdate(
+            spreadsheetId=spreadsheet_id,
+            body={
+                "requests": [
+                    {"deleteEmbeddedObject": {"objectId": c["chartId"]}} for c in existing_charts
+                ]
+            },
+        ).execute()
+
+    def source(row_start, row_end, col_start, col_end):
+        return {
+            "sourceRange": {
+                "sources": [
+                    {
+                        "sheetId": sheet_id,
+                        "startRowIndex": row_start,
+                        "endRowIndex": row_end,
+                        "startColumnIndex": col_start,
+                        "endColumnIndex": col_end,
+                    }
+                ]
+            }
+        }
+
+    def create_chart_robust(spec: dict, position: dict, expected_series: int) -> None:
+        """Viz build_league_team_template.py – `addChart` nespolehlivě zahazuje
+        druhou a další `series`, řešení je smazat a zkusit znovu od nuly."""
+        chart_id = None
+        for attempt in range(1, 8):
+            if chart_id is not None:
+                service.spreadsheets().batchUpdate(
+                    spreadsheetId=spreadsheet_id,
+                    body={"requests": [{"deleteEmbeddedObject": {"objectId": chart_id}}]},
+                ).execute()
+            resp = service.spreadsheets().batchUpdate(
+                spreadsheetId=spreadsheet_id,
+                body={"requests": [{"addChart": {"chart": {"spec": spec, "position": position}}}]},
+            ).execute()
+            chart_id = resp["replies"][0]["addChart"]["chart"]["chartId"]
+            check = service.spreadsheets().get(
+                spreadsheetId=spreadsheet_id,
+                ranges=[sheet],
+                fields="sheets(charts(chartId,spec.basicChart.series))",
+            ).execute()
+            chart = next(c for c in check["sheets"][0]["charts"] if c["chartId"] == chart_id)
+            actual = len(chart["spec"]["basicChart"].get("series", []))
+            if actual == expected_series:
+                print(f"  graf '{spec['title']}': OK ({actual} sérií, pokus {attempt})")
+                return
+        print(
+            f"  POZOR: graf '{spec['title']}' má {actual}/{expected_series} sérií "
+            f"i po {attempt} pokusech – zkontroluj ručně v tabulce."
+        )
+
+    # Zdrojové sloupce (N:P, R:T, V:X) jsou přesně ty, co IMPORTRANGE přinesl
+    # z karty týmu (build_league_team_template.py) – jen řádky posunuté o +2
+    # (náš import začíná na řádku 3, šablona na řádku 1).
+    create_chart_robust(
+        {
+            "title": "Skóre po zápasech",
+            "basicChart": {
+                "chartType": "LINE",
+                "legendPosition": "BOTTOM_LEGEND",
+                "axis": [
+                    {"position": "BOTTOM_AXIS", "title": "Zápas"},
+                    {"position": "LEFT_AXIS", "title": "Góly"},
+                ],
+                "domains": [{"domain": source(5, 42, 13, 14)}],
+                "series": [
+                    {
+                        "series": source(5, 42, 14, 15),
+                        "targetAxis": "LEFT_AXIS",
+                        "pointStyle": {"shape": "CIRCLE", "size": 6},
+                    },
+                    {
+                        "series": source(5, 42, 15, 16),
+                        "targetAxis": "LEFT_AXIS",
+                        "pointStyle": {"shape": "CIRCLE", "size": 6},
+                    },
+                ],
+                "headerCount": 1,
+            },
+        },
+        {
+            "overlayPosition": {
+                "anchorCell": {"sheetId": sheet_id, "rowIndex": 16},
+                "widthPixels": 600,
+                "heightPixels": 320,
+            }
+        },
+        expected_series=2,
+    )
+
+    create_chart_robust(
+        {
+            "title": "Skóre po třetinách (celá sezóna)",
+            "basicChart": {
+                "chartType": "COLUMN",
+                "legendPosition": "BOTTOM_LEGEND",
+                "axis": [
+                    {"position": "BOTTOM_AXIS", "title": "Třetina"},
+                    {"position": "LEFT_AXIS", "title": "Góly"},
+                ],
+                "domains": [{"domain": source(4, 8, 17, 18)}],
+                "series": [
+                    {"series": source(4, 8, 18, 19), "targetAxis": "LEFT_AXIS"},
+                    {"series": source(4, 8, 19, 20), "targetAxis": "LEFT_AXIS"},
+                ],
+                "headerCount": 1,
+            },
+        },
+        {
+            "overlayPosition": {
+                "anchorCell": {"sheetId": sheet_id, "rowIndex": 33},
+                "widthPixels": 600,
+                "heightPixels": 320,
+            }
+        },
+        expected_series=2,
+    )
+
+    create_chart_robust(
+        {
+            "title": "Pořadí v tabulce",
+            "basicChart": {
+                "chartType": "LINE",
+                "legendPosition": "NO_LEGEND",
+                "axis": [
+                    {"position": "BOTTOM_AXIS", "title": "Kolo"},
+                    {
+                        "position": "LEFT_AXIS",
+                        "title": "Pořadí",
+                        # Pevný rozsah 1–8 (skupina má 8 týmů), stejně jako
+                        # šablona – hodnoty jsou záporné (sloupec X), min/max
+                        # jsou tedy prohozené oproti zobrazenému 1/8.
+                        "viewWindowOptions": {
+                            "viewWindowMode": "EXPLICIT",
+                            "viewWindowMin": -8,
+                            "viewWindowMax": -1,
+                        },
+                    },
+                ],
+                "domains": [{"domain": source(5, 42, 21, 22)}],
+                "series": [
+                    {
+                        "series": source(5, 42, 23, 24),
+                        "targetAxis": "LEFT_AXIS",
+                        "dataLabel": {"type": "DATA"},
+                        "pointStyle": {"shape": "CIRCLE", "size": 7},
+                    }
+                ],
+                "headerCount": 1,
+            },
+        },
+        {
+            "overlayPosition": {
+                "anchorCell": {"sheetId": sheet_id, "rowIndex": 16, "columnIndex": 7},
+                "widthPixels": 500,
+                "heightPixels": 320,
+            }
+        },
+        expected_series=1,
+    )
+
     print(
         "Jednou je potřeba v prohlížeči otevřít „Povolit přístup“ pro "
         "IMPORTRANGE Liga 2.0 -> HC LIT jun 2026/27 (pokud ještě nebylo)."

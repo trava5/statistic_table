@@ -1175,6 +1175,32 @@ do `.gitignore` (gigabajty videa), testovací klipy po ověření smazány.
 klipy) – jediná odložená část je nahrávání klipů na Disk (viz past „krok
 1“ výš, Shared Drive/OAuth).
 
+✅ **Doplněny grafy na „Příští soupeř“ (21. 10. 2026).** Uživatel
+nahlásil, že se na listu nezobrazují grafy – čekané: `IMPORTRANGE`
+kopíruje jen hodnoty buněk, grafy jsou vlastní objekty, ne data, takže
+se nikdy nemohly přenést automaticky. Oprava: `build_seznamy_next_
+opponent_sheet.py` teď postaví 3 grafy nativně na „Příští soupeř“ (Skóre
+po zápasech, Skóre po třetinách, Pořadí v tabulce) – stejné zdrojové
+sloupce (N:P, R:T, V:X), co `IMPORTRANGE` přinesl, jen posunuté o +2
+řádky (import začíná na řádku 3, šablona na řádku 1). Staré grafy se
+před znovupostavením smažou (idempotence – `values().clear()` na grafy
+nesahá, opakovaný běh by jinak hromadil duplicity).
+- **Past nalezená živě:** graf „Skóre po třetinách“ při prvním běhu
+  ztratil jednu ze dvou sérií i po všech 7 pokusech `create_chart_
+  robust`. Příčina nebyla flaky API (jako jinde v projektu), ale
+  skutečně PRÁZDNÝ zdroj dat – `values().clear()` na začátku skriptu
+  smazal i `B1` (soupeř), takže `IMPORTRANGE` v okamžiku stavby grafů
+  ukazoval jen chybovou hlášku, ne čísla. Sheets API v takovém případě
+  `series` nad prázdným rozsahem tiše zahodí (stejná past jako u
+  Dashboardu, viz výš). Oprava: `B1` zůstává po skriptu natrvalo
+  vyplněné reálným týmem (`"HC Stadion Litoměřice"`, stejný placeholder
+  jako `PLACEHOLDER_TEAM` v `build_league_team_template.py`) – `cli
+  pre-scout` ho při výběru soupeře přepíše, ale nikdy nenechá prázdné.
+Ověřeno živě: všechny 3 grafy mají po běhu správný počet sérií (2/2/1),
+zdrojová data existují a správně se měnila s přepnutím `B1` (ověřeno na
+LIT vlastním i HC Příbram – skóre po zápasech/třetinách/pořadí sedí na
+dřív ověřená čísla pro oba týmy).
+
 ## Potvrzená rozhodnutí (21. 9. 2026)
 
 - Skript **pouze importuje** vstupní data, veškerá logika statistik zůstává ve vzorcích sešitu.
