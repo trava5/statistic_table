@@ -1364,6 +1364,33 @@ přihlášeného uživatele (`hc.lit.juniori@gmail.com`) i vlastníka souboru
 i podsložka smazány. Token (`secrets/oauth_token.json`) zůstává uložený –
 další `cli pre-scout` už prohlížeč neotevře.
 
+✅ **Verifikace gólů a vyloučení z czechicehockey.tv proti Liga DB
+(21. 10. 2026).** czechicehockey.tv je nezávislý zdroj eventů (vlastní
+zápisovatel platformy Live Arena Sports), ne stejné PDF jako Liga DB
+(`league_scraper.py` – oficiální scrape svazu) – občas se tedy eventy
+mezi nimi liší (chybějící/duplicitní trest, pozdní zapsaný gól), což by
+jinak nikdo nepoznal, dokud by si klip neprohlédl. Nový modul
+`prescout/verify.py` (`verify_events`), volaný z `pre_scout_lt.
+save_team_clips` hned po stažení eventů (před plánováním klipů):
+- Najde odpovídající zápas v `Zápasy - liga` (shoda domácí/hosté týmu po
+  `cihtv.normalize` + shoda data – Liga DB „datum“ je syrový text ze
+  scrapu, např. „17. 09. 2026, 19:00“, parsovaný regexem na `date`).
+- Porovná celkové skóre (počet GOAL eventů podle `teamType` vs. „skóre
+  domácí“/„skóre hosté“ z Liga DB) a počet vyloučení na stranu (počet
+  PENALTY eventů podle `teamType` vs. sloupec „vyloučení“ v `Zápasy -
+  liga (tým)` – `len(team_penalties)`, VŠECHNA vyloučení, ne jen ta
+  `<= event_clips.MAX_PP_PENALTY_SEC`, co se použijí pro přesilovkové
+  klipy).
+- Jen informativní, nic neblokuje – zápas v Liga DB může chybět (jiná
+  soutěž/skupina) nebo Sheets API může být nedostupné (`try/except` kolem
+  obou čtení). Výstup se vypíše na konzoli (⚠/✓) i do `prehled.txt`.
+Ověřeno živě na 3 reálných zápasech LIT (Písek, Tábor, Havlíčkův Brod,
+16./11./9. 10. 2026) – všechny `OK`, sedí na už dřív ověřená čísla ze
+„Last 5“ (Písek 0:5, Tábor 1:4). Detekce nesrovnalosti ověřena i uměle
+(mock `_find_game`/`_penalty_counts_by_side` s cíleně špatnými čísly) –
+`verify_events` správně vrátí obě hlášky („Góly nesedí“/„Vyloučení ...
+nesedí“), není to tedy jen vždy-OK bez reálné kontroly.
+
 ## Potvrzená rozhodnutí (21. 9. 2026)
 
 - Skript **pouze importuje** vstupní data, veškerá logika statistik zůstává ve vzorcích sešitu.

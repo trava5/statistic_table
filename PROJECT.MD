@@ -378,6 +378,14 @@ pro obsah souborů, upload proto běží přes OAuth za reálného uživatele
 servisní účet (ten zůstává jen pro Sheets a čtení PDF ze „Zápisy“) –
 podrobně vč. jednorázového nastavení OAuth client ID viz PLAN.MD/README.
 
+Před stažením klipů `prescout/verify.py` (`verify_events`, od 21. 10. 2026)
+ověří góly a vyloučení ze stažených czechicehockey.tv eventů proti **Liga
+DB** (`league_scraper.py` – nezávislý zdroj, oficiální scrape PDF svazu):
+dohledá odpovídající zápas v `Zápasy - liga` (domácí/hosté + datum) a
+porovná celkové skóre i počet vyloučení na stranu s `Zápasy - liga
+(tým)`. Jen informativní (⚠/✓ na konzoli i v `prehled.txt`), nic
+neblokuje – zápas v Liga DB může chybět (jiná soutěž/skupina).
+
 List `Příští soupeř Last 5` (`scripts/build_seznamy_next_opponent_
 last5_sheet.py`) ukazuje formu vybraného soupeře za posledních 5 zápasů
 – stejné kategorie jako `Last 5` (LIT), ale nad daty **Liga DB**
