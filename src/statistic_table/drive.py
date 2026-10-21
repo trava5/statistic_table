@@ -5,7 +5,7 @@ from pathlib import Path
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
 
-from statistic_table.config import Config, get_credentials
+from statistic_table.config import Config, get_credentials, get_oauth_drive_credentials
 
 
 def list_pdf_files(config: Config) -> list[dict]:
@@ -38,8 +38,12 @@ def find_or_create_folder(config: Config, parent_id: str, name: str) -> str:
     """Vrátí ID podsložky `name` v `parent_id`; založí ji, pokud chybí (viz
     pre-scout, PLAN.MD 20. 10. 2026). Název se hledá přesně – Drive samo
     duplicitní jména nezakazuje, proto se nejdřív ověří existující shoda,
-    ať opakované spuštění pro stejný tým nezaloží druhou složku navíc."""
-    service = build("drive", "v3", credentials=get_credentials(config))
+    ať opakované spuštění pro stejný tým nezaloží druhou složku navíc.
+
+    OAuth přihlášení za reálného uživatele (ne servisní účet) – jen tak
+    jde později nahrát i OBSAH souboru, viz `upload_file` a PLAN.MD,
+    21. 10. 2026."""
+    service = build("drive", "v3", credentials=get_oauth_drive_credentials(config))
     escaped_name = name.replace("'", "\\'")
     query = (
         f"'{parent_id}' in parents and name='{escaped_name}' "
@@ -71,8 +75,12 @@ def upload_file(
     """Nahraje `local_path` do složky `folder_id`, vrátí ID souboru. Pokud ve
     složce už existuje soubor se stejným jménem, přepíše jeho obsah (ne
     druhý soubor stejného jména navíc) – opakovaný pre-scout pro stejný tým
-    tak staré klipy nahradí, nekumuluje je."""
-    service = build("drive", "v3", credentials=get_credentials(config))
+    tak staré klipy nahradí, nekumuluje je.
+
+    OAuth přihlášení za reálného uživatele – servisní účet nemá na běžném
+    (ne Workspace) Google účtu vlastní úložiště pro obsah souborů, jen pro
+    metadata (prázdné složky), viz PLAN.MD, 20.–21. 10. 2026."""
+    service = build("drive", "v3", credentials=get_oauth_drive_credentials(config))
     local_path = Path(local_path)
     media = MediaFileUpload(str(local_path), mimetype=mime_type, resumable=True)
 
