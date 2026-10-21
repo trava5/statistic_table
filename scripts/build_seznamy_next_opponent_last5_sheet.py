@@ -230,13 +230,15 @@ def main() -> None:
          "Obdržené v oslabení", "Vstřelené v oslabení"],
     )
     put("A9", _sum_team(ZT_PRESILOVKY))
-    put("B9", '=IF(A9=0;"";J9/A9)')
+    put("B9", '=IF(A9=0;"";N9/A9)')
     put("C9", _sum_team(ZT_OSLABENI))
     put("D9", '=IF(C9=0;"";1-E9/C9)')
     put("E9", _sum_team(ZT_OBDRZENE_OSLAB))
     put("F9", _sum_team(ZT_GOLY_OSLAB))
-    # Pomocný sloupec J9 pro "Využití PP" výše.
-    put("J9", _sum_team(ZT_GOLY_PP))
+    # Pomocný sloupec N9 pro "Využití PP" výše. N (ne J) - J je od
+    # 21. 10. 2026 viditelný sloupec "Z" v Bodování (I16), skrytí celého
+    # J by ho smazalo.
+    put("N9", _sum_team(ZT_GOLY_PP))
 
     # --- Vyloučení a trestné minuty --------------------------------------------
     put("A11", "VYLOUČENÍ A TRESTNÉ MINUTY (POSLEDNÍCH 5 ZÁPASŮ)")
@@ -336,9 +338,11 @@ def main() -> None:
         }
         for rng in ("B9:B9", "D9:D9", "Y18:Y50")
     ]
-    # N (posledních 5 game_id) a J (pomocný čitatel pro Využití PP) skryté,
-    # ať nepletou pohled na list - stejně celý mirror blok AA:CM.
-    hidden_column_ranges = [(9, 10), (13, 14), (26, 90)]
+    # N (posledních 5 game_id + pomocný čitatel pro Využití PP) skrytá,
+    # ať neplete pohled na list - stejně celý mirror blok AA:CM. J (Bodování
+    # "Z") zůstává viditelná - dřív tu byl čitatel pro Využití PP (přesunut
+    # na N9, viz výš), skrýval tak omylem i Bodování od 21. 10. 2026.
+    hidden_column_ranges = [(13, 14), (26, 90)]
     for start_index, end_index in hidden_column_ranges:
         format_requests.append(
             {
@@ -354,6 +358,21 @@ def main() -> None:
                 }
             }
         )
+    # Výslovně odkryt sloupec J, pokud zůstal skrytý z dřívějšího běhu.
+    format_requests.append(
+        {
+            "updateDimensionProperties": {
+                "range": {
+                    "sheetId": sheet_id,
+                    "dimension": "COLUMNS",
+                    "startIndex": 9,
+                    "endIndex": 10,
+                },
+                "properties": {"hiddenByUser": False},
+                "fields": "hiddenByUser",
+            }
+        }
+    )
     service.spreadsheets().batchUpdate(
         spreadsheetId=spreadsheet_id, body={"requests": format_requests}
     ).execute()

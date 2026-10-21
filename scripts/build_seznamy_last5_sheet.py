@@ -197,15 +197,16 @@ def main() -> None:
          "Obdržené v oslabení", "Vstřelené v oslabení"],
     )
     put("A9", _sum_lit("I"))
-    put("B9", '=IF(A9=0;"";J9/A9)')
+    put("B9", '=IF(A9=0;"";N9/A9)')
     put("C9", _sum_lit("K"))
     put("D9", '=IF(C9=0;"";1-E9/C9)')
     put("E9", _sum_lit("L"))
     put("F9", _sum_lit("M"))
-    # Pomocný sloupec J9 pro "Využití PP" výše – "góly v přesilovce" nemá
+    # Pomocný sloupec N9 pro "Využití PP" výše – "góly v přesilovce" nemá
     # vlastní viditelný sloupec v přehledu (na rozdíl od Tým sheetu), ale
-    # vzorec ho potřebuje jako čitatele.
-    put("J9", _sum_lit("J"))
+    # vzorec ho potřebuje jako čitatele. N (ne J) - J je od 21. 10. 2026
+    # viditelný sloupec "Z" v Bodování (I16), skrytí celého J by ho smazalo.
+    put("N9", _sum_lit("J"))
 
     # --- Vyloučení a trestné minuty --------------------------------------------
     put("A11", "VYLOUČENÍ A TRESTNÉ MINUTY (POSLEDNÍCH 5 ZÁPASŮ)")
@@ -319,8 +320,10 @@ def main() -> None:
         }
         for rng in ("B9:B9", "D9:D9", "Y18:Y50", "H5:H5")
     ]
-    # N (pomocný seznam čísel zápisu) a J (pomocný čitatel pro Využití PP)
-    # skryté, ať nepletou pohled na list.
+    # N (pomocný seznam čísel zápisu + pomocný čitatel pro Využití PP)
+    # skrytá, ať neplete pohled na list. J (Bodování "Z") zůstává viditelná
+    # - dřív tu byl čitatel pro Využití PP (přesunut na N9, viz výš),
+    # skrýval tak omylem i Bodování od 21. 10. 2026.
     format_requests.append(
         {
             "updateDimensionProperties": {
@@ -330,7 +333,7 @@ def main() -> None:
                     "startIndex": 9,
                     "endIndex": 10,
                 },
-                "properties": {"hiddenByUser": True},
+                "properties": {"hiddenByUser": False},
                 "fields": "hiddenByUser",
             }
         }

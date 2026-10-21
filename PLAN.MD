@@ -1292,6 +1292,29 @@ gickém pořadí, skóre/výsledky/body přesně sedí na dřív ověřená čí
 2026, D/V i výsledky logicky navazují na už ověřené souhrnné statistiky
 týmu).
 
+✅ **Oprava: sloupec „Z“ v Bodování byl na obou listech „Last 5“ skrytý
+(21. 10. 2026).** Uživatel nahlásil, že se počet odehraných zápasů u
+hráčů (sloupec „Z“ v BODOVÁNÍ) stále nezobrazuje, i když vzorec v kódu
+byl správně (ověřeno `read_range` – data `Z` ve sloupci skutečně byla,
+hodnoty 1–5 sedící na počet zápasů v okně). Příčina: oba skripty skrývají
+celý sloupec `J` (`hiddenByUser: true`), protože tam dřív býval jen
+neviditelný pomocný čitatel `J9` pro „Využití PP“ (přesilovky/oslabení
+sekce) – žádná jiná buňka ve sloupci `J` nebyla potřeba. Po přesunu
+Bodování z `A16` na `I16` (viz past výš) ale „Z“ sloupec Bodování skončil
+právě na `J17` – ve stejném, celoplošně skrytém sloupci. `IFERROR`/
+správná data v buňce nic nezmění, pokud je celý sloupec `hiddenByUser`.
+Oprava ve dvou krocích: (1) pomocný čitatel přesunut z `J9` na `N9`
+(sloupec `N` je už jinak skrytý – nese „posledních 5 game_id“ pomocný
+seznam – takže žádný nový skrytý sloupec nepřidává), (2) skript teď
+`J` sloupec výslovně ODKRYJE (`hiddenByUser: false`), protože už jednou
+běžel se starým kódem a `J` zůstal skrytý i po samotném přesunu dat –
+pouhé vynechání hide-requestu by list neopravilo, je potřeba aktivní
+unhide.
+Ověřeno živě na obou listech: `columnMetadata` z Sheets API po běhu
+ukazuje jen `N` (index 13) jako skrytý, `J` (index 9) už ne; „Využití PP“
+(`B9`) i nadále počítá správně (LIT 22,22 % = 4/18, soupeř 0,00 % = 0/19)
+a Bodování „Z“ je viditelné se stejnými hodnotami jako dřív.
+
 ## Potvrzená rozhodnutí (21. 9. 2026)
 
 - Skript **pouze importuje** vstupní data, veškerá logika statistik zůstává ve vzorcích sešitu.
