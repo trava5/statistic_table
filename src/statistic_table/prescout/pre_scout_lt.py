@@ -14,7 +14,7 @@ from pathlib import Path
 
 from statistic_table.config import Config, require_web_credentials
 
-from . import cihtv, event_clips
+from . import cihtv, event_clips, verify
 
 # ── Console input ─────────────────────────────────────────────────────────────
 
@@ -79,6 +79,14 @@ def save_team_clips(team: dict, config: Config, output_dir: Path) -> Path | None
     )
 
     print(f"\npre-scout LT — {team['name']}, poslední zápas: {cihtv.match_label(match)}")
+    print("Ověřuji góly/vyloučení proti Liga DB...")
+    mismatches = verify.verify_events(config, match, events)
+    if mismatches:
+        for line in mismatches:
+            print(f"  ⚠ {line}")
+    else:
+        print("  ✓ góly i vyloučení sedí na Liga DB.")
+
     if not clips:
         print("V zápase nejsou žádné góly ani přesilovky týmu nebo soupeře.")
         return None
@@ -89,6 +97,9 @@ def save_team_clips(team: dict, config: Config, output_dir: Path) -> Path | None
     segments = cihtv.get_segments(video_url)
 
     overview = [f"{team['name']} — {cihtv.match_label(match)}", cihtv.game_page_url(match), ""]
+    verify_summary = "; ".join(mismatches) if mismatches else "góly i vyloučení sedí"
+    overview.append(f"Verifikace proti Liga DB: {verify_summary}")
+    overview.append("")
     for i, clip in enumerate(clips, 1):
         path = run_dir / event_clips.clip_filename(i, clip)
         duration = cihtv.download_clip(segments, clip["start"], clip["end"], str(path))
