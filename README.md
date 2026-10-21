@@ -214,9 +214,24 @@ Nebo přes menu `main.py`, volba „pre-scout“.
 
 Vyžaduje v `.env`: `WEB_LOGIN`/`WEB_PASSWD` (účet s VOD předplatným) a
 `ffmpeg` v PATH (`winget install Gyan.FFmpeg`, pak nový terminál). Klipy
-se ukládají lokálně do `./output/pre_scout/...`. **Nahrávání klipů na
-Disk je zatím odložené** – servisní účet na běžném Google účtu nemá
-úložiště pro obsah souborů (jen pro Sheets/metadata), viz PLAN.MD.
+se ukládají lokálně do `./output/pre_scout/...` **a zároveň nahrávají na
+Disk** do `Pre-scout/<tým>/` (`PRE_SCOUT_DRIVE_FOLDER_ID`) – servisní účet
+na běžném Google účtu nemá úložiště pro obsah souborů, takže upload běží
+přes OAuth za reálného uživatele (`hc.lit.juniori@gmail.com`), ne přes
+servisní účet, viz PLAN.MD, 21. 10. 2026.
+
+**Jednorázové nastavení OAuth** (než půjde nahrávat na Disk):
+1. V [Google Cloud Console](https://console.cloud.google.com/apis/credentials?project=storied-key-509309-q8)
+   (stejný projekt jako servisní účet) nastav „OAuth consent screen“ –
+   typ „External“, a do „Test users“ přidej `hc.lit.juniori@gmail.com`
+   (app zatím není veřejně ověřená, bez toho přihlášení odmítne).
+2. „Credentials“ → „Create Credentials“ → „OAuth client ID“ → typ
+   „Desktop app“ → stáhnout JSON → uložit jako
+   `secrets/oauth_client_secrets.json` (v gitu ignorováno).
+3. První spuštění `cli pre-scout` otevře prohlížeč – přihlásit se jako
+   `hc.lit.juniori@gmail.com` (ten vlastní složku `Pre-scout`), odsouhlasit
+   přístup. Refresh token se uloží do `secrets/oauth_token.json`, další
+   spuštění už prohlížeč neotevírají.
 
 List „Příští soupeř“ v „HC LIT jun 2026/27“ (nezávislé na stahování
 klipů výš) zrcadlí přes `IMPORTRANGE` kartu týmu vybraného **rozbalovacím
