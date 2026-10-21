@@ -305,7 +305,10 @@ nevolají odnikud za běhu.
   /přesilovky-oslabení/vyloučení-TM, pod tím Bodování a Brankáři vedle
   sebe), ale spočítané jen z **posledních 5 odehraných zápasů LIT**
   místo celé sezóny – aktuální forma týmu. Bez grafů (vědomě,
-  odsouhlaseno s uživatelem).
+  odsouhlaseno s uživatelem). Od 21. 10. 2026 má navíc tabulku
+  „Odehrané zápasy (posledních 5)“ na `A16` (Datum/Soupeř/D-V/skóre/
+  výsledek/body za jednotlivé zápasy, ne jen souhrn) – Bodování a
+  Brankáři se kvůli místu přesunuly na `I16`/`T16`.
   `Zápasy (tým)` nemá sloupec s datem, takže „posledních 5“ se vybírá podle
   čísla zápisu (`QUERY ... order by A desc limit 5` do skrytého pomocného
   sloupce N2:N6) – čísla zápisů přiděluje svaz postupně podle termínu,
@@ -383,7 +386,10 @@ hraje 1 zápas na kolo). `game_id` je v Liga DB číslo (`league_scraper.py`
 ho parsuje přes `int()`), takže dynamický `QUERY` filtr na „posledních
 5 game_id“ musí porovnávat bez uvozovek (`BA=181025`, ne `BA='181025'`)
 – s uvozovkami `QUERY` tiše vrátí 0 řádků, bez chyby (past nalezená
-živě, viz PLAN.MD).
+živě, viz PLAN.MD). Od 21. 10. 2026 má stejně jako `Last 5` (LIT) navíc
+tabulku „Odehrané zápasy (posledních 5)“ na `A16` (datum je tu přímo
+v Liga 2.0 mirroru, žádný `VLOOKUP` není potřeba) – Bodování/Brankáři
+přesunuty na `I16`/`T16`.
 
 ## Struktura repozitáře
 

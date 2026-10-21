@@ -1264,6 +1264,34 @@ Ověřeno živě na dvou týmech: „HCM Warriors Brno“ (5 Z, 0V/0VP/1PP/4P,
 Zlín“ (5 Z, 4V/1VP/0PP/0P, 14 bodů, 26:10, oba brankáři 100 % výher –
 sedí na to, že tým vyhrál všech 5 zápasů v okně).
 
+✅ **Oba listy „Last 5“ doplněny o tabulku samotných zápasů (21. 10.
+2026).** Uživatel nahlásil, že se na listech „Last 5“ (LIT) i „Příští
+soupeř Last 5“ nezobrazují zápasy, jen souhrnné statistiky – chybělo
+vidět, KTERÝCH 5 zápasů se čísla týkají. Oprava na obou listech:
+nová tabulka „ODEHRANÉ ZÁPASY (POSLEDNÍCH 5)“ na `A16` (Datum, Soupeř,
+D/V, Skóre, Skóre soupeře, Výsledek, Body), Bodování přesunuto na `I16`
+a Brankáři na `T16` (dřív `A16`/`I16`), aby byl dost místa.
+- `build_seznamy_last5_sheet.py` (LIT): zápasy z `Zápasy - liga (tým)`
+  nemají – LIT čerpá ze Seznamy DB (`Zápasy (tým)`), ta nemá vlastní
+  datum, takže `A18` je `ARRAYFORMULA(VLOOKUP(...))` do `Zápasy`!A:B
+  (stejný hidden-raw-QUERY + VLOOKUP vzor jako Dashboard „Odehrané
+  zápasy“), zbytek sloupců (`B`–`G`) čte přímo ze skrytého QUERY
+  mirroru na `AA18`.
+- `build_seznamy_next_opponent_last5_sheet.py`: Liga 2.0 mirror
+  (`Zápasy - liga (tým)`) má vlastní datum (sloupec `AD`), žádný
+  VLOOKUP není potřeba – `A18` je přímo `_query_formula` select na
+  `ZT_DATUM, ZT_SOUPER, ZT_DOMA_VENKU, ZT_SKORE_TYM, ZT_SKORE_SOUPER,
+  ZT_VYSLEDEK, ZT_BODY`, řazeno podle kola vzestupně. Doplněna chybějící
+  konstanta `ZT_DOMA_VENKU = "AE"`.
+- Na obou listech: `bold_ranges` doplněny o `T16:T16`/`A17:G17`,
+  procentní formát Brankářů přesunut z `N18:N50` na `Y18:Y50` (6. sloupec
+  výstupu se posunul ze `I`/`N` na `T`/`Y`).
+Ověřeno živě na obou listech: LIT (5 zápasů 2.–16. 10. 2026 v chronolo-
+gickém pořadí, skóre/výsledky/body přesně sedí na dřív ověřená čísla) i
+„Příští soupeř Last 5“ pro „TECHNIKA HOCKEY BRNO“ (5 zápasů 4.–18. 10.
+2026, D/V i výsledky logicky navazují na už ověřené souhrnné statistiky
+týmu).
+
 ## Potvrzená rozhodnutí (21. 9. 2026)
 
 - Skript **pouze importuje** vstupní data, veškerá logika statistik zůstává ve vzorcích sešitu.

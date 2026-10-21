@@ -51,6 +51,7 @@ ROWS = 5000
 # odkazovat na SKUTEČNÁ písmena sloupců tabulky, ne přepočítávat zpět na
 # A/B/C - ověřeno živě při stavbě listu Tabulka, viz PLAN.MD).
 ZT_GAME_ID, ZT_TYM, ZT_SOUPER, ZT_DATUM = "AA", "AB", "AC", "AD"
+ZT_DOMA_VENKU = "AE"
 ZT_SKORE_TYM, ZT_SKORE_SOUPER, ZT_VYSLEDEK, ZT_BODY = "AF", "AG", "AH", "AI"
 ZT_PRESILOVKY, ZT_GOLY_PP, ZT_OSLABENI = "AM", "AN", "AO"
 ZT_OBDRZENE_OSLAB, ZT_GOLY_OSLAB = "AP", "AQ"
@@ -250,11 +251,26 @@ def main() -> None:
     put("E13", '=IF($A$5=0;"";C13/$A$5)')
     put("F13", '=IF($A$5=0;"";D13/$A$5)')
 
-    # --- Bodování a Brankáři (vedle sebe, jen posledních 5 zápasů) -------------
+    # --- Odehrané zápasy / Bodování / Brankáři (vedle sebe, jen posledních
+    # 5 zápasů) -----------------------------------------------------------
     # `{{TEAM}}`/`{{FILTER}}` jsou escapované literály (zůstanou v textu
     # jako "{TEAM}"/"{FILTER}") – `_query_formula` je sama nahradí dynamickým
-    # odkazem na tým a podmínkou na posledních 5 game_id.
-    put("A16", "BODOVÁNÍ (POSLEDNÍCH 5 ZÁPASŮ)")
+    # odkazem na tým a podmínkou na posledních 5 game_id. Na rozdíl od LIT
+    # (Zápasy (tým) nemá datum) tu žádný VLOOKUP není potřeba – Zápasy -
+    # liga (tým) datum má přímo (sloupec AD), jedna QUERY stačí.
+    put("A16", "ODEHRANÉ ZÁPASY (POSLEDNÍCH 5)")
+    put_row(
+        "A17",
+        ["Datum", "Soupeř", "D/V", "Skóre tým", "Skóre soupeř", "Výsledek", "Body"],
+    )
+    odehrane_select = (
+        f"select {ZT_DATUM}, {ZT_SOUPER}, {ZT_DOMA_VENKU}, {ZT_SKORE_TYM}, "
+        f"{ZT_SKORE_SOUPER}, {ZT_VYSLEDEK}, {ZT_BODY} where {ZT_TYM} = '{{TEAM}}' "
+        f"and {{FILTER}} order by {ZT_KOLO} asc"
+    )
+    put("A18", _query_formula(f"$AA$2:$AT${ROWS}", ZT_GAME_ID, odehrane_select))
+
+    put("I16", "BODOVÁNÍ (POSLEDNÍCH 5 ZÁPASŮ)")
     skater_select = (
         f"select {SK_HRAC}, count({SK_GAME_ID}), sum({SK_G}), sum({SK_A}), sum({SK_B}) "
         f"where {SK_TYM} = '{{TEAM}}' and {{FILTER}} group by {SK_HRAC} "
@@ -262,9 +278,9 @@ def main() -> None:
         f"label {SK_HRAC} 'Hráč', count({SK_GAME_ID}) 'Z', sum({SK_G}) 'G', "
         f"sum({SK_A}) 'A', sum({SK_B}) 'B'"
     )
-    put("A17", _query_formula(f"$BA$2:$BJ${ROWS}", SK_GAME_ID, skater_select))
+    put("I17", _query_formula(f"$BA$2:$BJ${ROWS}", SK_GAME_ID, skater_select))
 
-    put("I16", "BRANKÁŘI (POSLEDNÍCH 5 ZÁPASŮ)")
+    put("T16", "BRANKÁŘI (POSLEDNÍCH 5 ZÁPASŮ)")
     goalie_select = (
         f"select {GO_HRAC}, count({GO_GAME_ID}), sum({GO_OBDRZENE}), "
         f"sum({GO_OBDRZENE})/count({GO_GAME_ID}), sum({GO_VYCHYTANA}), "
@@ -275,7 +291,7 @@ def main() -> None:
         f"sum({GO_VYCHYTANA}) 'Vychytané výhry', "
         f"sum({GO_VYCHYTANA})/count({GO_GAME_ID}) '% výher'"
     )
-    put("I17", _query_formula(f"$CA$2:$CM${ROWS}", GO_GAME_ID, goalie_select))
+    put("T17", _query_formula(f"$CA$2:$CM${ROWS}", GO_GAME_ID, goalie_select))
 
     data = [{"range": f"{sheet}!{cell}", "values": values} for cell, values in updates.items()]
     service.spreadsheets().values().batchUpdate(
@@ -296,8 +312,8 @@ def main() -> None:
         }
 
     bold_ranges = [
-        "A1:A1", "A3:A3", "A7:A7", "A11:A11", "A16:A16", "I16:I16",
-        "A4:G4", "A8:F8", "A12:F12",
+        "A1:A1", "A3:A3", "A7:A7", "A11:A11", "A16:A16", "I16:I16", "T16:T16",
+        "A4:G4", "A8:F8", "A12:F12", "A17:G17",
     ]
     format_requests = [
         {
@@ -318,7 +334,7 @@ def main() -> None:
                 "fields": "userEnteredFormat.numberFormat",
             }
         }
-        for rng in ("B9:B9", "D9:D9", "N18:N50")
+        for rng in ("B9:B9", "D9:D9", "Y18:Y50")
     ]
     # N (posledních 5 game_id) a J (pomocný čitatel pro Využití PP) skryté,
     # ať nepletou pohled na list - stejně celý mirror blok AA:CM.

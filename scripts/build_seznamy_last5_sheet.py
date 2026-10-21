@@ -44,6 +44,7 @@ from statistic_table.config import (
     SEZNAMY_GOALIES_LOG_SHEET,
     SEZNAMY_LAST5_SHEET,
     SEZNAMY_SKATERS_LOG_SHEET,
+    SEZNAMY_ZAPASY_SHEET,
     SEZNAMY_ZAPASY_TYM_SHEET,
     get_credentials,
     load_config,
@@ -51,6 +52,7 @@ from statistic_table.config import (
 )
 
 ZT = f"'{SEZNAMY_ZAPASY_TYM_SHEET}'"
+Z = f"'{SEZNAMY_ZAPASY_SHEET}'"
 SKATERS_LOG = f"'{SEZNAMY_SKATERS_LOG_SHEET}'"
 GOALIES_LOG = f"'{SEZNAMY_GOALIES_LOG_SHEET}'"
 ROWS = 5000
@@ -119,8 +121,25 @@ def main() -> None:
     sheet_id = titles[SEZNAMY_LAST5_SHEET]
     sheet = f"'{SEZNAMY_LAST5_SHEET}'"
 
+    # Výchozích 26 sloupců nestačí - skrytý raw helper pro "Odehrané zápasy"
+    # sahá do AG (index 32), Brankáři (přesunuté na T) do Y (past nalezená
+    # dřív u Dashboardu/Tabulky, viz PLAN.MD).
+    service.spreadsheets().batchUpdate(
+        spreadsheetId=spreadsheet_id,
+        body={
+            "requests": [
+                {
+                    "updateSheetProperties": {
+                        "properties": {"sheetId": sheet_id, "gridProperties": {"columnCount": 35}},
+                        "fields": "gridProperties.columnCount",
+                    }
+                }
+            ]
+        },
+    ).execute()
+
     service.spreadsheets().values().clear(
-        spreadsheetId=spreadsheet_id, range=f"{sheet}!A1:Z{ROWS}"
+        spreadsheetId=spreadsheet_id, range=f"{sheet}!A1:AZ{ROWS}"
     ).execute()
 
     updates: dict[str, list] = {}
@@ -201,27 +220,61 @@ def main() -> None:
     put("E13", '=IF($A$5=0;"";C13/$A$5)')
     put("F13", '=IF($A$5=0;"";D13/$A$5)')
 
-    # --- Bodování a Brankáři (vedle sebe, jen posledních 5 zápasů) -------------
-    # Stejné rozložení jako na Dashboardu (BODOVÁNÍ vlevo, BRANKÁŘI o pár
-    # sloupců vpravo), ale počítané přímo z Bruslaři/Brankáři (zápasy) se
+    # --- Odehrané zápasy / Bodování / Brankáři (vedle sebe, jen posledních
+    # 5 zápasů) -----------------------------------------------------------
+    # Stejné rozložení jako Dashboard (ODEHRANÉ ZÁPASY vlevo, BODOVÁNÍ
+    # uprostřed, BRANKÁŘI vpravo) - doplněno 21. 10. 2026 na žádost
+    # uživatele (dřív list neukazoval, KTERÉ zápasy do posledních 5 počítá).
+    # Bodování/Brankáři počítají přímo z Bruslaři/Brankáři (zápasy) se
     # stejnou "posledních 5 čísel zápisu" podmínkou jako výš - ne ze
     # sezónních agregátů Bodování/Brankáři, ty se nedají dodatečně omezit.
-    put("A16", "BODOVÁNÍ (POSLEDNÍCH 5 ZÁPASŮ)")
+    put("A16", "ODEHRANÉ ZÁPASY (POSLEDNÍCH 5)")
+    put_row(
+        "A17",
+        ["Datum", "Soupeř", "D/V", "Skóre LIT", "Skóre soupeř", "Výsledek", "Body"],
+    )
+    # Zápasy (tým) nemá sloupec s datem (viz PROJECT.MD) - Datum se
+    # dohledává VLOOKUPem do Zápasy podle čísla zápisu ze skrytého raw
+    # helperu AA:AG (stejný princip jako "Odehrané zápasy" na Dashboardu,
+    # jen přes posledních 5 zápasů). Přesně 5 řádků (18:22) - na rozdíl od
+    # sezónní tabulky tu nehrozí, že by jich bylo víc.
+    put(
+        "A18",
+        f'=ARRAYFORMULA(IF($AA$18:$AA$22="";"";'
+        f'IFERROR(VLOOKUP($AA$18:$AA$22;{Z}!$A:$B;2;FALSE))))',
+    )
+    put("B18", '=ARRAYFORMULA(IF($AA$18:$AA$22="";"";$AB$18:$AB$22))')
+    put("C18", '=ARRAYFORMULA(IF($AA$18:$AA$22="";"";$AC$18:$AC$22))')
+    put("D18", '=ARRAYFORMULA(IF($AA$18:$AA$22="";"";$AD$18:$AD$22))')
+    put("E18", '=ARRAYFORMULA(IF($AA$18:$AA$22="";"";$AE$18:$AE$22))')
+    put("F18", '=ARRAYFORMULA(IF($AA$18:$AA$22="";"";$AF$18:$AF$22))')
+    put("G18", '=ARRAYFORMULA(IF($AA$18:$AA$22="";"";$AG$18:$AG$22))')
+    # Skrytý raw helper (číslo zápisu, soupeř, D/V, skóre tým, skóre
+    # soupeř, výsledek, body) - `order by A asc` = chronologicky, filtrováno
+    # na posledních 5 čísel zápisu stejně jako týmové statistiky výš.
+    odehrane_tokens = [
+        '"select A, C, D, E, F, G, H where B = \'LIT\' and "',
+        *_last5_or_tokens("A"),
+        '" order by A asc"',
+    ]
+    put("AA18", f"=QUERY({ZT}!A:O;{'&'.join(odehrane_tokens)};0)")
+
+    put("I16", "BODOVÁNÍ (POSLEDNÍCH 5 ZÁPASŮ)")
     skater_select = (
         "select D, sum(G), sum(H), sum(I), sum(J) where B = 'LIT' and {FILTER} "
         "group by D order by sum(J) desc "
         "label D 'Hráč', sum(G) 'Z', sum(H) 'G', sum(I) 'A', sum(J) 'B'"
     )
-    put("A17", _query_formula(SKATERS_LOG, "K", skater_select))
+    put("I17", _query_formula(SKATERS_LOG, "K", skater_select))
 
-    put("I16", "BRANKÁŘI (POSLEDNÍCH 5 ZÁPASŮ)")
+    put("T16", "BRANKÁŘI (POSLEDNÍCH 5 ZÁPASŮ)")
     goalie_select = (
         "select D, sum(F), sum(G), sum(G)/sum(F), sum(L), sum(L)/sum(F) "
         "where B = 'LIT' and {FILTER} group by D order by sum(F) desc "
         "label D 'Hráč', sum(F) 'Z', sum(G) 'obdržené góly', sum(G)/sum(F) 'průměr', "
         "sum(L) 'Vychytané výhry', sum(L)/sum(F) '% výher'"
     )
-    put("I17", _query_formula(GOALIES_LOG, "L", goalie_select))
+    put("T17", _query_formula(GOALIES_LOG, "L", goalie_select))
 
     data = [{"range": f"{sheet}!{cell}", "values": values} for cell, values in updates.items()]
     service.spreadsheets().values().batchUpdate(
@@ -242,8 +295,8 @@ def main() -> None:
         }
 
     bold_ranges = [
-        "A1:A1", "A3:A3", "A7:A7", "A11:A11", "A16:A16", "I16:I16",
-        "A4:H4", "A8:F8", "A12:F12",
+        "A1:A1", "A3:A3", "A7:A7", "A11:A11", "A16:A16", "I16:I16", "T16:T16",
+        "A4:H4", "A8:F8", "A12:F12", "A17:G17",
     ]
     format_requests = [
         {
@@ -264,7 +317,7 @@ def main() -> None:
                 "fields": "userEnteredFormat.numberFormat",
             }
         }
-        for rng in ("B9:B9", "D9:D9", "N18:N50", "H5:H5")
+        for rng in ("B9:B9", "D9:D9", "Y18:Y50", "H5:H5")
     ]
     # N (pomocný seznam čísel zápisu) a J (pomocný čitatel pro Využití PP)
     # skryté, ať nepletou pohled na list.
@@ -290,6 +343,22 @@ def main() -> None:
                     "dimension": "COLUMNS",
                     "startIndex": 13,
                     "endIndex": 14,
+                },
+                "properties": {"hiddenByUser": True},
+                "fields": "hiddenByUser",
+            }
+        }
+    )
+    # AA:AG = skrytý raw helper pro "Odehrané zápasy" (číslo zápisu, soupeř,
+    # D/V, skóre tým, skóre soupeř, výsledek, body).
+    format_requests.append(
+        {
+            "updateDimensionProperties": {
+                "range": {
+                    "sheetId": sheet_id,
+                    "dimension": "COLUMNS",
+                    "startIndex": 26,
+                    "endIndex": 33,
                 },
                 "properties": {"hiddenByUser": True},
                 "fields": "hiddenByUser",
