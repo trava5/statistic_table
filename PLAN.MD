@@ -1315,6 +1315,55 @@ ukazuje jen `N` (index 13) jako skrytý, `J` (index 9) už ne; „Využití PP�
 (`B9`) i nadále počítá správně (LIT 22,22 % = 4/18, soupeř 0,00 % = 0/19)
 a Bodování „Z“ je viditelné se stejnými hodnotami jako dřív.
 
+✅ **Nahrávání pre-scout klipů na Disk přes OAuth za reálného uživatele
+(21. 10. 2026).**
+Navázáno na dřív odloženou past „servisní účet nemá úložiště“ (viz past
+výš, krok 1) – řešení č. 1 z nabízených (OAuth jako reálný uživatel,
+ne Shared Drive/Workspace, který by stál peníze a chtěl admina).
+- `config.py`: `OAUTH_SCOPES = ["...auth/drive"]` (plný, ne `drive.file`
+  – potřeba najít i ručně založenou složku `Pre-scout`, ne jen soubory,
+  co si OAuth klient sám vytvořil) + `get_oauth_drive_credentials` –
+  `InstalledAppFlow.run_local_server` při prvním běhu (otevře prohlížeč,
+  jednorázový souhlas za `hc.lit.juniori@gmail.com` – ten vlastní složku
+  `Pre-scout`), token (`secrets/oauth_token.json`, v gitu ignorováno jako
+  `service_account.json`) se pak jen obnovuje (`Credentials.refresh`),
+  beze dalšího otevírání prohlížeče.
+- `drive.py`: `find_or_create_folder`/`upload_file` (připravené od
+  20. 10. 2026, nikdy nepoužité) teď běží přes `get_oauth_drive_
+  credentials`, ne přes servisní účet – `list_pdf_files`/`download_file`
+  (import PDF ze „Zápisy“) zůstávají na servisním účtu beze změny.
+- `prescout/pipeline.py`: `run_pre_scout` po stažení klipů (`save_team_
+  clips`) zavolá nový `upload_team_clips` – najde/založí podsložku podle
+  názvu týmu v `PRE_SCOUT_DRIVE_FOLDER_ID`, nahraje všechny `.mp4` +
+  `prehled.txt`. Každý soubor se nahrává samostatně v `try/except` – výpadek
+  u jednoho klipu (velký soubor, nestabilní síť) nezastaví zbylé, lokální
+  klipy v `output/pre_scout/...` zůstávají jako záloha i po uploadu.
+- `.env`/`.env.example`: nové `GOOGLE_OAUTH_CLIENT_SECRETS_FILE`
+  (`./secrets/oauth_client_secrets.json`) a `GOOGLE_OAUTH_TOKEN_FILE`
+  (`./secrets/oauth_token.json`).
+**Jednorázové manuální nastavení** (nejde udělat z kódu/CLI, dokončeno
+uživatelem): OAuth client ID (typ „Desktop app“) v Google Cloud Console
+pro projekt servisního účtu (`storied-key-509309-q8`), „OAuth consent
+screen“ (typ „External“) a test user `hc.lit.juniori@gmail.com` (app
+není veřejně ověřená, bez testera přihlášení vrací `403 access_denied`).
+- **Past nalezená živě:** „Test users“ není na hlavní stránce „OAuth
+  consent screen“ – Google přesunul sekci test userů pod samostatnou
+  záložku „Audience“ (`console.cloud.google.com/auth/audience`), což na
+  staré URL/stránce nejde najít.
+- Stažený client secrets JSON má jméno `oauth_client_secrets.json`
+  (množné číslo), ne `oauth_client_secret.json`, jak jsem původně
+  předpokládal v kódu/`.env.example`/README – opraveno na obou místech
+  (`config.py` default i `.env`), ať název souboru sedí na to, co Google
+  Cloud Console skutečně nabízí ke stažení.
+Ověřeno živě (testovací skript, ne ostrý pre-scout): `get_oauth_drive_
+credentials` → prohlížeč → přihlášení za `hc.lit.juniori@gmail.com` →
+`find_or_create_folder` založil testovací podsložku v `Pre-scout/` →
+`upload_file` nahrál `oauth_test.txt` → `about().get()` potvrdil
+přihlášeného uživatele (`hc.lit.juniori@gmail.com`) i vlastníka souboru
+(`owners: hc.lit.juniori@gmail.com`, ne servisní účet) → testovací soubor
+i podsložka smazány. Token (`secrets/oauth_token.json`) zůstává uložený –
+další `cli pre-scout` už prohlížeč neotevře.
+
 ## Potvrzená rozhodnutí (21. 9. 2026)
 
 - Skript **pouze importuje** vstupní data, veškerá logika statistik zůstává ve vzorcích sešitu.

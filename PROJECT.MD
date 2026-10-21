@@ -342,7 +342,7 @@ nevolají odnikud za běhu.
 - **Otevřené:** Ročníky v `Tým` a shutout v `Brankáři` zatím chybí (viz
   PLAN.MD, „Další krok“).
 
-## Pre-scout příštího soupeře (funkční od 20. 10. 2026, Disk odložen)
+## Pre-scout příštího soupeře (funkční od 20. 10. 2026, upload na Disk od 21. 10. 2026)
 
 Modul `statistic_table.prescout` (`cihtv.py`, `event_clips.py`,
 `pre_scout_lt.py`, `pipeline.py`) – jiný zdroj dat než zbytek projektu:
@@ -369,10 +369,14 @@ daty (stejné zdrojové sloupce jako šablona, posunuté o +2 řádky), ne
 zrcadlené. Název vrácený `cihtv.find_teams`
 (czechicehockey.tv) je u všech 16 týmů identický s názvem listu v Liga
 2.0 (ceskyhokej.cz), což umožnilo i rozbalovací seznam sdílet stejný
-zdroj dat. Klipy se zatím ukládají jen lokálně (`./output/pre_scout/...`,
-mimo git) –
-nahrávání na Disk je odložené (servisní účet nemá na běžném Google
-účtu úložiště pro obsah souborů) – podrobně viz PLAN.MD.
+zdroj dat. Klipy se ukládají lokálně (`./output/pre_scout/...`, mimo git)
+a zároveň (od 21. 10. 2026) nahrávají na Disk do `Pre-scout/<tým>/`
+(`drive.find_or_create_folder`/`upload_file`, voláno z `pipeline.
+upload_team_clips`) – servisní účet nemá na běžném Google účtu úložiště
+pro obsah souborů, upload proto běží přes OAuth za reálného uživatele
+(`get_oauth_drive_credentials`, `hc.lit.juniori@gmail.com`), ne přes
+servisní účet (ten zůstává jen pro Sheets a čtení PDF ze „Zápisy“) –
+podrobně vč. jednorázového nastavení OAuth client ID viz PLAN.MD/README.
 
 List `Příští soupeř Last 5` (`scripts/build_seznamy_next_opponent_
 last5_sheet.py`) ukazuje formu vybraného soupeře za posledních 5 zápasů
