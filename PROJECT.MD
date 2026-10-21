@@ -349,17 +349,25 @@ utkání. `cli pre-scout [tým]` (nebo menu `main.py`, volba „pre-scout“)
 najde poslední odehraný zápas zadaného soupeře a bez AI analýzy obrazu
 vystřihne MP4 klipy (vlastní/obdržené góly, vlastní/soupeřovy
 přesilovky) – jen mapování event timestamp → čas ve videu + ffmpeg
-remux, žádné rozpoznávání obrazu. Zároveň zapíše název týmu do `B1`
-listu `Příští soupeř` v „HC LIT jun 2026/27“
-(`scripts/build_seznamy_next_opponent_sheet.py`), který přes
-`IMPORTRANGE` zrcadlí kartu soupeře z Liga 2.0 – `IMPORTRANGE` kopíruje
+remux, žádné rozpoznávání obrazu; do Sheets nezapisuje (od 21. 10. 2026
+odpojeno, viz níž).
+
+List `Příští soupeř` v „HC LIT jun 2026/27“
+(`scripts/build_seznamy_next_opponent_sheet.py`) zrcadlí přes
+`IMPORTRANGE` kartu soupeře z Liga 2.0 podle názvu v `B1` – ten se od
+21. 10. 2026 vybírá **ručně rozbalovacím seznamem přímo v tabulce**
+(`setDataValidation`, `ONE_OF_RANGE` + `strict`), ne kódem. Zdroj
+seznamu je skrytý sloupec `Z`, který přes `IMPORTRANGE` zrcadlí názvy
+týmů ze `Skupiny - liga` (Liga 2.0) – ne napevno vypsaný seznam, ať
+zůstane v souladu, kdyby se složení ligy změnilo. `IMPORTRANGE` kopíruje
 jen hodnoty buněk, ne grafy, takže stejné 3 grafy (Skóre po zápasech/po
 třetinách, Pořadí v tabulce) jsou postavené nativně nad importovanými
 daty (stejné zdrojové sloupce jako šablona, posunuté o +2 řádky), ne
 zrcadlené. Název vrácený `cihtv.find_teams`
 (czechicehockey.tv) je u všech 16 týmů identický s názvem listu v Liga
-2.0 (ceskyhokej.cz) – žádné dodatečné párování není potřeba. Klipy se
-zatím ukládají jen lokálně (`./output/pre_scout/...`, mimo git) –
+2.0 (ceskyhokej.cz), což umožnilo i rozbalovací seznam sdílet stejný
+zdroj dat. Klipy se zatím ukládají jen lokálně (`./output/pre_scout/...`,
+mimo git) –
 nahrávání na Disk je odložené (servisní účet nemá na běžném Google
 účtu úložiště pro obsah souborů) – podrobně viz PLAN.MD.
 

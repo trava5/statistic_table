@@ -196,13 +196,14 @@ v pořádku. Tahle past jednou způsobila, že se import z webu dva týdny vůbe
 nezapisoval, aniž by to bylo na první pohled poznat (viz PLAN.MD, 2. 10. 2026).
 Po dry-run je potřeba výslovně napsat „a“/„ano“, ne jen potvrdit Enterem.
 
-### pre-scout: klipy příštího soupeře (rozpracováno, viz PLAN.MD)
+### pre-scout: klipy soupeře (viz PLAN.MD)
 
 Jiný zdroj dat než zbytek projektu – **czechicehockey.tv** (placené VOD
 předplatné, ne ceskyhokej.cz). Z posledního odehraného zápasu zadaného
 soupeře v Lize juniorů vystřihne MP4 klipy (vlastní/obdržené góly,
 vlastní/soupeřovy přesilovky) z oficiálních událostí zápasu – žádná AI
-analýza obrazu, jen mapování časů + `ffmpeg` remux.
+analýza obrazu, jen mapování časů + `ffmpeg` remux. **Jen stahování
+videa** – do Sheets nezapisuje.
 
 ```powershell
 .venv\Scripts\python.exe -m statistic_table.cli pre-scout technika
@@ -213,12 +214,15 @@ Nebo přes menu `main.py`, volba „pre-scout“.
 
 Vyžaduje v `.env`: `WEB_LOGIN`/`WEB_PASSWD` (účet s VOD předplatným) a
 `ffmpeg` v PATH (`winget install Gyan.FFmpeg`, pak nový terminál). Klipy
-se ukládají lokálně do `./output/pre_scout/...` a název týmu se zapíše
-do `B1` listu „Příští soupeř“ v „HC LIT jun 2026/27“ (zrcadlí přes
-`IMPORTRANGE` kartu daného týmu z Liga 2.0 – bez grafů, ty IMPORTRANGE
-nekopíruje). **Nahrávání klipů na Disk je zatím odložené** – servisní
-účet na běžném Google účtu nemá úložiště pro obsah souborů (jen pro
-Sheets/metadata), viz PLAN.MD.
+se ukládají lokálně do `./output/pre_scout/...`. **Nahrávání klipů na
+Disk je zatím odložené** – servisní účet na běžném Google účtu nemá
+úložiště pro obsah souborů (jen pro Sheets/metadata), viz PLAN.MD.
+
+List „Příští soupeř“ v „HC LIT jun 2026/27“ (nezávislé na stahování
+klipů výš) zrcadlí přes `IMPORTRANGE` kartu týmu vybraného **rozbalovacím
+seznamem přímo v buňce B1** (vč. grafů – ty si list staví nativně,
+IMPORTRANGE je nekopíruje). Seznam týmů v dropdownu se sám drží v
+souladu se `Skupiny - liga` (Liga 2.0), žádná ruční údržba.
 
 ## Co skript dělá a co ne
 

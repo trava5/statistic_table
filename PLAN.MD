@@ -1201,6 +1201,30 @@ zdrojová data existují a správně se měnila s přepnutím `B1` (ověřeno na
 LIT vlastním i HC Příbram – skóre po zápasech/třetinách/pořadí sedí na
 dřív ověřená čísla pro oba týmy).
 
+✅ **Výběr soupeře odpojen od stahování videí – rozbalovací seznam na
+B1 (21. 10. 2026).** Uživatel chtěl `B1` listu „Příští soupeř“ ovládat
+přímo v tabulce (rozbalovací seznam), ne jen jako vedlejší efekt
+spuštění celého (pomalého, ~GB) stahování klipů – menu `main.py`/`cli
+pre-scout` zůstává jen pro samotné klipy.
+- `build_seznamy_next_opponent_sheet.py`: skrytý sloupec `Z` zrcadlí přes
+  `IMPORTRANGE` názvy týmů ze `Skupiny - liga` (Liga 2.0) – ne napevno
+  vypsaný seznam, ať se sám udrží v souladu, kdyby se složení ligy
+  v sezóně změnilo (stejná spreadsheet dvojice jako hlavní import, žádné
+  druhé „Povolit přístup“ nebylo potřeba). `B1` dostal `setDataValidation`
+  (`ONE_OF_RANGE` nad `Z2:Z50`, `strict: true`, `showCustomUi: true`) –
+  rozbalovací šipka v buňce, zápis mimo seznam Sheets samo odmítne (`B1`
+  krmí hlavní `IMPORTRANGE`, překlep by ho rozbil beze slova).
+- `prescout/pipeline.py` (`run_pre_scout`) už nezapisuje do `B1` –
+  `write_next_opponent` smazáno celé (nic jiného ho nevolalo). Zůstává
+  jen `ask_team` → `save_team_clips`. `cli pre-scout`/menu „6“ přejmenováno
+  na „stáhnout klipy soupeře“, ať je zjevné, že se soupeř pro Sheets
+  vybírá jinde.
+Ověřeno živě: sloupec `Z` má všech 16 týmů (vč. LIT), `B1` nese platnou
+`dataValidation` (`ONE_OF_RANGE` + `strict`), a uživatel dropdown
+vyzkoušel sám za běhu (přepnul `B1` na „TECHNIKA HOCKEY BRNO“ zatímco
+jsem ověřoval) – „Příští soupeř“ i grafy se podle toho správně
+přepočítaly (10 Z, 2V/2VP/0PP/6P, 10 bodů, 25:43, 33,33 % bodový zisk).
+
 ## Potvrzená rozhodnutí (21. 9. 2026)
 
 - Skript **pouze importuje** vstupní data, veškerá logika statistik zůstává ve vzorcích sešitu.

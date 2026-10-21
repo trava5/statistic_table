@@ -4,12 +4,16 @@ z Liga 2.0 (`LEAGUE_V2_SPREADSHEET_ID`), stejné hodnoty, jaké by trenér vidě
 kdyby si tu kartu otevřel přímo v Liga 2.0.
 
 Název týmu (musí přesně odpovídat názvu listu v Liga 2.0) se čte z buňky
-`SEZNAMY_NEXT_OPPONENT_TEAM_CELL` (B1) – tu přepisuje `cli pre-scout`/menu
-`main.py` při každém výběru příštího soupeře (viz `prescout`, PLAN.MD).
-Druhý argument `IMPORTRANGE` je proto sestavený jako dynamický řetězec
-(`"'" & B1 & "'!A1:X120"`), ne napevno – stejný princip jako dynamické
-`QUERY` jinde v projektu (`"where B = '" & $B$1 & "'"` u Liga 2.0 team
-template), jen pro `IMPORTRANGE`.
+`SEZNAMY_NEXT_OPPONENT_TEAM_CELL` (B1) – od 21. 10. 2026 ji vybírá trenér
+ručně přes rozbalovací seznam (data validation) přímo v tabulce, `cli
+pre-scout`/menu `main.py` ji už nepřepisuje (viz PLAN.MD – oddělené od
+stahování videí). Zdroj rozbalovacího seznamu je skrytý sloupec `Z`,
+který přes `IMPORTRANGE` zrcadlí názvy týmů z `Skupiny - liga` (Liga
+2.0) – ne napevno vypsaný seznam, ať se sám udrží v souladu, kdyby se
+složení ligy v sezóně změnilo. Druhý argument hlavního `IMPORTRANGE`
+(karta soupeře) je sestavený jako dynamický řetězec (`"'" & B1 &
+"'!A1:X120"`), ne napevno – stejný princip jako dynamické `QUERY` jinde
+v projektu (`"where B = '" & $B$1 & "'"` u Liga 2.0 team template).
 
 `IMPORTRANGE` kopíruje jen VYPOČÍTANÉ HODNOTY buněk, ne grafy (vlastní
 objekty, ne data) – proto se 3 grafy z karty týmu (Skóre po zápasech/po
@@ -73,25 +77,29 @@ def main() -> None:
     ).execute()
 
     team_cell = SEZNAMY_NEXT_OPPONENT_TEAM_CELL
-    error_message = (
-        f"Vyber příštího soupeře (menu „pre-scout“) – list se naplní podle "
-        f"názvu v {team_cell}, přesně jak je v Liga 2.0."
-    )
+    error_message = f"Vyber příštího soupeře z rozbalovacího seznamu v {team_cell}."
     import_formula = (
         f'=IFERROR(IMPORTRANGE("{league_v2_id}"; "\'" & {team_cell} & "\'!A1:X120");'
         f'"{error_message}")'
     )
+    # Skrytý zdroj rozbalovacího seznamu pro B1 (data validation níž) – týmy
+    # podle Skupiny - liga (Liga 2.0), ne napevno vypsané, ať se seznam sám
+    # udrží v souladu, kdyby se složení ligy v sezóně změnilo.
+    team_list_formula = f'=IMPORTRANGE("{league_v2_id}"; "\'Skupiny - liga\'!A2:A50")'
     data = [
         {"range": f"{sheet}!A1", "values": [["Příští soupeř:"]]},
         # B1 musí po tomhle skriptu zůstat vyplněné nějakým reálným týmem
-        # natrvalo, ne prázdné – `cli pre-scout` ho při výběru soupeře
-        # přepíše, ale pokud by teď zůstalo prázdné, IMPORTRANGE by vrátil
-        # jen chybovou hlášku a grafy níž by se stavěly nad prázdnými daty
-        # (Sheets API v takovém případě tiše zahodí `series`, viz past u
-        # "Skóre po třetinách" - stejný důvod, proč i Liga 2.0 team
-        # template (`PLACEHOLDER_TEAM`) nechává B1 vyplněné natrvalo).
+        # natrvalo, ne prázdné, jinak by IMPORTRANGE vrátil jen chybovou
+        # hlášku a grafy níž by se stavěly nad prázdnými daty (Sheets API
+        # v takovém případě tiše zahodí `series`, viz past u "Skóre po
+        # třetinách" - stejný důvod, proč i Liga 2.0 team template
+        # (`PLACEHOLDER_TEAM`) nechává B1 vyplněné natrvalo). Dál už se
+        # nepřepisuje kódem (`cli pre-scout`/menu) - jen rozbalovacím
+        # seznamem ručně v tabulce, viz PLAN.MD 21. 10. 2026.
         {"range": f"{sheet}!{team_cell}", "values": [["HC Stadion Litoměřice"]]},
         {"range": f"{sheet}!A3", "values": [[import_formula]]},
+        {"range": f"{sheet}!Z1", "values": [["Soupeři (pom.)"]]},
+        {"range": f"{sheet}!Z2", "values": [[team_list_formula]]},
     ]
     service.spreadsheets().values().batchUpdate(
         spreadsheetId=spreadsheet_id, body={"valueInputOption": "USER_ENTERED", "data": data}
@@ -149,6 +157,41 @@ def main() -> None:
                     }
                 },
                 "fields": "userEnteredFormat.numberFormat",
+            }
+        },
+        # Rozbalovací seznam na B1 – zdroj je skrytý sloupec Z (IMPORTRANGE
+        # týmů ze Skupiny - liga, viz výš). `strict` odmítne ruční zápis
+        # jména mimo seznam (B1 krmí hlavní IMPORTRANGE, překlep by ho
+        # rozbil beze slova).
+        {
+            "setDataValidation": {
+                "range": {
+                    "sheetId": sheet_id,
+                    "startRowIndex": 0,
+                    "endRowIndex": 1,
+                    "startColumnIndex": 1,
+                    "endColumnIndex": 2,
+                },
+                "rule": {
+                    "condition": {
+                        "type": "ONE_OF_RANGE",
+                        "values": [{"userEnteredValue": f"={sheet}!$Z$2:$Z$50"}],
+                    },
+                    "showCustomUi": True,
+                    "strict": True,
+                },
+            }
+        },
+        {
+            "updateDimensionProperties": {
+                "range": {
+                    "sheetId": sheet_id,
+                    "dimension": "COLUMNS",
+                    "startIndex": 25,
+                    "endIndex": 26,
+                },
+                "properties": {"hiddenByUser": True},
+                "fields": "hiddenByUser",
             }
         },
     ]

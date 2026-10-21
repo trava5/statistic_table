@@ -258,10 +258,12 @@ def cmd_league_sync_teams(args: argparse.Namespace) -> int:
 
 
 def cmd_pre_scout(args: argparse.Namespace) -> int:
-    """Klipy gólů/přesilovek příštího soupeře z czechicehockey.tv + zápis
-    názvu týmu do listu „Příští soupeř“ v HC LIT jun 2026/27 (viz
-    PLAN.MD, 20. 10. 2026). Klipy se zatím ukládají jen lokálně (`cwd`/
-    `output/pre_scout/...`) – nahrávání na Disk je odložené."""
+    """Klipy gólů/přesilovek zadaného soupeře z czechicehockey.tv (viz
+    PLAN.MD). Jen stahování videa – soupeře pro list „Příští soupeř“
+    v HC LIT jun 2026/27 se od 21. 10. 2026 vybírá ručně rozbalovacím
+    seznamem přímo v tabulce, ne odsud. Klipy se zatím ukládají jen
+    lokálně (`cwd`/`output/pre_scout/...`) – nahrávání na Disk je
+    odložené."""
     config = load_config()
     try:
         run_dir = run_pre_scout(config, args.team or "")
@@ -326,7 +328,7 @@ def build_parser() -> argparse.ArgumentParser:
     sync_teams_cmd.set_defaults(func=cmd_league_sync_teams)
 
     pre_scout_cmd = subparsers.add_parser(
-        "pre-scout", help="Klipy gólů/přesilovek příštího soupeře z czechicehockey.tv"
+        "pre-scout", help="Klipy gólů/přesilovek zadaného soupeře z czechicehockey.tv"
     )
     pre_scout_cmd.add_argument(
         "team", nargs="?", default=None, help="Název soupeře (stačí část, bez diakritiky)"
