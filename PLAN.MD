@@ -1430,6 +1430,33 @@ trestu – projde až k dalšímu, nesouvisejícímu kroku (nová zkratka týmu
 „HCM Warriors Brno“ do `TEAM_ALIASES`, čeká na interaktivní odpověď
 uživatele, ne na kód v `pdf_parser.py`).
 
+✅ **OAuth token u pre-scout uploadu vyprší po 7 dnech – nezastavit celý
+běh (2. 11. 2026).** Uživatel nahlásil `cli pre-scout hvezda` – všech
+8 klipů se stáhlo a uložilo lokálně v pořádku, pak celý běh spadl na
+`invalid_grant: Token has been expired or revoked.` Dohledáno (ne
+odhad): token vydaný 21. 10. 2026, běh selhal 2. 11. 2026 – přes 7 dní.
+Google u neověřené OAuth aplikace ve stavu „Testing“ (viz PLAN.MD,
+21. 10. 2026 – consent screen, test user) automaticky zneplatní refresh
+token po 7 dnech, bez ohledu na používání. Probrané možnosti s
+uživatelem: (a) jen se znovu přihlásit v prohlížeči, až token vyprší,
+nebo (b) přepnout na užší `drive.file` scope (needite aplikace) +
+publikovat do produkce (token by pak nevypršel, ale vyžadovalo by to
+přetvořit složku `Pre-scout` přes appku – stará ručně založená složka by
+pod užším scope nebyla vidět). **Zvoleno (a)** – jednodušší, bez dalšího
+vývoje, friction jen občas.
+Nezávisle na tom skutečný problém: `upload_team_clips` neměla `try/
+except` kolem `find_or_create_folder` (jen kolem samotného uploadu
+jednotlivých souborů) – vypršelý token tak shodil celý `cli pre-scout`
+run (přes `pipeline.run_pre_scout` → `main.py`'s top-level `except`)
+i když všech 8 klipů bylo v tu chvíli už bezpečně uložených lokálně.
+Opraveno: `try/except` i kolem hledání/založení složky – chyba teď jen
+vypíše `⚠ Nahrávání na Disk se nezdařilo (...)` a run pokračuje/skončí
+normálně, klipy zůstávají lokálně.
+Ověřeno živě: token smazán a znovu vytvořen (prohlížeč, souhlas za
+`hc.lit.juniori@gmail.com`), `upload_team_clips` pak úspěšně dodatečně
+nahrál všech 9 souborů (8 klipů + `prehled.txt`) z už staženého běhu
+`pre_scout_lt_hc_hvezda_praha_20261030` do `Pre-scout/HC Hvězda Praha/`.
+
 ## Potvrzená rozhodnutí (21. 9. 2026)
 
 - Skript **pouze importuje** vstupní data, veškerá logika statistik zůstává ve vzorcích sešitu.

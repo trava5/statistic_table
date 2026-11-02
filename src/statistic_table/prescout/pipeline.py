@@ -34,11 +34,19 @@ def run_pre_scout(config: Config, query: str, output_dir: Path = OUTPUT_DIR) -> 
 
 def upload_team_clips(config: Config, team_name: str, run_dir: Path) -> None:
     """Nahraje všechny `.mp4`/`prehled.txt` z `run_dir` do `Pre-scout/<tým>/`
-    na Disku. Jedna chyba u jednoho klipu (např. výpadek sítě) nezastaví
-    nahrávání zbylých – každý soubor se nahrává samostatně a chyba se jen
-    vypíše, lokální klipy v `run_dir` zůstávají jako záloha."""
-    parent_id = require_pre_scout_drive_folder_id(config)
-    folder_id = find_or_create_folder(config, parent_id, team_name)
+    na Disku. Klipy v `run_dir` jsou v tuhle chvíli už bezpečně uložené
+    lokálně, nahrávání na Disk je jen záloha navíc – žádná chyba tady (ani
+    u jednoho konkrétního souboru, ani v `find_or_create_folder` samotném,
+    např. vypršelý OAuth token – viz PLAN.MD, 2. 11. 2026) nemá shodit celý
+    `cli pre-scout` run a tvářit se, že se něco ztratilo."""
+    try:
+        parent_id = require_pre_scout_drive_folder_id(config)
+        folder_id = find_or_create_folder(config, parent_id, team_name)
+    except Exception as exc:  # noqa: BLE001 - viz docstring, klipy jsou v bezpečí lokálně
+        print(f"\n⚠ Nahrávání na Disk se nezdařilo ({exc})")
+        print(f"  klipy zůstávají jen lokálně v {run_dir}.")
+        return
+
     files = sorted(run_dir.glob("*.mp4")) + sorted(run_dir.glob("prehled.txt"))
     print(f"\nNahrávám {len(files)} souborů na Disk do 'Pre-scout/{team_name}/'...")
     for local_path in files:
