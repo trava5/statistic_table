@@ -13,12 +13,15 @@ is kept in memory only and never written to disk.
 
 import json
 import os
+import ssl
 import subprocess
 import unicodedata
 import urllib.error
 import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
+
+import certifi
 
 # ── Configuration ─────────────────────────────────────────────────────────────
 
@@ -30,6 +33,14 @@ LIGA_JUNIORU_ID = "617bef438b97052b11740f21"   # competition "Liga juniorů" (sa
 PAGE_SIZE       = 50
 MAX_PAGES       = 20
 
+# Video klipy se stahují z CDN (b-cdn.net, BunnyCDN), jehož certifikát na
+# některých Windows strojích chybí v systémovém úložišti důvěryhodných CA
+# (`[SSL: CERTIFICATE_VERIFY_FAILED] unable to get local issuer certificate`,
+# ověřeno živě 2. 11. 2026 – hlavní API livearenasports.com funguje OK,
+# jen CDN segmenty ne) – `certifi` má aktuální sadu kořenových CA nezávisle
+# na systémovém úložišti, proto se používá pro všechny HTTPS požadavky zde.
+_SSL_CONTEXT = ssl.create_default_context(cafile=certifi.where())
+
 
 # ── HTTP ──────────────────────────────────────────────────────────────────────
 
@@ -39,7 +50,7 @@ def _request(url: str, data: dict = None, token: str = None):
         headers["Authorization"] = f"Bearer {token}"
     body = json.dumps(data).encode("utf-8") if data is not None else None
     req = urllib.request.Request(url, data=body, headers=headers)
-    with urllib.request.urlopen(req, timeout=30) as r:
+    with urllib.request.urlopen(req, timeout=30, context=_SSL_CONTEXT) as r:
         raw = r.read()
     return json.loads(raw) if raw else None
 
@@ -189,7 +200,7 @@ def get_video_url(match: dict, token: str) -> str | None:
 def get_segments(video_url: str) -> list[dict]:
     """Segments of an HLS playlist: [{start, duration, url}], start = seconds from stream start."""
     request = urllib.request.Request(video_url, headers={"User-Agent": "Mozilla/5.0"})
-    with urllib.request.urlopen(request, timeout=30) as r:
+    with urllib.request.urlopen(request, timeout=30, context=_SSL_CONTEXT) as r:
         lines = r.read().decode("utf-8", "replace").splitlines()
     segments, start = [], 0.0
     for i, line in enumerate(lines):
@@ -222,7 +233,7 @@ def download_clip(
     with open(ts_path, "wb") as out:
         for s in chosen:
             request = urllib.request.Request(s["url"], headers={"User-Agent": "Mozilla/5.0"})
-            with urllib.request.urlopen(request, timeout=60) as r:
+            with urllib.request.urlopen(request, timeout=60, context=_SSL_CONTEXT) as r:
                 out.write(r.read())
 
     cmd = [

@@ -1391,6 +1391,27 @@ Ověřeno živě na 3 reálných zápasech LIT (Písek, Tábor, Havlíčkův Bro
 `verify_events` správně vrátí obě hlášky („Góly nesedí“/„Vyloučení ...
 nesedí“), není to tedy jen vždy-OK bez reálné kontroly.
 
+✅ **Oprava: SSL chyba při stahování klipů z CDN (2. 11. 2026).**
+Uživatel nahlásil `[SSL: CERTIFICATE_VERIFY_FAILED] unable to get local
+issuer certificate` při `cli pre-scout` (po úspěšném přihlášení, nálezu
+zápasu i verifikaci proti Liga DB). Živě dohledáno (ne odhad): hlavní API
+(`api.livearenasports.com`) funguje bez problémů, chyba nastává jen při
+stahování samotných video segmentů z CDN **`b-cdn.net`** (BunnyCDN) –
+jeho certifikátový řetězec chybí v systémovém úložišti důvěryhodných CA
+na tomhle Windows stroji, `certifi` (Mozilla bundle, nezávislý na
+systémovém úložišti) ho ale obsahuje. Ověřeno přímým `urlopen` proti
+`b-cdn.net` URL ze skutečné nahrávky: s výchozím kontextem SSL selže
+přesně touhle chybou, s `ssl.create_default_context(cafile=certifi.
+where())` projde.
+Oprava v `cihtv.py`: modulová `_SSL_CONTEXT` (přes `certifi.where()`),
+předaná do všech tří `urllib.request.urlopen` volání (`_request`,
+`get_segments`, `download_clip`) – ne jen do toho na CDN, ať se nemusí
+řešit, který konkrétní request zrovna selže. `certifi` přidán jako
+přímá závislost do `pyproject.toml` (dřív jen tranzitivní přes google-*
+balíčky, nejistá přítomnost/verze bez výslovného pinu).
+Ověřeno živě: `get_segments` (reálná nahrávka Tábor–Hvězda, 30. 10. 2026)
+i `download_clip` (12s testovací klip z `b-cdn.net`) proběhly bez chyby.
+
 ## Potvrzená rozhodnutí (21. 9. 2026)
 
 - Skript **pouze importuje** vstupní data, veškerá logika statistik zůstává ve vzorcích sešitu.
