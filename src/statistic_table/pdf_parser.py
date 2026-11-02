@@ -20,9 +20,14 @@ SUMMARY_TABLE_FIELDS = ["GÓLY\nA:B", "BA", "Min", "OB", "BB", "min", "OB"]
 # Nečíselné kódy ve sloupci "Min." (místo počtu trestných minut) – ověřeno
 # s uživatelem, ne odhad. "TS" = trestné střílení: hráč je vyloučen za
 # zmaření vyložené šance, ale za to se nesedí v boxu žádný čas (proto i
-# sloupce Od/Do v PDF mají "---", ne časy) – TM se tím nepřičítají. Neznámý
-# kód se nemá tiše převést na 0, proto zůstává jen tenhle jeden, explicitní.
-PENALTY_MINUTES_CODES = {"TS": 0}
+# sloupce Od/Do v PDF mají "---", ne časy) – TM se tím nepřičítají. "*20" =
+# OK (osobní trest – konec utkání, game misconduct): hráč je vyloučen do
+# konce utkání, bez reálného boxového času (Od/Do jsou stejné jako konec
+# utkání), ale do TM se připočítá administrativních 20 minut (potvrzeno
+# s uživatelem 2. 11. 2026, dohledáno z poznámek k utkání 11 - 25.10.2026 -
+# Warriors - LIT 2:3.pdf, viz PLAN.MD). Neznámý kód se nemá tiše převést na
+# 0/cokoli, proto zůstávají jen tyhle dva, explicitní.
+PENALTY_MINUTES_CODES = {"TS": 0, "*20": 20}
 
 
 class ParseError(Exception):

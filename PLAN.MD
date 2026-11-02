@@ -1412,6 +1412,24 @@ balíčky, nejistá přítomnost/verze bez výslovného pinu).
 Ověřeno živě: `get_segments` (reálná nahrávka Tábor–Hvězda, 30. 10. 2026)
 i `download_clip` (12s testovací klip z `b-cdn.net`) proběhly bez chyby.
 
+✅ **Nový kód trestu „*20“ – OK (osobní trest, konec utkání), 2. 11. 2026.**
+`cli import --dry-run` zastavil na `11 - 25.10.2026 - Warriors - LIT
+2:3.pdf`: „trest hráče č. 17 (60:00): neznámý kód trestu ve sloupci Min.
+('*20')“. Dohledáno ze samotného PDF (staženo přímo z Drive, ne odhad) –
+„Poznámky k utkání“ popisují poslední vteřinu zápasu: kroscek, bitka a
+pokračování v bitce na zemi, s výsledkem „Hráč D17 dohromady trestán
+tresty 2+2+5+OK*“ (Warriors #17 HARÁSEK) a „Hráč H20 dohromady trestán
+2+5+OK*“ (LIT #20 KURNAT). U obou hráčů mají jejich penalty řádky
+přesně odpovídající počet záznamů s Min. hodnotami (5, *20, 2, [2]) –
+„*20“ je tedy ve všech případech ten chybějící „OK*“ záznam. Potvrzeno
+s uživatelem (ne odhad): `PENALTY_MINUTES_CODES["*20"] = 20` (hráč jde
+do konce utkání bez reálného boxového času – `Od`/`Do` jsou obě „60:00“
+stejně jako u „TS“ – ale do TM se připočítá administrativních 20 minut).
+Ověřeno živě: `cli import --dry-run` už na tomhle PDF neselhává na kódu
+trestu – projde až k dalšímu, nesouvisejícímu kroku (nová zkratka týmu
+„HCM Warriors Brno“ do `TEAM_ALIASES`, čeká na interaktivní odpověď
+uživatele, ne na kód v `pdf_parser.py`).
+
 ## Potvrzená rozhodnutí (21. 9. 2026)
 
 - Skript **pouze importuje** vstupní data, veškerá logika statistik zůstává ve vzorcích sešitu.

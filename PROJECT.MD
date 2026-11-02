@@ -108,7 +108,7 @@ Vše ostatní jsou vzorce (body P, doma/venku, vstřelené/obdržené, kontroly 
 
 **Vyloučení** = počet zapsaných trestů (2min menší trest plus 10min osobní trest téhož hráče jsou dvě vyloučení). **Trestné minuty** = součet minut.
 
-**Trestné střílení** (kód „TS" ve sloupci „Min." místo počtu minut, potvrzeno s uživatelem 3. 10. 2026) – nemá žádný čas v boxu ani interval Od/Do (PDF tam píše „---"), do TM se tedy nepočítá (`PENALTY_MINUTES_CODES` v `pdf_parser.py` mapuje na 0 minut). Jiný neznámý kód ve sloupci „Min." pořád zastaví import s chybou, nehádá se.
+**Trestné střílení** (kód „TS" ve sloupci „Min." místo počtu minut, potvrzeno s uživatelem 3. 10. 2026) – nemá žádný čas v boxu ani interval Od/Do (PDF tam píše „---"), do TM se tedy nepočítá (`PENALTY_MINUTES_CODES` v `pdf_parser.py` mapuje na 0 minut). **Osobní trest – konec utkání** (kód „*20", potvrzeno s uživatelem 2. 11. 2026, dohledáno z poznámek k utkání v PDF) – hráč jde do konce utkání bez reálného boxového času (Od/Do jsou stejné jako konec utkání), do TM se připočítá administrativních 20 minut (`PENALTY_MINUTES_CODES["*20"] = 20`). Jiný neznámý kód ve sloupci „Min." pořád zastaví import s chybou, nehádá se.
 
 **Ročníky.** Počítají se všichni bruslaři z listiny týmu a brankář, který skutečně chytal (přeškrtnutý brankář nehrál). Za LIT z Seznamu hráčů, za soupeře z čísel registrace v zápise (poslední čtyři číslice). Věkový průměr týmu = průměr z (rok zápasu − ročník), tedy věk v celých letech, skutečný je v průměru o půl roku nižší.
 
