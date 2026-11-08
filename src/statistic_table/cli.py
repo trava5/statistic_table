@@ -39,8 +39,12 @@ from statistic_table.league_sheets import (
 )
 from statistic_table.logging_config import setup_logging
 from statistic_table.prescout.pipeline import run_pre_scout
-from statistic_table.seznamy_sheets import build_seznamy_rows, sync_poradi_from_liga
-from statistic_table.sheets import check_headers, read_player_registry, read_range
+from statistic_table.seznamy_sheets import (
+    build_seznamy_rows,
+    ensure_seznamy_sheets,
+    sync_poradi_from_liga,
+)
+from statistic_table.sheets import read_player_registry, read_range
 from statistic_table.standings import (
     arithmetic_issues,
     compute_record_from_rows,
@@ -61,16 +65,14 @@ def cmd_check(_args: argparse.Namespace) -> int:
     for f in files:
         print(f"  - {f['name']} ({f['id']})")
 
-    values = read_range(config, "Zápasy!A6")
-    cell = values[0][0] if values and values[0] else ""
-    print(f"Zápasy!A6 = {cell!r}")
-
+    db_id = require_seznamy_db_spreadsheet_id(config)
     try:
-        check_headers(config)
-    except RuntimeError as exc:
-        print(f"Rozložení tabulky: CHYBA\n{exc}")
+        ensure_seznamy_sheets(config, db_id)
+    except Exception as exc:  # noqa: BLE001 - jasná diagnostika, ne pád s tracebackem
+        print(f"Seznamy DB: CHYBA\n{exc}")
         return 1
-    print("Rozložení tabulky: OK")
+    values = read_range(config, f"'{SEZNAMY_ZAPASY_SHEET}'!A:A", db_id)
+    print(f"Seznamy DB: OK ({max(len(values) - 1, 0)} zápasů v listu '{SEZNAMY_ZAPASY_SHEET}')")
 
     private_id = require_seznamy_private_spreadsheet_id(config)
     players = read_player_registry(config, spreadsheet_id=private_id)

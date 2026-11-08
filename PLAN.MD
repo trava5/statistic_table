@@ -1457,6 +1457,33 @@ Ověřeno živě: token smazán a znovu vytvořen (prohlížeč, souhlas za
 nahrál všech 9 souborů (8 klipů + `prehled.txt`) z už staženého běhu
 `pre_scout_lt_hc_hvezda_praha_20261030` do `Pre-scout/HC Hvězda Praha/`.
 
+✅ **`cli check` přestal ověřovat starou zamrzlou tabulku „Seznamy“
+(8. 11. 2026).** Uživatel nahlásil `HttpError 404 ... Zápasy!A6 ...
+Requested entity was not found` při `cli check` (menu „1) Ověřit přístup
+k Disku a Tabulce“). Dohledáno živě (ne odhad): nejde jen o chybějící
+list `Zápasy` – CELÁ stará produkční tabulka „Seznamy“ (`SPREADSHEET_ID`)
+teď vrací 404 i na holý dotaz na metadata, tedy je smazaná/nedostupná
+celá. Potvrzeno s uživatelem: **záměrně** – je nahrazená „Seznamy DB“/
+„HC LIT jun 2026/27“ od cutoveru 26. 9. 2026 (viz PROJECT.MD, „skript do
+listů Zápasy a Sestavy už nezapisuje“), žádná obnova needitná.
+`cmd_check` ale pořád ověřoval přístup k TÉHLE mrtvé tabulce (`Zápasy!
+A6` ping + `check_headers()` nad `ZAPASY_SHEET`/`SESTAVY_SHEET`) – pozůstatek
+z doby před cutoverem, nikdy neaktualizovaný, protože `config.spreadsheet_id`
+donedávna náhodou pořád fungoval (list jen nebyl zapisovaný, ne smazaný).
+Oprava: `cmd_check` teď místo toho zavolá `ensure_seznamy_sheets` nad
+`SEZNAMY_DB_SPREADSHEET_ID` (stejná funkce, co `cli import` samo používá
+před zápisem – ověří přístup i existenci/hlavičku všech 6 syrových listů,
+případně chybějící založí) a vypíše počet zápasů v `Zápasy`. `check_headers`/
+`header_mismatches`/`ZAPASY_COLUMNS` v `sheets.py`/`config.py` zůstávají
+nedotčené – pořád je testuje `tests/test_sheets.py`/`test_config.py` a
+pořád je (nepoužívaný, ale netknutý) volá `importer.build_import`, stejná
+konvence jako dřív (viz PROJECT.MD, „Seznamy“).
+Ověřeno živě: `cli check` teď projde bez chyby – Disk (14 PDF), Seznamy DB
+(„OK, 12 zápasů“), Seznam hráčů (42) – a `cli import` (doopravdy, ne jen
+dry-run) po předchozím selhání na `invalid_grant`/DNS blipu („Unable to
+find the server at oauth2.googleapis.com“, přechodné – retry bez úprav
+kódu prošel) úspěšně zapsal zápasy č. 13 (Příbram) a 14 (Havířov).
+
 ## Potvrzená rozhodnutí (21. 9. 2026)
 
 - Skript **pouze importuje** vstupní data, veškerá logika statistik zůstává ve vzorcích sešitu.
