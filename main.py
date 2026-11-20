@@ -71,6 +71,14 @@ def menu_pre_scout() -> None:
     _run(["pre-scout", team] if team else ["pre-scout"])
 
 
+def menu_check_alternating_starts() -> None:
+    if _confirm("Nejdřív jen dry-run?", default_yes=True):
+        _run(["check-alternating-starts", "--dry-run"])
+        if not _confirm("Zapsat doopravdy?", default_yes=False):
+            return
+    _run(["check-alternating-starts"])
+
+
 MENU: dict[str, tuple[str, Callable[[], None] | None]] = {
     "1": ("Ověřit přístup k Disku a Tabulce", menu_check),
     "2": ("Import z PDF (Zápisy)", menu_import_pdf),
@@ -78,6 +86,7 @@ MENU: dict[str, tuple[str, Callable[[], None] | None]] = {
     "4": ("Import z webu (Liga: nové odehrané zápasy)", menu_league_sync_games),
     "5": ("Liga: založit listy pro nové týmy", menu_league_sync_teams),
     "6": ("pre-scout: stáhnout klipy soupeře (czechicehockey.tv)", menu_pre_scout),
+    "7": ("Zkontrolovat počet zápasů hráčů se střídavým startem", menu_check_alternating_starts),
     "0": ("Konec", None),
 }
 

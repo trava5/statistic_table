@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import sys
 
+from statistic_table.alternating_starts import check_alternating_starts
 from statistic_table.config import (
     LEAGUE_COMPETITION_ID,
     SEZNAMY_ZAPASY_SHEET,
@@ -280,6 +281,18 @@ def cmd_pre_scout(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_check_alternating_starts(args: argparse.Namespace) -> int:
+    """Pro hráče se statusem "střídavé" v Seznamu hráčů dohledá počet
+    odehraných zápasů jejich klubu v Extralize juniorů (ceskyhokej.cz) a
+    zapíše ho do sloupce "z nahoře" (viz PLAN.MD, 20. 11. 2026)."""
+    config = load_config()
+    report = check_alternating_starts(config, dry_run=args.dry_run)
+    print("\n".join(report))
+    if args.dry_run:
+        print("(--dry-run: nic se nezapsalo)")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="statistic_table")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -336,6 +349,15 @@ def build_parser() -> argparse.ArgumentParser:
         "team", nargs="?", default=None, help="Název soupeře (stačí část, bez diakritiky)"
     )
     pre_scout_cmd.set_defaults(func=cmd_pre_scout)
+
+    alternating_starts_cmd = subparsers.add_parser(
+        "check-alternating-starts",
+        help="Zápasy hráčů se střídavým startem v Extralize juniorů (ceskyhokej.cz)",
+    )
+    alternating_starts_cmd.add_argument(
+        "--dry-run", action="store_true", help="Jen vypsat, co by se zapsalo"
+    )
+    alternating_starts_cmd.set_defaults(func=cmd_check_alternating_starts)
 
     return parser
 
