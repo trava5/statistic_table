@@ -239,6 +239,21 @@ seznamem přímo v buňce B1** (vč. grafů – ty si list staví nativně,
 IMPORTRANGE je nekopíruje). Seznam týmů v dropdownu se sám drží v
 souladu se `Skupiny - liga` (Liga 2.0), žádná ruční údržba.
 
+### Kontrola střídavých startů (viz PLAN.MD)
+
+Pro hráče se statusem „střídavé“ v listu `Seznam hráčů` (soukromá
+tabulka) dohledá počet odehraných zápasů jejich „klubu“ v Extralize
+juniorů (ceskyhokej.cz) a zapíše ho do sloupce „z nahoře“.
+
+```powershell
+.venv\Scripts\python.exe -m statistic_table.cli check-alternating-starts --dry-run
+.venv\Scripts\python.exe -m statistic_table.cli check-alternating-starts
+```
+
+Nebo přes menu `main.py`, volba „7“. Klub, co Extraligu juniorů nehraje,
+se nekontroluje (buňka beze změny); hráč nenalezený v tabulce statistik
+i přes shodu klubu se jen nahlásí (⚠), buňka se taky nemění.
+
 ## Co skript dělá a co ne
 
 - Skript zapisuje **jen syrová vstupní data** (soupisky, góly, přihrávky,

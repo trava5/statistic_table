@@ -40,7 +40,11 @@ cesty).
 do nové, čistě soukromé tabulky (`SEZNAMY_PRIVATE_SPREADSHEET_ID`, viz
 PLAN.MD) – citlivé osobní údaje (rodné číslo, pojišťovna, telefon, e-mail,
 PIN trenérů) nemají ležet ve sdílené tabulce vedle zápasových dat. Trenér ji
-dál edituje ručně, servisní účet k ní má jen roli **Prohlížeč**. Protože
+dál edituje ručně. Servisní účet měl k ní původně jen roli Prohlížeč, od
+20. 11. 2026 (kontrola střídavých startů, viz PLAN.MD) má ověřeno živě
+zápis (role změněna na Editor, nebo jen konkrétní sloupce/rozsahy nejsou
+chráněné, zatímco citlivé – rodné číslo apod. – ano, přesně nezjištěno).
+Protože
 `Bodování`/`Brankáři` v produkční tabulce (viz výš) na `Seznam hráčů`
 formulově závisí (INDEX/MATCH), list byl v produkční tabulce znovu
 obnoven jako **hybrid**, ne čistý mirror:
@@ -57,10 +61,11 @@ Skript k tomu: `scripts/restore_production_seznam_hracu.py` (jednorázový).
 
 **Přidávání nových hráčů** (od 9. 10. 2026) řeší formulář přímo v soukromé
 tabulce – `scripts/apps_script/seznam_hracu_pridat_hrace.gs` (Google Apps
-Script, ne Python). Servisní účet má k soukromé tabulce jen Prohlížeč,
-takže tahle repozitář do ní nemůže zapisovat ani instalovat Apps Script
-projekt – kód musí trenér vložit sám do Rozšíření → Apps Script dané
-tabulky (návod v hlavičce souboru). Nový hráč se vkládá `insertRowBefore`
+Script, ne Python). I po změně na zápis přes Sheets API (viz výš) tahle
+repozitář nemůže instalovat Apps Script projekt (jiný mechanismus, ne
+Sheets values API) – kód musí trenér vložit sám do Rozšíření → Apps
+Script dané tabulky (návod v hlavičce souboru). Nový hráč se vkládá
+`insertRowBefore`
 na správné místo podle abecedy (příjmení, tie-break jméno, `localeCompare`
 s českou lokalizací), sloupec A (pořadové číslo) se při každém přidání
 přepíše na vzorec `=ROW()-2&"."` (ať se sám přepočítá při dalších
@@ -403,6 +408,35 @@ tabulku „Odehrané zápasy (posledních 5)“ na `A16` (datum je tu přímo
 v Liga 2.0 mirroru, žádný `VLOOKUP` není potřeba) – Bodování/Brankáři
 přesunuty na `I16`/`T16`.
 
+## Kontrola střídavých startů (funkční od 20. 11. 2026)
+
+Modul `statistic_table.alternating_starts` (`cli check-alternating-starts`,
+menu `main.py` „7)“) – pro hráče se statusem **„střídavé“** v `Seznam
+hráčů` (soukromá tabulka, sloupec „status“) dohledá počet odehraných
+zápasů jejich „klubu“ (sloupec „klub“) v **Extralize juniorů**
+(`competition_id` **1** na ceskyhokej.cz, „Komerční banka extraliga
+juniorů“ – jiná a vyšší soutěž než `LEAGUE_COMPETITION_ID` 19, Liga
+juniorů) a zapíše ho do sloupce „z nahoře“. ČSLH limituje počet startů
+za druhý klub za sezónu (sloupec „zbývá“ = `$L$1` − „Z“, kde `$L$1` nese
+pevnou kvótu 22 – do 20. 11. 2026 byla tahle kvóta přímo v „z nahoře“ u
+každého řádku, vzorec přesměrován na sdílenou buňku `L1`, aby „z nahoře“
+mohlo nést skutečný počet zápasů).
+
+Klub se hledá podřetězcem (case/diakritika insensitive) v seznamu týmů
+soutěže (`/competition/teams/1`) – žádný alias soubor nebyl potřeba,
+substring matching sedí na všechny reálné případy („BOLESLAV“ → „BK
+Mladá Boleslav“). Klub, co Extraligu juniorů vůbec nehraje (většina
+mateřských klubů v praxi – jen elitní organizace typu Sparta/Litvínov/
+Boleslav/Kladno Extraligu mají), se nekontroluje, buňka zůstává beze
+změny. Hráč nenalezený v tabulce statistik i přes shodu klubu (0 zápasů
+v soutěži letos, nebo chyba v párování jména) se jen nahlásí (⚠), buňka
+se taky nemění – explicitní rozhodnutí uživatele, nehádat.
+
+Brankáři mají na ceskyhokej.cz samostatnou tabulku statistik
+(`filter[type]=goalie`, jiné sloupce, ale stejné „HRÁČ“/„Z“) – rozlišeno
+podle sloupce „post“ v `Seznam hráčů`. Servisní účet (jen Prohlížeč do
+20. 11. 2026, viz výš) má na tuhle soukromou tabulku ověřeno zápis.
+
 ## Struktura repozitáře
 
 Stav k 26. 9. 2026 (Kroky 0–8 z PLAN.MD hotové + cutover LIT na Seznamy DB
@@ -444,8 +478,11 @@ statistic_table/
                        (`_append_all_or_nothing` – rollback při chybě uprostřed zápisu)
     seznamy_sheets.py zápis do Seznamy DB (6 syrových listů, oba týmy, z PDF;
                        `sync_poradi_from_liga` doplňuje pořadí po kole z Liga DB)
+    alternating_starts.py kontrola zápasů hráčů se střídavým startem v
+                       Extralize juniorů (ceskyhokej.cz), zápis do Seznamu
+                       hráčů (soukromá tabulka)
     cli.py            check / import / standings / league sync-games / league
-                       sync-teams / pre-scout
+                       sync-teams / pre-scout / check-alternating-starts
     prescout/         pre-scout příštího soupeře (viz PLAN.MD)
       cihtv.py          klient czechicehockey.tv (přihlášení, zápasy, HLS)
       event_clips.py    naplánování klipů z oficiálních událostí zápasu
@@ -473,8 +510,9 @@ statistic_table/
     apps_script/
       seznam_hracu_pridat_hrace.gs     Google Apps Script (ne Python) - formulář
                                        "Přidat hráče" v soukromé tabulce Seznam
-                                       hráčů, vkládá ručně trenér (servisní účet
-                                       tam má jen Prohlížeč, viz výš)
+                                       hráčů, vkládá ručně trenér (Apps Script
+                                       projekt nejde instalovat přes Sheets API,
+                                       bez ohledu na roli servisního účtu, viz výš)
   tests/
     fixtures/         PDF zápisy, uložené kopie hlaviček a stránky Ligy
     fixtures/league/  uložené stránky ceskyhokej.cz pro testy league_scraper.py

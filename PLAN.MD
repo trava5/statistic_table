@@ -1484,6 +1484,62 @@ dry-run) po předchozím selhání na `invalid_grant`/DNS blipu („Unable to
 find the server at oauth2.googleapis.com“, přechodné – retry bez úprav
 kódu prošel) úspěšně zapsal zápasy č. 13 (Příbram) a 14 (Havířov).
 
+✅ **Kontrola zápasů hráčů se střídavým startem v Extralize juniorů
+(20. 11. 2026).** Uživatel chtěl nové menu „7)“ – pro hráče v `Seznam
+hráčů` (soukromá tabulka) najít počet odehraných zápasů jejich „klubu“
+ve vyšší soutěži a zapsat ho do sloupce „z nahoře“. Zadání se upřesnilo
+za chodu (viz past níž) – původně zmíněný status „hostování“ byl špatně,
+jde o status **„střídavé“** (střídavý start – ČSLH limituje počet startů
+za druhý klub za sezónu, `zbývá` sloupec to počítá).
+- **Zdroj dat:** ceskyhokej.cz, Extraliga juniorů = `competition_id` **1**
+  („Komerční banka extraliga juniorů“), ne `LEAGUE_COMPETITION_ID` (19,
+  Liga juniorů – jiná, nižší soutěž). Seznam týmů soutěže `/competition/
+  teams/1` (`a.team` → `/club/detail/{id}` + `h4` jméno). Tabulka
+  statistik hráčů `/competition/player-stats/1?playerCompetitionStatsWidget-
+  filter[club]={id}` (ne `/player-stats-field/1` – ten filtr podle klubu
+  tiše ignoruje a vrátí celou ligu, ověřeno živě). Sloupec „Z“ = počet
+  odehraných zápasů. Brankáři mají samostatnou tabulku (`filter[type]=
+  goalie`, jiné sloupce TOI/OG/zásky, ale stejné „HRÁČ“/„Z“).
+- **Novy modul `alternating_starts.py`:** `fetch_teams_html`/`parse_teams`,
+  `fetch_player_stats_html`/`parse_player_stats` (stejný `_header_index`
+  princip jako `league_scraper.py` – čte podle jména sloupce, ne pozice),
+  `find_club` (case/diakritika insensitive podřetězec – „BOLESLAV“ →
+  „BK Mladá Boleslav“), `check_alternating_starts` (orchestrace + zápis).
+  Žádný alias soubor nebyl nakonec potřeba – substring matching sedí na
+  všechny reálné případy (Boleslav/Kladno/Litvínov/Sparta).
+- **Past nalezená živě:** jméno v `Seznam hráčů` může mít za příjmením
+  rozlišovač navíc („Novotný T“, stejná past jako `players._surname_
+  matches`/PDF import), web ho nemá („Tomáš Novotný“) – bez odříznutí by
+  se hráč nikdy nenašel. `_match_name` ho teď odřízne (`last_name.
+  split(" ")[0]`).
+- **Chybějící servisní účet má jen Prohlížeč na soukromé tabulce"
+  (PROJECT.MD) je zastaralé:** živě ověřeno, že `get_credentials` (servisní
+  účet) na `SEZNAMY_PRIVATE_SPREADSHEET_ID` MŮŽE zapisovat (`values().
+  update` prošel bez chyby) – buď byl mezitím přístup změněn na Editor,
+  nebo konkrétní sloupce/rozsahy nejsou chráněné, zatímco citlivé
+  (rodné číslo apod.) ano. PROJECT.MD opraveno.
+- **Past při mém vlastním testu zápisu:** omylem jsem zapsal testovací
+  hodnotu do špatné buňky (`L6` = skutečný řádek listu, ne pořadové
+  číslo „6.“ ve sloupci A – to je jen text, ne řádek) – přepsal jsem tím
+  „z nahoře“ u hráče „4. Drahorád“ (kmenový, měl mít prázdno). Všimnuto
+  a opraveno hned (`values().clear`), než začal ostrý běh – zmíněno pro
+  příští podobný test, ať se nepočítá řádek podle sloupce A.
+- **`zbývá` formule po prvním ostrém zápisu:** sloupec „z nahoře“ byl do
+  teď u všech „střídavé“ řádků pevná kvóta 22 (`zbývá = IFS(...; status=
+  "střídavé"; z_nahoře − Z; ...)`), takže zápis skutečného počtu zápasů
+  tam rozbil `zbývá` (u Hanouska vyšlo „-3“). Uživatel potvrdil zápis do
+  „z nahoře“ i tak (vědomě), a pak požádal přesměrovat vzorec na `$L$1`
+  (tam už kvóta 22 byla připravená, mimo datové řádky) – přepsáno ve
+  všech 44 řádcích listu (`M3:M46`, `L{row}` → `$L$1`), živě ověřeno:
+  `zbývá` teď správně `22 − Z` pro všechny „střídavé“ hráče.
+Ověřeno živě: `cli check-alternating-starts --dry-run`/ostrý běh u
+9 reálných „střídavé“ hráčů – 6 shod zapsáno (Hanousek 2, Hausner 13,
+Holín 6, Kozák 8, Werner 13 – Kladno/Boleslav), 1 klub mimo Extraligu
+(Macholda/MOST, nedotčeno), 2 hráči genuinně bez zápasů v Extralize
+letos (Hodek, Hranáč – ověřeno přímo proti seznamu hráčů Litvínova,
+nejde o chybu v párování), nahlášeno ⚠, buňka nedotčena přesně podle
+zadání uživatele.
+
 ## Potvrzená rozhodnutí (21. 9. 2026)
 
 - Skript **pouze importuje** vstupní data, veškerá logika statistik zůstává ve vzorcích sešitu.
